@@ -992,10 +992,38 @@ const POSShell = ({ children }) => {
         }}>
           <IconSearch size={14}/> Search <span className="kbd">⌘K</span>
         </button>
-        <span className="hide-on-sunmi" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 10px', fontSize: 12, color: 'var(--text-secondary)' }}>
+        <button
+          className="hide-on-sunmi"
+          onClick={() => navigate('/branch-select')}
+          style={{
+            height: 36,
+            padding: '0 12px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 13,
+            color: 'var(--text-secondary)',
+            background: 'var(--bg-muted)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--r-default)',
+            cursor: 'pointer',
+            transition: 'all 200ms var(--ease-out-expo)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--matcha-50)';
+            e.currentTarget.style.color = 'var(--matcha-700)';
+            e.currentTarget.style.borderColor = 'var(--matcha-200)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--bg-muted)';
+            e.currentTarget.style.color = 'var(--text-secondary)';
+            e.currentTarget.style.borderColor = 'var(--border-default)';
+          }}
+          title="Switch Branch"
+        >
           <IconBuilding size={14}/>
           <span><b style={{ color: 'var(--text-primary)' }}>{branch.name}</b> · Terminal 1</span>
-        </span>
+        </button>
         <button className="btn btn-ghost btn-icon hide-on-sunmi" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
           {theme === 'dark' ? <IconSun size={18}/> : <IconMoon size={18}/>}
         </button>
