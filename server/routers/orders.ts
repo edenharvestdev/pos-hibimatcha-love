@@ -9,7 +9,7 @@ import {
   posPaymentMethods, branches, staff,
   posBranchPaymentSettings,
   posRecipeIngredients, posBranchInventoryStock, posInventoryMovements,
-  posInventoryItems,
+  posInventoryItems, memberPoints, members,
 } from "../../drizzle/schema";
 import { logAudit, generateOrderNumber, generateTicketNumber } from "../lib/audit";
 import { router, staffProcedure, staffAdminProcedure } from "../_core/trpc";
@@ -203,6 +203,8 @@ export const ordersRouter = router({
       notes: z.string().optional(),
       items: z.array(OrderItemInput).min(1),
       discountCode: z.string().optional(),
+      memberId: z.number().int().optional().nullable(),
+      pointsRedeemed: z.number().optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -275,6 +277,27 @@ export const ordersRouter = router({
         }
       }
 
+      // Calculate member points discount if points are redeemed
+      let pointsDiscount = 0;
+      if (input.memberId && input.pointsRedeemed && input.pointsRedeemed > 0) {
+        // Calculate current balance
+        const history = await db.select().from(memberPoints).where(eq(memberPoints.memberId, input.memberId));
+        const currentBalance = history.reduce((acc, p) => {
+          if (p.type === "earn" || p.type === "adjust") return acc + Number(p.points);
+          if (p.type === "redeem" || p.type === "expire") return acc - Number(p.points);
+          return acc;
+        }, 0);
+
+        if (currentBalance < input.pointsRedeemed) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `แต้มไม่พอแลก (มี ${currentBalance} แต้ม)` });
+        }
+
+        const [branch] = await db.select().from(branches).where(eq(branches.id, input.branchId)).limit(1);
+        const redeemRate = branch ? Number(branch.loyaltyRedeemRate ?? 1.00) : 1.00;
+        pointsDiscount = input.pointsRedeemed * redeemRate;
+        discountAmount += pointsDiscount;
+      }
+
       const taxAmount = Math.round((subtotal - discountAmount) * 0.07 * 100) / 100;
       const totalAmount = subtotal - discountAmount + taxAmount;
       const orderNumber = generateOrderNumber();
@@ -294,9 +317,73 @@ export const ordersRouter = router({
         taxAmount: String(taxAmount),
         totalAmount: String(totalAmount),
         notes: input.notes,
+        memberId: input.memberId || null,
       });
 
       const orderId = (result as any).insertId as number;
+
+      // Handle Member Points ledger additions
+      if (input.memberId) {
+        // 1) Redeem Points Transaction
+        if (input.pointsRedeemed && input.pointsRedeemed > 0) {
+          const historyBeforeRedeem = await db.select().from(memberPoints).where(eq(memberPoints.memberId, input.memberId));
+          const balanceBefore = historyBeforeRedeem.reduce((acc, p) => {
+            if (p.type === "earn" || p.type === "adjust") return acc + Number(p.points);
+            if (p.type === "redeem" || p.type === "expire") return acc - Number(p.points);
+            return acc;
+          }, 0);
+
+          await db.insert(memberPoints).values({
+            memberId: input.memberId,
+            branchId: input.branchId,
+            type: "redeem",
+            points: String(input.pointsRedeemed),
+            balanceBefore: String(balanceBefore),
+            balanceAfter: String(balanceBefore - input.pointsRedeemed),
+            orderId: orderId,
+            notes: `แลกแต้มส่วนลด ${input.pointsRedeemed} แต้มใน POS (฿${pointsDiscount})`,
+            createdByStaffId: ctx.staff.staffId,
+          });
+        }
+
+        // 2) Earn Points Transaction
+        const [branch] = await db.select().from(branches).where(eq(branches.id, input.branchId)).limit(1);
+        const isLoyaltyEnabled = branch ? branch.loyaltyEnabled : true; // default true for POS
+
+        if (isLoyaltyEnabled) {
+          const pointsPerBaht = branch ? Number(branch.loyaltyPointsPerBaht ?? 0.1) : 0.1; // default 1 point per 10 baht (0.1 points per baht)
+          const minOrder = branch ? Number(branch.loyaltyMinOrderForPoints ?? 0) : 0;
+
+          if (totalAmount >= minOrder) {
+            const pointsEarned = Math.floor(totalAmount * pointsPerBaht);
+            if (pointsEarned > 0) {
+              const historyBeforeEarn = await db.select().from(memberPoints).where(eq(memberPoints.memberId, input.memberId));
+              const balanceBefore = historyBeforeEarn.reduce((acc, p) => {
+                if (p.type === "earn" || p.type === "adjust") return acc + Number(p.points);
+                if (p.type === "redeem" || p.type === "expire") return acc - Number(p.points);
+                return acc;
+              }, 0);
+
+              const expireDays = branch ? (branch.loyaltyPointExpireDays ?? 365) : 365;
+              const expiresAt = new Date();
+              expiresAt.setDate(expiresAt.getDate() + expireDays);
+
+              await db.insert(memberPoints).values({
+                memberId: input.memberId,
+                branchId: input.branchId,
+                type: "earn",
+                points: String(pointsEarned),
+                balanceBefore: String(balanceBefore),
+                balanceAfter: String(balanceBefore + pointsEarned),
+                orderId: orderId,
+                expiresAt,
+                notes: `สะสมแต้มจากยอดสั่งซื้อหน้าร้าน POS (฿${totalAmount})`,
+                createdByStaffId: ctx.staff.staffId,
+              });
+            }
+          }
+        }
+      }
 
       for (const item of resolvedItems) {
         const [itemResult] = await db.insert(posOrderItems).values({
@@ -740,6 +827,74 @@ export const ordersRouter = router({
       }).where(eq(posOrders.id, input.orderId));
 
       return { qrDataUrl, amount, promptpayName: paySettings.promptpayName };
+    }),
+
+  // ─── Check Payment Status (PromptPay Verification) ──────────────────────────
+  checkPaymentStatus: staffProcedure
+    .input(z.object({ orderId: z.number().int() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [order] = await db.select().from(posOrders).where(eq(posOrders.id, input.orderId)).limit(1);
+      if (!order) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Check if there is a completed payment for this order
+      const [payment] = await db.select().from(posOrderPayments)
+        .where(and(
+          eq(posOrderPayments.orderId, input.orderId),
+          eq(posOrderPayments.status, "completed")
+        )).limit(1);
+
+      if (payment) {
+        return { paid: true, referenceNumber: payment.referenceNumber ?? undefined };
+      }
+
+      return { paid: false };
+    }),
+
+  // ─── Simulate Payment Webhook (PromptPay Simulator) ─────────────────────────
+  simulatePaymentWebhook: staffProcedure
+    .input(z.object({ orderId: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [order] = await db.select().from(posOrders).where(eq(posOrders.id, input.orderId)).limit(1);
+      if (!order) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (order.status === "completed") {
+        return { success: true, message: "Order already completed" };
+      }
+
+      // Find promptpay payment method
+      const [pm] = await db.select().from(posPaymentMethods)
+        .where(eq(posPaymentMethods.type, "qr"))
+        .limit(1);
+      const paymentMethodId = pm ? pm.id : 1; // Fallback to Cash or first method if not found
+
+      const referenceNumber = "TXN-" + Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Record payment
+      await db.insert(posOrderPayments).values({
+        orderId: input.orderId,
+        paymentMethodId,
+        amount: order.totalAmount,
+        referenceNumber,
+        status: "completed",
+        paidAt: new Date(),
+      });
+
+      // Update order status to completed
+      await db.update(posOrders).set({
+        status: "completed",
+        paymentRefNumber: referenceNumber,
+        completedAt: new Date(),
+      }).where(eq(posOrders.id, input.orderId));
+
+      await logAudit({ staff: ctx.staff, action: "payment_webhook_simulate", entity: "pos_orders", entityId: input.orderId });
+
+      return { success: true, referenceNumber };
     }),
 
   // ─── Mark Paid ──────────────────────────────────────────────────────────────

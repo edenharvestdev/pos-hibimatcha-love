@@ -56,6 +56,59 @@ function verifyOtp(phone: string, code: string): boolean {
 }
 
 export const membersRouter = router({
+  // ── Find Member by Phone (Cashier POS) ─────────────────────────────────────
+  findByPhone: staffProcedure
+    .input(z.object({ phone: z.string() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [member] = await db.select().from(members).where(eq(members.phone, input.phone)).limit(1);
+      if (!member) return null;
+
+      // Calculate current points balance across all branches or specific
+      const history = await db.select().from(memberPoints).where(eq(memberPoints.memberId, member.id));
+      const points = history.reduce((acc, p) => {
+        if (p.type === "earn" || p.type === "adjust") return acc + Number(p.points);
+        if (p.type === "redeem" || p.type === "expire") return acc - Number(p.points);
+        return acc;
+      }, 0);
+
+      return { ...member, points: Math.max(0, points) };
+    }),
+
+  // ── Register Member from POS (Cashier POS) ──────────────────────────────────
+  registerFromPos: staffProcedure
+    .input(z.object({
+      phone: z.string().min(9),
+      firstName: z.string().optional(),
+      lastName: z.string().optional(),
+      email: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      // Check if already exists
+      const [existing] = await db.select().from(members).where(eq(members.phone, input.phone)).limit(1);
+      if (existing) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "หมายเลขโทรศัพท์นี้เป็นสมาชิกอยู่แล้ว" });
+      }
+
+      const [result] = await db.insert(members).values({
+        phone: input.phone,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        email: input.email || null,
+        isVerified: true,
+        pdpaConsentAt: new Date(),
+        pdpaConsentVersion: "1.0",
+        status: "active",
+      });
+      const id = (result as any).insertId as number;
+      const [member] = await db.select().from(members).where(eq(members.id, id)).limit(1);
+      return { ...member, points: 0 };
+    }),
+
   // ── Request OTP ────────────────────────────────────────────────────────────
   requestOtp: publicProcedure
     .input(z.object({ phone: z.string().min(9) }))

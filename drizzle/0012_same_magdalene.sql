@@ -1,0 +1,1 @@
+ALTER TABLE `pos_orders` ADD `memberId` int;

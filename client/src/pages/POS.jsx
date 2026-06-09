@@ -34,6 +34,10 @@ export const PagePOS = () => {
   const [discount, setDiscount] = useState(null); // { type: 'percent'|'fixed', value: number, label: string }
   const [discountOpen, setDiscountOpen] = useState(false);
 
+  // CRM member points states
+  const [member, setMember] = useState(null);
+  const [pointsRedeemed, setPointsRedeemed] = useState(0);
+
   // Load real data from API
   const { data: categories, isLoading: catsLoading } = trpc.categories.list.useQuery(
     { branchId },
@@ -66,8 +70,8 @@ export const PagePOS = () => {
   });
 
   const sub = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const discountAmt = !discount ? 0 : discount.type === 'percent' ? Math.round(sub * discount.value / 100) : Math.min(discount.value, sub);
-  const afterDiscount = sub - discountAmt;
+  const discountAmt = (!discount ? 0 : discount.type === 'percent' ? Math.round(sub * discount.value / 100) : Math.min(discount.value, sub)) + pointsRedeemed;
+  const afterDiscount = Math.max(0, sub - discountAmt);
   const vat = Math.round(afterDiscount * 0.07);
   const total = afterDiscount + vat;
 
@@ -239,9 +243,14 @@ export const PagePOS = () => {
         cart={cart} orderType={orderType} setOrderType={setOrderType}
         updateQty={updateQty} sub={sub} discountAmt={discountAmt} vat={vat} total={total}
         discount={discount} onDiscountOpen={() => setDiscountOpen(true)} onClearDiscount={() => setDiscount(null)}
-        branchId={branchId} onOrderCreated={(orderId) => {
+        branchId={branchId}
+        member={member} setMember={setMember}
+        pointsRedeemed={pointsRedeemed} setPointsRedeemed={setPointsRedeemed}
+        onOrderCreated={(orderId) => {
           setCart([]);
           setDiscount(null);
+          setMember(null);
+          setPointsRedeemed(0);
           navigate(`/pos/payment?orderId=${orderId}`);
         }}
       />
@@ -366,12 +375,76 @@ const POSItemRow = ({ item, onAdd, lang }) => {
   );
 };
 
-const CartPanel = ({ cart, orderType, setOrderType, updateQty, sub, discountAmt, vat, total, branchId, onOrderCreated, discount, onDiscountOpen, onClearDiscount }) => {
+const CartPanel = ({
+  cart, orderType, setOrderType, updateQty, sub, discountAmt, vat, total, branchId, onOrderCreated, discount, onDiscountOpen, onClearDiscount,
+  member, setMember, pointsRedeemed, setPointsRedeemed
+}) => {
   const { navigate, t } = useApp();
   const [tableNo, setTableNo] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [orderNote, setOrderNote] = useState('');
   const [noteFor, setNoteFor] = useState(null); // idx of item being noted
+
+  // CRM local states
+  const [searchPhone, setSearchPhone] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
+  const [newMemberPhone, setNewMemberPhone] = useState('');
+  const [newMemberFirstName, setNewMemberFirstName] = useState('');
+  const [newMemberLastName, setNewMemberLastName] = useState('');
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+
+  const utils = trpc.useUtils();
+  const registerMutation = trpc.members.registerFromPos.useMutation();
+
+  const handleSearchMember = async () => {
+    if (!searchPhone) return;
+    setSearchLoading(true);
+    try {
+      const res = await utils.client.members.findByPhone.query({ phone: searchPhone });
+      if (res) {
+        setMember(res);
+        setPointsRedeemed(0); // reset redeemed points on new member select
+        setShowRegisterForm(false);
+      } else {
+        setMember(null);
+        if (confirm("ไม่พบสมาชิก ต้องการสมัครสมาชิกใหม่หรือไม่?")) {
+          setNewMemberPhone(searchPhone);
+          setNewMemberFirstName('');
+          setNewMemberLastName('');
+          setNewMemberEmail('');
+          setShowRegisterForm(true);
+        }
+      }
+    } catch (err) {
+      alert(err.message || "Error searching member");
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleRegisterMember = async () => {
+    if (!newMemberPhone) return;
+    try {
+      const res = await registerMutation.mutateAsync({
+        phone: newMemberPhone,
+        firstName: newMemberFirstName || undefined,
+        lastName: newMemberLastName || undefined,
+        email: newMemberEmail || undefined,
+      });
+      alert("สมัครสมาชิกสำเร็จ!");
+      setMember({ ...res, points: 0 });
+      setPointsRedeemed(0);
+      setShowRegisterForm(false);
+    } catch (err) {
+      alert(err.message || "Registration failed");
+    }
+  };
+
+  const handleRemoveMember = () => {
+    setMember(null);
+    setPointsRedeemed(0);
+  };
 
   const createOrder = trpc.orders.create.useMutation();
   const confirmOrder = trpc.orders.confirmOrder.useMutation();
@@ -389,6 +462,8 @@ const CartPanel = ({ cart, orderType, setOrderType, updateQty, sub, discountAmt,
         tableNumber: tableNo || undefined,
         customerName: customerName || undefined,
         notes: orderNote || undefined,
+        memberId: member ? member.id : undefined,
+        pointsRedeemed: pointsRedeemed || undefined,
         items: cart.map((it) => ({
           menuItemId: it.id,
           quantity: it.qty,
@@ -496,6 +571,157 @@ const CartPanel = ({ cart, orderType, setOrderType, updateQty, sub, discountAmt,
         <div style={{ display: 'flex', gap: 6 }}>
           <input className="input" placeholder="Table no." value={tableNo} onChange={(e) => setTableNo(e.target.value)} style={{ height: 32, fontSize: 13, flex: '0 0 90px' }}/>
           <input className="input" placeholder="Customer name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ height: 32, fontSize: 13, flex: 1 }}/>
+        </div>
+
+        {/* Customer CRM / Loyalty Points */}
+        <div style={{
+          marginTop: 10,
+          padding: 10,
+          background: 'var(--bg-muted)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--r-default)',
+        }}>
+          {!member && !showRegisterForm && (
+            <div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  className="input"
+                  placeholder="Customer Phone (Loyalty)"
+                  value={searchPhone}
+                  onChange={(e) => setSearchPhone(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSearchMember(); }}
+                  style={{ height: 32, fontSize: 13, flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={handleSearchMember}
+                  className="btn btn-secondary btn-sm"
+                  disabled={searchLoading}
+                  style={{ height: 32, padding: '0 12px' }}
+                >
+                  {searchLoading ? '...' : 'Search'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {showRegisterForm && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--matcha-700)' }}>Register New Member</div>
+              <input
+                className="input"
+                placeholder="Phone"
+                value={newMemberPhone}
+                readOnly
+                style={{ height: 28, fontSize: 12, background: 'var(--bg-disabled)' }}
+              />
+              <div style={{ display: 'flex', gap: 4 }}>
+                <input
+                  className="input"
+                  placeholder="First Name"
+                  value={newMemberFirstName}
+                  onChange={(e) => setNewMemberFirstName(e.target.value)}
+                  style={{ height: 28, fontSize: 12, flex: 1 }}
+                />
+                <input
+                  className="input"
+                  placeholder="Last Name"
+                  value={newMemberLastName}
+                  onChange={(e) => setNewMemberLastName(e.target.value)}
+                  style={{ height: 28, fontSize: 12, flex: 1 }}
+                />
+              </div>
+              <input
+                className="input"
+                placeholder="Email (Optional)"
+                value={newMemberEmail}
+                onChange={(e) => setNewMemberEmail(e.target.value)}
+                style={{ height: 28, fontSize: 12 }}
+              />
+              <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', marginTop: 2 }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => setShowRegisterForm(false)}
+                >Cancel</button>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-xs"
+                  onClick={handleRegisterMember}
+                  disabled={registerMutation.isPending}
+                >Save</button>
+              </div>
+            </div>
+          )}
+
+          {member && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 16 }}>👤</span>
+                  <span>{member.firstName ? `${member.firstName} ${member.lastName || ''}` : member.phone}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveMember}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-quaternary)',
+                    cursor: 'pointer',
+                    fontSize: 16,
+                    padding: '0 4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                  title="Remove Member"
+                >×</button>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginTop: 4, color: 'var(--matcha-700)', fontWeight: 600 }}>
+                <span>⭐ Points Balance:</span>
+                <span style={{ fontSize: 13 }} className="tabular">{member.points} pts</span>
+              </div>
+
+              {member.points > 0 && (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8 }}>
+                  <input
+                    type="number"
+                    className="input"
+                    placeholder={`Redeem points (max ${member.points})`}
+                    value={pointsRedeemed || ''}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 0;
+                      if (val < 0) {
+                        setPointsRedeemed(0);
+                      } else if (val > member.points) {
+                        setPointsRedeemed(member.points);
+                      } else {
+                        const regularDiscount = !discount ? 0 : discount.type === 'percent' ? Math.round(sub * discount.value / 100) : Math.min(discount.value, sub);
+                        const maxPointsAllowed = sub - regularDiscount;
+                        if (val > maxPointsAllowed) {
+                          setPointsRedeemed(maxPointsAllowed);
+                        } else {
+                          setPointsRedeemed(val);
+                        }
+                      }
+                    }}
+                    style={{ height: 32, fontSize: 12, flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-xs"
+                    onClick={() => {
+                      const regularDiscount = !discount ? 0 : discount.type === 'percent' ? Math.round(sub * discount.value / 100) : Math.min(discount.value, sub);
+                      const maxPointsAllowed = Math.min(member.points, sub - regularDiscount);
+                      setPointsRedeemed(maxPointsAllowed);
+                    }}
+                    style={{ whiteSpace: 'nowrap', height: 32 }}
+                  >Redeem Max</button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1321,8 +1547,16 @@ export const PagePayment = () => {
 
 // ----- QR Payment Section (real PromptPay QR) -----
 const QRPaymentSection = ({ orderId, total, methodName }) => {
+  const { navigate, t } = useApp();
+  const queryClient = useQueryClient();
   const generateQr = trpc.orders.generatePaymentQr.useMutation();
+  const simulatePayment = trpc.orders.simulatePaymentWebhook.useMutation();
+  const utils = trpc.useUtils();
+
   const [qrDataUrl, setQrDataUrl] = useState(null);
+  const [pollingActive, setPollingActive] = useState(true);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   useEffect(() => {
     if (orderId && total > 0) {
       generateQr.mutateAsync({ orderId, amount: total })
@@ -1330,34 +1564,113 @@ const QRPaymentSection = ({ orderId, total, methodName }) => {
         .catch((e) => console.warn('QR generation failed:', e));
     }
   }, [orderId, total]);
+
+  // Polling logic
+  useEffect(() => {
+    if (!orderId || !pollingActive || paymentSuccess) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await utils.client.orders.checkPaymentStatus.query({ orderId });
+        if (res?.paid) {
+          setPaymentSuccess(true);
+          setPollingActive(false);
+          clearInterval(interval);
+          
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: [['inventory']] });
+            queryClient.invalidateQueries({ queryKey: [['orders']] });
+            navigate(`/pos/receipt?orderId=${orderId}`);
+          }, 1500);
+        }
+      } catch (err) {
+        console.warn('Payment check failed:', err);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [orderId, pollingActive, paymentSuccess, utils, queryClient, navigate]);
+
+  const handleSimulatePayment = async () => {
+    try {
+      await simulatePayment.mutateAsync({ orderId });
+      const res = await utils.client.orders.checkPaymentStatus.query({ orderId });
+      if (res?.paid) {
+        setPaymentSuccess(true);
+        setPollingActive(false);
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: [['inventory']] });
+          queryClient.invalidateQueries({ queryKey: [['orders']] });
+          navigate(`/pos/receipt?orderId=${orderId}`);
+        }, 1500);
+      }
+    } catch (err) {
+      alert(err.message || 'Simulation failed');
+    }
+  };
+
   return (
     <div className="card anim-fade" style={{ padding: 32, textAlign: 'center' }}>
-      <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>Scan to pay with {methodName}</div>
-      <div style={{ display: 'inline-block', position: 'relative', padding: 20, background: 'white', borderRadius: 'var(--r-md)', border: '1px solid var(--border-default)' }}>
-        {qrDataUrl ? (
-          <img src={qrDataUrl} alt="PromptPay QR" style={{ width: 220, height: 220, display: 'block' }}/>
-        ) : generateQr.isPending ? (
-          <div style={{ width: 220, height: 220, display: 'grid', placeItems: 'center' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div className="spinner" style={{ margin: '0 auto 8px' }}/>
-              <div className="muted" style={{ fontSize: 12 }}>Generating QR...</div>
-            </div>
-          </div>
-        ) : (
-          <FakeQR size={220}/>
-        )}
-        {qrDataUrl && (
-          <div style={{ position: 'absolute', left: 20, right: 20, top: 20, height: 220, overflow: 'hidden', borderRadius: 8, pointerEvents: 'none' }}>
-            <div style={{ height: 2, width: '100%', background: 'linear-gradient(90deg, transparent, var(--matcha-500), transparent)', animation: 'scanline 2.4s linear infinite' }}/>
-          </div>
-        )}
-      </div>
-      <div className="muted" style={{ marginTop: 14 }}>Show this to the customer · ฿{total.toLocaleString()} due</div>
-      {generateQr.isError && (
-        <div style={{ marginTop: 8, color: 'var(--danger)', fontSize: 12 }}>
-          QR generation failed. PromptPay not configured for this branch.
-          <br/>Please set up PromptPay in Backoffice → Settings → Payment.
+      {paymentSuccess ? (
+        <div style={{ padding: '24px 0' }}>
+          <div style={{
+            width: 80, height: 80, borderRadius: '50%',
+            background: 'var(--matcha-50)', color: 'var(--matcha-700)',
+            display: 'grid', placeItems: 'center', margin: '0 auto 16px',
+            fontSize: 36, animation: 'pulse 1.5s ease-in-out infinite'
+          }}>✓</div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--matcha-700)' }}>Payment Verified!</div>
+          <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Redirecting to receipt...</div>
         </div>
+      ) : (
+        <>
+          <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>Scan to pay with {methodName}</div>
+          
+          <div style={{ display: 'inline-block', position: 'relative', padding: 20, background: 'white', borderRadius: 'var(--r-md)', border: '1px solid var(--border-default)' }}>
+            {qrDataUrl ? (
+              <img src={qrDataUrl} alt="PromptPay QR" style={{ width: 220, height: 220, display: 'block' }}/>
+            ) : generateQr.isPending ? (
+              <div style={{ width: 220, height: 220, display: 'grid', placeItems: 'center' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div className="spinner" style={{ margin: '0 auto 8px' }}/>
+                  <div className="muted" style={{ fontSize: 12 }}>Generating QR...</div>
+                </div>
+              </div>
+            ) : (
+              <FakeQR size={220}/>
+            )}
+            {qrDataUrl && (
+              <div style={{ position: 'absolute', left: 20, right: 20, top: 20, height: 220, overflow: 'hidden', borderRadius: 8, pointerEvents: 'none' }}>
+                <div style={{ height: 2, width: '100%', background: 'linear-gradient(90deg, transparent, var(--matcha-500), transparent)', animation: 'scanline 2.4s linear infinite' }}/>
+              </div>
+            )}
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 14, color: 'var(--matcha-600)', fontSize: 13, fontWeight: 500 }}>
+            <span className="spinner-xs"/>
+            <span>Auto verifying payment status...</span>
+          </div>
+          
+          <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>Show this to the customer · ฿{total.toLocaleString()} due</div>
+
+          <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center', gap: 10 }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={handleSimulatePayment}
+              disabled={simulatePayment.isPending}
+            >
+              ⚡ Simulate QR Scan (Web Pay)
+            </button>
+          </div>
+
+          {generateQr.isError && (
+            <div style={{ marginTop: 12, color: 'var(--danger)', fontSize: 12 }}>
+              QR generation failed. PromptPay not configured for this branch.
+              <br/>Please set up PromptPay in Backoffice → Settings → Payment.
+            </div>
+          )}
+        </>
       )}
     </div>
   );

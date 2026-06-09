@@ -22,6 +22,7 @@ export const PageSOPLibrary = () => {
   const { navigate, role, route, branch } = useApp();
   const [search, setSearch] = useState('');
   const [activeCat, setActiveCat] = useState('all');
+  const [activeTab, setActiveTab] = useState('library'); // 'library' | 'hq_audit'
   // Detect whether we're in the staff-facing route (/sop) vs backoffice (/backoffice/sop)
   const isStaffView = role === 'staff' || (route || '').startsWith('/sop');
   const detailPrefix = isStaffView ? '/sop' : '/backoffice/sop';
@@ -33,6 +34,11 @@ export const PageSOPLibrary = () => {
     { staleTime: 15000 }
   );
   const { data: categories = [] } = trpc.sop.listCategories.useQuery(undefined, { staleTime: 5000, refetchOnWindowFocus: true });
+
+  const { data: complianceReport, isLoading: complianceLoading } = trpc.sop.getComplianceReport.useQuery(
+    {},
+    { enabled: activeTab === 'hq_audit' && role === 'super', staleTime: 15000 }
+  );
 
   const filtered = activeCat === 'all' ? sops : sops.filter((s) => s.categoryId === activeCat);
   const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories]);
@@ -53,81 +59,219 @@ export const PageSOPLibrary = () => {
         </div>
       </div>
 
-      <div className="card" style={{ padding: 6, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={{ paddingLeft: 16, color: 'var(--text-tertiary)' }}><IconSearch size={20}/></span>
-        <input className="input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search SOPs by title, content, tags…" style={{ border: 'none', boxShadow: 'none', height: 48, fontSize: 16, flex: 1, background: 'transparent' }}/>
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflow: 'auto', paddingBottom: 4 }}>
-        <button onClick={() => setActiveCat('all')} className={activeCat === 'all' ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'} style={{ whiteSpace: 'nowrap' }}>All</button>
-        {categories.map((c) => (
-          <button key={c.id} onClick={() => setActiveCat(c.id)} className={activeCat === c.id ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'} style={{ whiteSpace: 'nowrap' }}>{c.name}</button>
-        ))}
-      </div>
-
-      {isLoading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-          {[1,2,3].map((i) => <div key={i} className="card" style={{ height: 260, background: 'var(--bg-muted)', animation: 'pulse 1.5s ease-in-out infinite' }}/>)}
+      {role === 'super' && (
+        <div style={{ display: 'flex', gap: 16, borderBottom: '1px solid var(--border-default)', marginBottom: 20 }}>
+          <button
+            onClick={() => setActiveTab('library')}
+            style={{
+              padding: '8px 16px',
+              fontSize: 14,
+              fontWeight: 600,
+              color: activeTab === 'library' ? 'var(--matcha-600)' : 'var(--text-secondary)',
+              borderBottom: activeTab === 'library' ? '2px solid var(--matcha-600)' : '2px solid transparent',
+              background: 'none',
+              borderTop: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
+              cursor: 'pointer',
+              marginBottom: -1,
+            }}
+          >
+            SOP Library
+          </button>
+          <button
+            onClick={() => setActiveTab('hq_audit')}
+            style={{
+              padding: '8px 16px',
+              fontSize: 14,
+              fontWeight: 600,
+              color: activeTab === 'hq_audit' ? 'var(--matcha-600)' : 'var(--text-secondary)',
+              borderBottom: activeTab === 'hq_audit' ? '2px solid var(--matcha-600)' : '2px solid transparent',
+              background: 'none',
+              borderTop: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
+              cursor: 'pointer',
+              marginBottom: -1,
+            }}
+          >
+            HQ Audit Dashboard
+          </button>
         </div>
-      ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-tertiary)' }}>
-          <IconBox size={36} style={{ opacity: 0.3 }}/>
-          <p style={{ marginTop: 12, fontWeight: 500 }}>No SOPs yet</p>
-          <p style={{ fontSize: 13 }}>{canWrite ? 'Create your first standard operating procedure.' : 'No SOPs have been published yet.'}</p>
-          {canWrite && <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/backoffice/sop/new')}><IconPlus size={14}/> Write SOP</button>}
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-          {filtered.map((s, i) => {
-            const catName = catMap.get(s.categoryId) ?? 'Uncategorized';
-            const author = s.authorStaffId ? `Staff #${s.authorStaffId}` : '—';
-            const date = s.publishedAt ? new Date(s.publishedAt).toLocaleDateString() : '—';
-            return (
-              <div key={s.id} className="card" style={{ overflow: 'hidden', position: 'relative', animation: `slideUp 360ms var(--ease-out-expo) ${i * 50}ms both`, transition: 'transform 240ms, box-shadow 240ms' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md), var(--glow-soft)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}>
-                <div onClick={() => navigate(`${detailPrefix}/${s.id}`)} style={{ position: 'relative', cursor: 'pointer' }}>
-                  <Placeholder ratio="16/9" radius={0} label={catName}/>
-                  {s.status === 'draft' && (
-                    <span className="pill pill-warning" style={{ position: 'absolute', top: 10, left: 10, fontSize: 10 }}>DRAFT</span>
-                  )}
+      )}
+
+      {activeTab === 'library' && (
+        <>
+          <div className="card" style={{ padding: 6, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ paddingLeft: 16, color: 'var(--text-tertiary)' }}><IconSearch size={20}/></span>
+            <input className="input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search SOPs by title, content, tags…" style={{ border: 'none', boxShadow: 'none', height: 48, fontSize: 16, flex: 1, background: 'transparent' }}/>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflow: 'auto', paddingBottom: 4 }}>
+            <button onClick={() => setActiveCat('all')} className={activeCat === 'all' ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'} style={{ whiteSpace: 'nowrap' }}>All</button>
+            {categories.map((c) => (
+              <button key={c.id} onClick={() => setActiveCat(c.id)} className={activeCat === c.id ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'} style={{ whiteSpace: 'nowrap' }}>{c.name}</button>
+            ))}
+          </div>
+
+          {isLoading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+              {[1,2,3].map((i) => <div key={i} className="card" style={{ height: 260, background: 'var(--bg-muted)', animation: 'pulse 1.5s ease-in-out infinite' }}/>)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-tertiary)' }}>
+              <IconBox size={36} style={{ opacity: 0.3 }}/>
+              <p style={{ marginTop: 12, fontWeight: 500 }}>No SOPs yet</p>
+              <p style={{ fontSize: 13 }}>{canWrite ? 'Create your first standard operating procedure.' : 'No SOPs have been published yet.'}</p>
+              {canWrite && <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/backoffice/sop/new')}><IconPlus size={14}/> Write SOP</button>}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+              {filtered.map((s, i) => {
+                const catName = catMap.get(s.categoryId) ?? 'Uncategorized';
+                const author = s.authorStaffId ? `Staff #${s.authorStaffId}` : '—';
+                const date = s.publishedAt ? new Date(s.publishedAt).toLocaleDateString() : '—';
+                return (
+                  <div key={s.id} className="card" style={{ overflow: 'hidden', position: 'relative', animation: `slideUp 360ms var(--ease-out-expo) ${i * 50}ms both`, transition: 'transform 240ms, box-shadow 240ms' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md), var(--glow-soft)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}>
+                    <div onClick={() => navigate(`${detailPrefix}/${s.id}`)} style={{ position: 'relative', cursor: 'pointer' }}>
+                      <Placeholder ratio="16/9" radius={0} label={catName}/>
+                      {s.status === 'draft' && (
+                        <span className="pill pill-warning" style={{ position: 'absolute', top: 10, left: 10, fontSize: 10 }}>DRAFT</span>
+                      )}
+                    </div>
+                    {canWrite && (
+                      <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4, zIndex: 2 }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/backoffice/sop/new?id=${s.id}`); }}
+                          className="btn btn-secondary btn-icon"
+                          style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.95)' }}
+                          title="Edit SOP"
+                        ><IconEdit size={12}/></button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Archive "${s.title}"?`)) archiveSop.mutate({ id: s.id });
+                          }}
+                          className="btn btn-secondary btn-icon"
+                          style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.95)', color: 'var(--danger)' }}
+                          title="Archive SOP"
+                        ><IconError size={12}/></button>
+                      </div>
+                    )}
+                    <div onClick={() => navigate(`${detailPrefix}/${s.id}`)} style={{ padding: 18, cursor: 'pointer' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <span className="pill">{catName}</span>
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{s.title}</div>
+                      {s.subtitle && <div className="muted" style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{s.subtitle}</div>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--text-tertiary)' }}>
+                        <Avatar name={author} size={20}/>
+                        <span>{author}</span>
+                        <span>·</span>
+                        <span>{date}</span>
+                        {s.version && <><span>·</span><span>v{s.version}</span></>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'hq_audit' && (
+        <div>
+          {complianceLoading ? (
+            <div style={{ textAlign: 'center', padding: 40 }} className="muted">Loading Compliance Audit Data...</div>
+          ) : !complianceReport ? (
+            <div style={{ textAlign: 'center', padding: 40 }} className="muted">Failed to load compliance data.</div>
+          ) : (
+            <div style={{ animation: 'fadeIn 240ms ease-out' }}>
+              {/* Summary Stats cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
+                <div className="card" style={{ padding: 20 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>OVERALL COMPLIANCE</div>
+                  <div style={{ fontSize: 36, fontWeight: 700, color: 'var(--matcha-700)', marginTop: 4 }}>{complianceReport.rate}%</div>
+                  <div style={{ height: 4, background: 'var(--bg-subtle)', borderRadius: 2, overflow: 'hidden', marginTop: 8 }}>
+                    <div style={{ width: `${complianceReport.rate}%`, height: '100%', background: 'var(--matcha-500)' }}/>
+                  </div>
                 </div>
-                {canWrite && (
-                  <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4, zIndex: 2 }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/backoffice/sop/new?id=${s.id}`); }}
-                      className="btn btn-secondary btn-icon"
-                      style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.95)' }}
-                      title="Edit SOP"
-                    ><IconEdit size={12}/></button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (window.confirm(`Archive "${s.title}"?`)) archiveSop.mutate({ id: s.id });
-                      }}
-                      className="btn btn-secondary btn-icon"
-                      style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.95)', color: 'var(--danger)' }}
-                      title="Archive SOP"
-                    ><IconError size={12}/></button>
-                  </div>
-                )}
-                <div onClick={() => navigate(`${detailPrefix}/${s.id}`)} style={{ padding: 18, cursor: 'pointer' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span className="pill">{catName}</span>
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{s.title}</div>
-                  {s.subtitle && <div className="muted" style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{s.subtitle}</div>}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--text-tertiary)' }}>
-                    <Avatar name={author} size={20}/>
-                    <span>{author}</span>
-                    <span>·</span>
-                    <span>{date}</span>
-                    {s.version && <><span>·</span><span>v{s.version}</span></>}
+                <div className="card" style={{ padding: 20 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>TOTAL SOPS</div>
+                  <div style={{ fontSize: 36, fontWeight: 700, marginTop: 4 }}>{complianceReport.totalSops}</div>
+                </div>
+                <div className="card" style={{ padding: 20 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>ACTIVE STAFF</div>
+                  <div style={{ fontSize: 36, fontWeight: 700, marginTop: 4 }}>{complianceReport.totalStaff}</div>
+                </div>
+                <div className="card" style={{ padding: 20 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>ACKNOWLEDGED / PENDING</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, marginTop: 12 }}>
+                    <span style={{ color: 'var(--matcha-700)' }}>{complianceReport.acknowledged}</span> / <span style={{ color: 'var(--danger)' }}>{complianceReport.pending}</span>
                   </div>
                 </div>
               </div>
-            );
-          })}
+
+              {/* Compliance Matrix Table */}
+              <div className="card" style={{ padding: 24, overflowX: 'auto' }}>
+                <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>Acknowledgment Compliance Matrix</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 600 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
+                      <th style={{ padding: '12px 8px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)' }}>Staff Member</th>
+                      {complianceReport.items.map((it) => (
+                        <th key={it.sop.id} style={{ padding: '12px 8px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={it.sop.title}>
+                          {it.sop.title}
+                        </th>
+                      ))}
+                      <th style={{ padding: '12px 8px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)', textAlign: 'right' }}>Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {complianceReport.staffList.map((st) => {
+                      const staffAcks = complianceReport.acknowledgments.filter((a) => a.staffId === st.id);
+                      const requiredSops = complianceReport.items.map((it) => it.sop);
+                      const ackedCount = requiredSops.filter((sop) => staffAcks.some((a) => a.sopId === sop.id)).length;
+                      const pct = requiredSops.length > 0 ? Math.round((ackedCount / requiredSops.length) * 100) : 100;
+
+                      return (
+                        <tr key={st.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 150ms' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <td style={{ padding: '14px 8px', fontSize: 13, fontWeight: 500 }}>
+                            <div>{st.firstName} {st.lastName}</div>
+                            <div className="muted" style={{ fontSize: 11 }}>Code: {st.employeeCode || '#'+st.id}</div>
+                          </td>
+                          {requiredSops.map((sop) => {
+                            const hasAck = staffAcks.some((a) => a.sopId === sop.id);
+                            return (
+                              <td key={sop.id} style={{ padding: '14px 8px' }}>
+                                {hasAck ? (
+                                  <span style={{ color: 'var(--matcha-600)', display: 'inline-flex', alignItems: 'center' }} title="Acknowledged">
+                                    <IconCheckCircle size={18} />
+                                  </span>
+                                ) : (
+                                  <span style={{ color: 'var(--text-quaternary)', display: 'inline-flex', alignItems: 'center' }} title="Pending acknowledgment">
+                                    <IconError size={18} />
+                                  </span>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td style={{ padding: '14px 8px', fontSize: 13, fontWeight: 600, textAlign: 'right' }}>
+                            <span style={{ color: pct === 100 ? 'var(--matcha-700)' : 'var(--text-secondary)' }}>
+                              {ackedCount}/{requiredSops.length} ({pct}%)
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -235,6 +379,18 @@ const SopLinkMenuDrawer = ({ open, onClose, sopId, sopTitle }) => {
   );
 };
 
+const getYoutubeEmbedUrl = (url) => {
+  if (!url) return null;
+  try {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    if (match && match[2].length === 11) {
+      return `https://www.youtube.com/embed/${match[2]}`;
+    }
+  } catch (e) {}
+  return null;
+};
+
 export const PageSOPDetail = () => {
   const { navigate, route } = useApp();
   const [acked, setAcked] = useState(false);
@@ -287,7 +443,11 @@ export const PageSOPDetail = () => {
     <div style={{ position: 'relative' }}>
       {/* Hero */}
       <div style={{ position: 'relative', height: 280, overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, var(--matcha-600), var(--matcha-800))' }}/>
+        {sop.coverImageUrl ? (
+          <img src={sop.coverImageUrl} alt={sop.title} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}/>
+        ) : (
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, var(--matcha-600), var(--matcha-800))' }}/>
+        )}
         <div style={{ position: 'absolute', inset: 0, opacity: 0.3, background: 'radial-gradient(circle at 30% 40%, var(--matcha-400), transparent 50%), radial-gradient(circle at 70% 70%, var(--gold), transparent 50%)' }}/>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.4))' }}/>
         <div style={{ position: 'relative', maxWidth: 1200, margin: '0 auto', padding: '32px 40px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', color: 'white' }}>
@@ -366,6 +526,34 @@ export const PageSOPDetail = () => {
 
         {/* Content */}
         <article className="card" style={{ padding: 48, fontSize: 16, lineHeight: 1.8, color: 'var(--text-primary)', maxWidth: 780, justifySelf: 'center' }}>
+          {sop.videoUrl && (
+            <div style={{ marginBottom: 24, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-default)', background: 'black' }}>
+              {(() => {
+                const ytUrl = getYoutubeEmbedUrl(sop.videoUrl);
+                if (ytUrl) {
+                  return (
+                    <iframe
+                      width="100%"
+                      height="360"
+                      src={ytUrl}
+                      title="SOP Video Tutorial"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      style={{ display: 'block' }}
+                    />
+                  );
+                }
+                return (
+                  <video
+                    src={sop.videoUrl}
+                    controls
+                    style={{ width: '100%', display: 'block', maxHeight: 400 }}
+                  />
+                );
+              })()}
+            </div>
+          )}
           {(() => {
             const c = sop.content;
             if (!c) {
@@ -490,6 +678,8 @@ export const PageSOPEditor = () => {
     allowBranchVariants: false,
     acknowledgmentDeadlineDays: 7,
     tags: [],
+    coverImageUrl: '',
+    videoUrl: '',
   });
   const [tagInput, setTagInput] = useState('');
   const [savedAt, setSavedAt] = useState(null);
@@ -510,6 +700,8 @@ export const PageSOPEditor = () => {
         allowBranchVariants: !!existing.allowBranchVariants,
         acknowledgmentDeadlineDays: existing.acknowledgmentDeadlineDays ?? 7,
         tags: Array.isArray(existing.tags) ? existing.tags : [],
+        coverImageUrl: existing.coverImageUrl || '',
+        videoUrl: existing.videoUrl || '',
       });
       setStatusLabel(existing.status === 'published' ? 'Published' : existing.status === 'archived' ? 'Archived' : 'Draft');
     }
@@ -529,6 +721,8 @@ export const PageSOPEditor = () => {
     allowBranchVariants: form.allowBranchVariants,
     acknowledgmentDeadlineDays: Number(form.acknowledgmentDeadlineDays) || undefined,
     tags: form.tags.length > 0 ? form.tags : undefined,
+    coverImageUrl: form.coverImageUrl.trim() || undefined,
+    videoUrl: form.videoUrl.trim() || undefined,
   });
 
   const handleSaveDraft = async () => {
@@ -688,6 +882,24 @@ export const PageSOPEditor = () => {
           </Row>
           <Row label="Branch variants">
             <Toggle checked={form.allowBranchVariants} onChange={(v) => setForm({ ...form, allowBranchVariants: v })}/>
+          </Row>
+          <Row label="Cover Image">
+            <input
+              className="input"
+              placeholder="https://..."
+              value={form.coverImageUrl || ''}
+              onChange={(e) => setForm({ ...form, coverImageUrl: e.target.value })}
+              style={{ fontSize: 12 }}
+            />
+          </Row>
+          <Row label="Video URL">
+            <input
+              className="input"
+              placeholder="https://... (mp4/YouTube)"
+              value={form.videoUrl || ''}
+              onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
+              style={{ fontSize: 12 }}
+            />
           </Row>
           <Row label="Status"><span className={'pill ' + statusPillClass}>{statusLabel}</span></Row>
         </div>

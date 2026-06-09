@@ -97,6 +97,8 @@ export const sopRouter = router({
       title: z.string().min(1),
       titleThai: z.string().optional(),
       subtitle: z.string().optional(),
+      coverImageUrl: z.string().optional().nullable(),
+      videoUrl: z.string().optional().nullable(),
       categoryId: z.number().int().optional().nullable(),
       content: z.unknown().optional(),
       tags: z.array(z.string()).optional(),
@@ -259,6 +261,8 @@ export const sopRouter = router({
           acknowledgedCount: filteredAcks.filter((a) => a.sopId === sop.id).length,
           totalRequired: relevantStaff.length,
         })),
+        staffList: relevantStaff,
+        acknowledgments: filteredAcks,
       };
     }),
 

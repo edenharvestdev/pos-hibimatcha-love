@@ -1,0 +1,1 @@
+ALTER TABLE `pos_sops` ADD `videoUrl` varchar(500);

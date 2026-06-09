@@ -335,6 +335,7 @@ export const posOrders = mysqlTable("pos_orders", {
   labelsPrintedAt: timestamp("labelsPrintedAt"),
   kitchenTicketPrintedAt: timestamp("kitchenTicketPrintedAt"),
   receiptPrintedAt: timestamp("receiptPrintedAt"),
+  memberId: int("memberId"),
 
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
 });
@@ -619,6 +620,7 @@ export const posSops = mysqlTable("pos_sops", {
   subtitle: varchar("subtitle", { length: 500 }),
   subtitleThai: varchar("subtitleThai", { length: 500 }),
   coverImageUrl: varchar("coverImageUrl", { length: 500 }),
+  videoUrl: varchar("videoUrl", { length: 500 }),
 
   categoryId: int("categoryId"),
   content: json("content"),
