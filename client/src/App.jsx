@@ -86,7 +86,6 @@ import { PagePnLDashboard } from "@/pages/PnLDashboard";
 import { PageStaffKPI } from "@/pages/StaffKPI";
 import { PageFranchiseWizard } from "@/pages/FranchiseWizard";
 import { trpc } from "@/lib/trpc";
-import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 // ============================================
 // Inline pages (small ones — kept here)
@@ -490,7 +489,6 @@ const App = () => {
         <AppLayout>
           <Router route={route}/>
         </AppLayout>
-        <PWAInstallPrompt />
       </ToastProvider>
     </AppCtx.Provider>
   );
