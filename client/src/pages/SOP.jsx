@@ -1157,13 +1157,17 @@ export const PageSOPMaterialUsage = () => {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab} style={{ marginBottom: 16 }}>
-        <Tabs.List>
-          <Tabs.Trigger value="recipes">สูตร & ต้นทุน</Tabs.Trigger>
-          <Tabs.Trigger value="history">ประวัติการตัดยอด</Tabs.Trigger>
-          <Tabs.Trigger value="summary">สรุปการใช้วัตถุดิบ</Tabs.Trigger>
-        </Tabs.List>
-      </Tabs>
+      <div style={{ marginBottom: 16 }}>
+        <Tabs
+          items={[
+            { value: 'recipes', label: 'สูตร & ต้นทุน' },
+            { value: 'history', label: 'ประวัติการตัดยอด' },
+            { value: 'summary', label: 'สรุปการใช้วัตถุดิบ' },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
+      </div>
 
       {(tab === 'history' || tab === 'summary') && (
         <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>

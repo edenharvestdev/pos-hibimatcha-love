@@ -9,7 +9,22 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const instance = process.env.INSTANCE_CONNECTION_NAME;
+      if (instance) {
+        // Cloud Run → Cloud SQL over the unix socket mounted at /cloudsql/<instance>.
+        // Reuse the credentials/db name from DATABASE_URL; ignore its host/port.
+        const u = new URL(process.env.DATABASE_URL);
+        _db = drizzle({
+          connection: {
+            user: decodeURIComponent(u.username),
+            password: decodeURIComponent(u.password),
+            database: u.pathname.replace(/^\//, ""),
+            socketPath: `/cloudsql/${instance}`,
+          },
+        });
+      } else {
+        _db = drizzle(process.env.DATABASE_URL);
+      }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;

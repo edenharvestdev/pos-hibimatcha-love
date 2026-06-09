@@ -1,0 +1,15 @@
+.git
+node_modules
+dist
+.vite
+*.sql
+*.sql.bak
+*.docx
+*.png
+deploy-env.yaml
+android
+ios
+cloud-sql-proxy
+.env
+.env.*
+!.env.example

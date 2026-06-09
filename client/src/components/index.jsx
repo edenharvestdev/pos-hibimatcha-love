@@ -232,7 +232,7 @@ export const Checkbox = ({ checked, onChange, indeterminate, label, size = 18 })
 // ----- Tabs -----
 export const Tabs = ({ items, value, onChange, size = 'md' }) => (
   <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border-default)', position: 'relative' }}>
-    {items.map((it) => {
+    {(items ?? []).map((it) => {
       const key = it.value ?? it;
       const label = it.label ?? it;
       const active = key === value;

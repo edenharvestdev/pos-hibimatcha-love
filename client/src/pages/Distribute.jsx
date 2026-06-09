@@ -38,6 +38,19 @@ export const PageDistribute = () => {
   const hq = branches.find((b) => b.branchType === "hq");
   const targets = branches.filter((b) => b.branchType !== "hq" && b.status === "active");
 
+  // Entity options for the picker (when mode is chosen)
+  // NOTE: declared before any early return — Rules of Hooks (must run on every render)
+  const pickerEntities = useMemo(() => {
+    if (mode === "menu_items") return menu.map((m) => ({ id: m.id, name: m.name, sub: `${m.sku || ""} · ฿${m.basePrice}` }));
+    if (mode === "stock_items") return stock.map((s) => ({
+      id: s.item?.id ?? s.itemId,
+      name: s.item?.name ?? `Item #${s.itemId}`,
+      sub: `${s.item?.sku || ""} · HQ stock: ${s.currentStock} ${s.item?.unitOfMeasure || ""}`,
+    }));
+    if (mode === "sops") return sops.map((s) => ({ id: s.id, name: s.title, sub: s.subtitle || "" }));
+    return [];
+  }, [mode, menu, stock, sops]);
+
   if (!isSuper) {
     return (
       <div className="page">
@@ -63,18 +76,6 @@ export const PageDistribute = () => {
       </div>
     );
   }
-
-  // Entity options for the picker (when mode is chosen)
-  const pickerEntities = useMemo(() => {
-    if (mode === "menu_items") return menu.map((m) => ({ id: m.id, name: m.name, sub: `${m.sku || ""} · ฿${m.basePrice}` }));
-    if (mode === "stock_items") return stock.map((s) => ({
-      id: s.item?.id ?? s.itemId,
-      name: s.item?.name ?? `Item #${s.itemId}`,
-      sub: `${s.item?.sku || ""} · HQ stock: ${s.currentStock} ${s.item?.unitOfMeasure || ""}`,
-    }));
-    if (mode === "sops") return sops.map((s) => ({ id: s.id, name: s.title, sub: s.subtitle || "" }));
-    return [];
-  }, [mode, menu, stock, sops]);
 
   const cards = [
     {
