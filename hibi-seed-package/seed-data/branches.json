@@ -1,45 +1,5 @@
 [
   {
-    "id": "1",
-    "name": "HB01-Ladprao107 สาขาลาดพร้าว107",
-    "province": null,
-    "isActive": true,
-    "locationType": "store",
-    "branchCode": "HB01"
-  },
-  {
-    "id": "2",
-    "name": "HB02-Samyan สาขาสามย่าน",
-    "province": null,
-    "isActive": true,
-    "locationType": "store",
-    "branchCode": "HB02"
-  },
-  {
-    "id": "30001",
-    "name": "HB03-Nawamin111 สาขานวมินทร์ 111",
-    "province": "กรุงเทพมหานคร",
-    "isActive": true,
-    "locationType": "store",
-    "branchCode": "HB03"
-  },
-  {
-    "id": "60001",
-    "name": "HB04-Saphan Khwai",
-    "province": "กรุงเทพมหานคร",
-    "isActive": true,
-    "locationType": "store",
-    "branchCode": "HB04"
-  },
-  {
-    "id": "90001",
-    "name": "HB05-Nak Niwat48",
-    "province": "กรุงเทพ",
-    "isActive": true,
-    "locationType": "store",
-    "branchCode": "HB05"
-  },
-  {
     "id": "150001",
     "name": "Hibi House",
     "province": null,

@@ -445,6 +445,12 @@ export const PageBranchSelect = () => {
   const { data: branches, isLoading } = trpc.branches.getMyBranches.useQuery(undefined, { staleTime: 15000 });
   const switchBranch = trpc.posAuth.switchBranch.useMutation();
 
+  useEffect(() => {
+    if (branches && branches.length === 1) {
+      handleSelect(branches[0]);
+    }
+  }, [branches]);
+
   const handleSelect = async (b) => {
     try {
       const result = await switchBranch.mutateAsync({ branchId: b.id });
