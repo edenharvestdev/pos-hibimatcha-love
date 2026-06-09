@@ -180,6 +180,11 @@ export const PageInvItems = () => {
   const [selected, setSelected] = useState(new Set());
   const [distributeOpen, setDistributeOpen] = useState(false);
 
+  // States for dynamic category input creation
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
+
   const { data: items = [], isLoading } = trpc.inventory.listItems.useQuery(
     { search: search || undefined },
     { staleTime: 5000, refetchOnWindowFocus: true }
@@ -199,6 +204,7 @@ export const PageInvItems = () => {
   const updateItemMut = trpc.inventory.updateItem.useMutation();
   const deleteItemMut = trpc.inventory.deleteItem.useMutation({ onSuccess: () => utils.inventory.listItems.invalidate() });
   const addOptionMut = trpc.inventoryAttributes.addOption.useMutation();
+  const createCategoryMut = trpc.inventory.createCategory.useMutation();
   const [savingItem, setSavingItem] = useState(false);
 
   const handleDeleteItem = (item) => {
@@ -212,7 +218,30 @@ export const PageInvItems = () => {
     setItemForm(f => ({ ...f, categoryId: newCategoryId, attributes: {} }));
   };
 
+  const handleSaveNewCategory = async () => {
+    if (!newCategoryName.trim()) {
+      alert('Category name is required');
+      return;
+    }
+    setCreatingCategory(true);
+    try {
+      const newCat = await createCategoryMut.mutateAsync({
+        name: newCategoryName.trim(),
+      });
+      await utils.inventory.listCategories.invalidate();
+      setItemForm(f => ({ ...f, categoryId: newCat.id }));
+      setShowNewCategoryInput(false);
+      setNewCategoryName('');
+    } catch (err) {
+      alert('Failed to create category: ' + (err.message || 'Unknown error'));
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
   const openItemDrawer = (item) => {
+    setShowNewCategoryInput(false);
+    setNewCategoryName('');
     if (item) {
       setEditingItem(item);
       setItemForm({
@@ -413,10 +442,58 @@ export const PageInvItems = () => {
                 <Field label="SKU"><input className="input" value={itemForm.sku} onChange={(e) => setItemForm(f => ({ ...f, sku: e.target.value }))}/></Field>
                 <Field label="Barcode"><input className="input" value={itemForm.barcode} onChange={(e) => setItemForm(f => ({ ...f, barcode: e.target.value }))}/></Field>
                 <Field label="Category" required>
-                  <select className="input" value={itemForm.categoryId || ''} onChange={(e) => handleCategoryChange(e.target.value ? Number(e.target.value) : null)}>
-                    <option value="">— Select —</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  {showNewCategoryInput ? (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', width: '100%' }}>
+                      <input
+                        className="input"
+                        placeholder="New category name..."
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        autoFocus
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        style={{ height: 38, padding: '0 12px', minWidth: 50 }}
+                        onClick={handleSaveNewCategory}
+                        disabled={creatingCategory}
+                      >
+                        {creatingCategory ? '...' : 'Add'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        style={{ height: 38, padding: '0 12px' }}
+                        onClick={() => {
+                          setShowNewCategoryInput(false);
+                          setNewCategoryName('');
+                          setItemForm(f => ({ ...f, categoryId: null }));
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', width: '100%' }}>
+                      <select
+                        className="input"
+                        style={{ flex: 1 }}
+                        value={itemForm.categoryId || ''}
+                        onChange={(e) => {
+                          if (e.target.value === 'new') {
+                            setShowNewCategoryInput(true);
+                          } else {
+                            handleCategoryChange(e.target.value ? Number(e.target.value) : null);
+                          }
+                        }}
+                      >
+                        <option value="">— Select —</option>
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        <option value="new" style={{ fontWeight: 'bold', color: 'var(--matcha-700)' }}>+ Create New Category...</option>
+                      </select>
+                    </div>
+                  )}
                 </Field>
                 <Field label="Unit">
                   <select className="input" value={itemForm.unitOfMeasure} onChange={(e) => setItemForm(f => ({ ...f, unitOfMeasure: e.target.value }))}>
