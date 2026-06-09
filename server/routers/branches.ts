@@ -83,13 +83,41 @@ export const branchesRouter = router({
       return row;
     }),
 
-  create: superAdminProcedure
+  create: staffAdminProcedure
     .input(BranchInput)
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [result] = await db.insert(branches).values(input as any);
       const id = (result as any).insertId as number;
+
+      // Auto-link all active menu items to this new branch so the POS works immediately
+      const activeMenuItems = await db.select().from(posMenuItems)
+        .where(eq(posMenuItems.isArchived, false));
+      if (activeMenuItems.length > 0) {
+        for (const item of activeMenuItems) {
+          await db.insert(posBranchMenuItems).values({
+            branchId: id,
+            menuItemId: item.id,
+            isAvailable: true,
+          }).onDuplicateKeyUpdate({ set: { isAvailable: true } });
+        }
+      }
+
+      // Auto-link all active inventory items to the new branch with 0 stock
+      const activeInventoryItems = await db.select().from(posInventoryItems)
+        .where(eq(posInventoryItems.isActive, true));
+      if (activeInventoryItems.length > 0) {
+        for (const item of activeInventoryItems) {
+          await db.insert(posBranchInventoryStock).values({
+            branchId: id,
+            inventoryItemId: item.id,
+            currentStock: "0",
+            reservedStock: "0",
+          }).onDuplicateKeyUpdate({ set: { currentStock: "0" } });
+        }
+      }
+
       const [created] = await db.select().from(branches).where(eq(branches.id, id)).limit(1);
       await logAudit({ staff: ctx.staff, action: "create", entity: "branches", entityId: id, afterData: created });
       return created;

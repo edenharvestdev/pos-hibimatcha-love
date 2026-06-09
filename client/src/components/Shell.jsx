@@ -73,7 +73,7 @@ const NAV = [
     ]
   },
   {
-    labelKey: 'nav.branches', roles: ['super'], items: [
+    labelKey: 'nav.branches', roles: ['super', 'admin'], items: [
       { path: '/backoffice/franchise', icon: 'IconFranchise', labelKey: 'nav.branches' },
       { path: '/backoffice/franchise/new', icon: 'IconPlus', labelKey: 'add' },
     ]
