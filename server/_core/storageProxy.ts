@@ -1,16 +1,22 @@
 import type { Express } from "express";
 import { ENV } from "./env";
 
+import path from "path";
+import express from "express";
+
 export function registerStorageProxy(app: Express) {
+  const hasForge = ENV.forgeApiUrl && ENV.forgeApiKey;
+  
+  if (!hasForge) {
+    const uploadDir = path.resolve(process.cwd(), "uploads");
+    app.use("/manus-storage", express.static(uploadDir));
+    return;
+  }
+
   app.get("/manus-storage/*", async (req, res) => {
     const key = (req.params as Record<string, string>)[0];
     if (!key) {
       res.status(400).send("Missing storage key");
-      return;
-    }
-
-    if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
-      res.status(500).send("Storage proxy not configured");
       return;
     }
 

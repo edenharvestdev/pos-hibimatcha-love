@@ -1,8 +1,12 @@
 // Preconfigured storage helpers for Manus WebDev templates
 // Uploads via Forge Server presigned URL to S3 (PUT direct).
 // Downloads return /manus-storage/{key} paths served via 307 redirect.
+// Fallback: If Forge is not configured, saves to local "uploads" folder.
 
 import { ENV } from "./_core/env";
+import fs from "fs";
+import path from "path";
+import crypto from "crypto";
 
 function getForgeConfig() {
   const forgeUrl = ENV.forgeApiUrl;
@@ -33,6 +37,23 @@ export async function storagePut(
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
+  const hasForge = ENV.forgeApiUrl && ENV.forgeApiKey;
+
+  if (!hasForge) {
+    const key = appendHashSuffix(normalizeKey(relKey));
+    const uploadDir = path.resolve(process.cwd(), "uploads");
+    const destPath = path.join(uploadDir, key);
+    const destDir = path.dirname(destPath);
+    
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    
+    fs.writeFileSync(destPath, typeof data === "string" ? Buffer.from(data) : Buffer.from(data as any));
+    console.log(`[Storage] Saved file locally to ${destPath}`);
+    return { key, url: `/manus-storage/${key}` };
+  }
+
   const { forgeUrl, forgeKey } = getForgeConfig();
   const key = appendHashSuffix(normalizeKey(relKey));
 
@@ -77,6 +98,13 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
 }
 
 export async function storageGetSignedUrl(relKey: string): Promise<string> {
+  const hasForge = ENV.forgeApiUrl && ENV.forgeApiKey;
+  
+  if (!hasForge) {
+    const key = normalizeKey(relKey);
+    return `/manus-storage/${key}`;
+  }
+
   const { forgeUrl, forgeKey } = getForgeConfig();
   const key = normalizeKey(relKey);
 
