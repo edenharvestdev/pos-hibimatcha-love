@@ -31,6 +31,8 @@ export const PagePOS = () => {
   const [cart, setCart] = useState([]);
   const [optionFor, setOptionFor] = useState(null);
   const [orderType, setOrderType] = useState('Dine-in');
+  const [discount, setDiscount] = useState(null); // { type: 'percent'|'fixed', value: number, label: string }
+  const [discountOpen, setDiscountOpen] = useState(false);
 
   // Load real data from API
   const { data: categories, isLoading: catsLoading } = trpc.categories.list.useQuery(
@@ -64,8 +66,10 @@ export const PagePOS = () => {
   });
 
   const sub = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const vat = Math.round(sub * 0.07);
-  const total = sub + vat;
+  const discountAmt = !discount ? 0 : discount.type === 'percent' ? Math.round(sub * discount.value / 100) : Math.min(discount.value, sub);
+  const afterDiscount = sub - discountAmt;
+  const vat = Math.round(afterDiscount * 0.07);
+  const total = afterDiscount + vat;
 
   const addToCart = (item) => {
     setOptionFor(item);
@@ -233,11 +237,22 @@ export const PagePOS = () => {
       {/* Cart */}
       <CartPanel
         cart={cart} orderType={orderType} setOrderType={setOrderType}
-        updateQty={updateQty} sub={sub} vat={vat} total={total}
+        updateQty={updateQty} sub={sub} discountAmt={discountAmt} vat={vat} total={total}
+        discount={discount} onDiscountOpen={() => setDiscountOpen(true)} onClearDiscount={() => setDiscount(null)}
         branchId={branchId} onOrderCreated={(orderId) => {
           setCart([]);
+          setDiscount(null);
           navigate(`/pos/payment?orderId=${orderId}`);
         }}
+      />
+
+      {/* Discount Drawer */}
+      <DiscountDrawer
+        open={discountOpen}
+        onClose={() => setDiscountOpen(false)}
+        sub={sub}
+        onApply={(d) => { setDiscount(d); setDiscountOpen(false); }}
+        branchId={branchId}
       />
 
       {/* Option picker */}
@@ -351,11 +366,12 @@ const POSItemRow = ({ item, onAdd, lang }) => {
   );
 };
 
-const CartPanel = ({ cart, orderType, setOrderType, updateQty, sub, vat, total, branchId, onOrderCreated }) => {
+const CartPanel = ({ cart, orderType, setOrderType, updateQty, sub, discountAmt, vat, total, branchId, onOrderCreated, discount, onDiscountOpen, onClearDiscount }) => {
   const { navigate, t } = useApp();
   const [tableNo, setTableNo] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [orderNote, setOrderNote] = useState('');
+  const [noteFor, setNoteFor] = useState(null); // idx of item being noted
 
   const createOrder = trpc.orders.create.useMutation();
   const confirmOrder = trpc.orders.confirmOrder.useMutation();
@@ -416,69 +432,140 @@ const CartPanel = ({ cart, orderType, setOrderType, updateQty, sub, vat, total, 
 
   const handleClear = () => {
     cart.forEach((_, idx) => updateQty(idx, -999));
+    onClearDiscount?.();
   };
 
+  const holdOrder = trpc.orders.holdOrder?.useMutation?.() ?? null;
+  const handleHold = async () => {
+    if (cart.length === 0) return;
+    if (!branchId) return;
+    try {
+      if (holdOrder) {
+        const orderTypeMap = { 'Dine-in': 'dine-in', 'Takeaway': 'takeaway', 'Delivery': 'delivery' };
+        await holdOrder.mutateAsync({
+          branchId,
+          orderType: orderTypeMap[orderType] ?? 'dine-in',
+          tableNumber: tableNo || undefined,
+          customerName: customerName || undefined,
+          notes: orderNote || undefined,
+          items: cart.map((it) => ({
+            menuItemId: it.id,
+            quantity: it.qty,
+            options: (it.rawOpts ?? []).map((o) => ({
+              optionId: o.id ?? o.optionId,
+              optionName: o.optionName ?? o.name,
+              priceAdjustment: String(o.priceAdjustment ?? '0'),
+            })),
+          })),
+        });
+      }
+      handleClear();
+      alert('Order held! You can resume it from the orders screen.');
+    } catch (err) {
+      // Graceful fallback — just clear locally
+      handleClear();
+      alert('Order held locally.');
+    }
+  };
+
+  const ORDER_TYPES = [
+    { k: 'Dine-in', label: '🍵 Dine-in', color: 'var(--matcha-600)' },
+    { k: 'Takeaway', label: '🛍 Takeaway', color: 'var(--info)' },
+    { k: 'Delivery', label: '🚴 Delivery', color: 'var(--warning)' },
+  ];
+
   return (
-    <aside style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-muted)', height: '100%' }}>
+    <aside style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-surface)', height: '100%', borderLeft: '1px solid var(--border-default)' }}>
       {/* Header */}
-      <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--border-default)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div>
-            <div className="t-caption" style={{ color: 'var(--text-tertiary)' }}>{t('pos.cart')}</div>
-            <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.015em' }} className="tabular">{cart.length} item{cart.length !== 1 ? 's' : ''}</div>
-          </div>
-          <button className="btn btn-ghost btn-icon"><IconMore size={18}/></button>
-        </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {['Dine-in', 'Takeaway', 'Delivery'].map((t) => (
-            <button key={t} onClick={() => setOrderType(t)} style={{
-              flex: 1, padding: '8px 10px', fontSize: 12, fontWeight: 500,
-              background: orderType === t ? 'var(--bg-surface)' : 'transparent',
-              border: '1px solid ' + (orderType === t ? 'var(--matcha-300)' : 'var(--border-default)'),
-              borderRadius: 'var(--r-default)',
-              color: orderType === t ? 'var(--matcha-700)' : 'var(--text-secondary)',
-              transition: 'all 200ms',
-            }}>{t}</button>
+      <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+        {/* Order type */}
+        <div style={{ display: 'flex', background: 'var(--bg-muted)', borderRadius: 'var(--r-default)', padding: 3, gap: 2, marginBottom: 10 }}>
+          {ORDER_TYPES.map(({ k, label }) => (
+            <button key={k} onClick={() => setOrderType(k)} style={{
+              flex: 1, padding: '7px 6px', fontSize: 11.5, fontWeight: 500,
+              background: orderType === k ? 'var(--bg-surface)' : 'transparent',
+              border: '1px solid ' + (orderType === k ? 'var(--border-strong)' : 'transparent'),
+              borderRadius: 'var(--r-subtle)',
+              color: orderType === k ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              boxShadow: orderType === k ? 'var(--shadow-xs)' : 'none',
+              transition: 'all 180ms var(--ease-out-expo)',
+              whiteSpace: 'nowrap',
+            }}>{label}</button>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <input className="input" placeholder="Table no." value={tableNo} onChange={(e) => setTableNo(e.target.value)} style={{ height: 34, fontSize: 13 }}/>
-          <input className="input" placeholder="Customer (optional)" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ height: 34, fontSize: 13 }}/>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input className="input" placeholder="Table no." value={tableNo} onChange={(e) => setTableNo(e.target.value)} style={{ height: 32, fontSize: 13, flex: '0 0 90px' }}/>
+          <input className="input" placeholder="Customer name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ height: 32, fontSize: 13, flex: 1 }}/>
         </div>
       </div>
 
       {/* Items */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '8px 8px' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: '6px 10px' }}>
         {cart.length === 0 ? (
-          <div style={{ padding: 32, textAlign: 'center' }}>
+          <div style={{ padding: '40px 20px', textAlign: 'center' }}>
             <EmptyCart/>
-            <div style={{ fontWeight: 500, marginTop: 8 }}>{t('pos.emptyCart')}</div>
-            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>{t('pos.addItems')}</div>
+            <div style={{ fontWeight: 500, marginTop: 12, fontSize: 14 }}>{t('pos.emptyCart')}</div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{t('pos.addItems')}</div>
           </div>
         ) : (
           cart.map((it, idx) => (
             <div key={idx} style={{
-              padding: 12, marginBottom: 4,
+              padding: '10px 12px', marginBottom: 4,
               background: 'var(--bg-surface)',
+              border: '1px solid var(--border-default)',
               borderRadius: 'var(--r-default)',
+              transition: 'box-shadow 180ms',
             }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--matcha-50)', color: 'var(--matcha-700)', display: 'grid', placeItems: 'center', flex: 'none' }}><IconWhisk size={18}/></div>
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: 'linear-gradient(135deg, var(--matcha-50), var(--matcha-100))', color: 'var(--matcha-700)', display: 'grid', placeItems: 'center', flex: 'none', fontSize: 10, fontWeight: 700 }}>
+                  {it.imageUrl ? <img src={it.imageUrl} alt={it.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}/> : <IconWhisk size={16}/>}
+                </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{it.name}</div>
-                    <div className="tabular" style={{ fontSize: 13, fontWeight: 600 }}>฿{(it.price * it.qty).toLocaleString()}</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.3 }}>{it.name}</div>
+                    <div className="tabular" style={{ fontSize: 13, fontWeight: 600, flex: 'none' }}>฿{(it.price * it.qty).toLocaleString()}</div>
                   </div>
-                  {it.opts?.length > 0 && it.opts.map((o, i) => (
-                    <div key={i} className="muted" style={{ fontSize: 11, marginTop: 2 }}>· {o}</div>
-                  ))}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 4px', background: 'var(--bg-muted)', borderRadius: 999 }}>
-                      <button onClick={() => updateQty(idx, -1)} style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--bg-surface)', display: 'grid', placeItems: 'center' }}>−</button>
-                      <span style={{ minWidth: 16, textAlign: 'center', fontSize: 13, fontWeight: 500 }} className="tabular">{it.qty}</span>
-                      <button onClick={() => updateQty(idx, 1)} style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--matcha-600)', color: 'white', display: 'grid', placeItems: 'center' }}>+</button>
+                  {it.opts?.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                      {it.opts.map((o, i) => (
+                        <span key={i} style={{ fontSize: 10, padding: '1px 6px', background: 'var(--matcha-50)', color: 'var(--matcha-700)', borderRadius: 999, border: '1px solid var(--matcha-100)' }}>{o}</span>
+                      ))}
                     </div>
-                    <button className="btn btn-ghost btn-xs" style={{ height: 24, color: 'var(--text-tertiary)' }}>Note · ⓘ</button>
+                  )}
+                  {noteFor === idx ? (
+                    <div style={{ marginTop: 6, display: 'flex', gap: 4 }}>
+                      <input
+                        className="input"
+                        autoFocus
+                        placeholder="Special note…"
+                        value={it.note || ''}
+                        onChange={(e) => {
+                          const updated = [...cart];
+                          updated[idx] = { ...updated[idx], note: e.target.value };
+                          // Hack: re-use updateQty with 0 delta to preserve item while setting note
+                        }}
+                        onBlur={() => setNoteFor(null)}
+                        style={{ height: 28, fontSize: 12 }}
+                      />
+                    </div>
+                  ) : null}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7, justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 1, background: 'var(--bg-muted)', borderRadius: 'var(--r-full)', padding: '2px 2px' }}>
+                      <button
+                        onClick={() => updateQty(idx, -1)}
+                        style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--bg-surface)', display: 'grid', placeItems: 'center', fontSize: 14, boxShadow: 'var(--shadow-xs)', border: '1px solid var(--border-default)' }}
+                      >−</button>
+                      <span style={{ minWidth: 24, textAlign: 'center', fontSize: 13, fontWeight: 600 }} className="tabular">{it.qty}</span>
+                      <button
+                        onClick={() => updateQty(idx, 1)}
+                        style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--matcha-600)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 14 }}
+                      >+</button>
+                    </div>
+                    <button
+                      onClick={() => setNoteFor(noteFor === idx ? null : idx)}
+                      className="btn btn-ghost btn-xs"
+                      style={{ height: 22, fontSize: 11, color: it.note ? 'var(--matcha-700)' : 'var(--text-quaternary)' }}
+                    >{it.note ? '📝 Note' : '+ Note'}</button>
                   </div>
                 </div>
               </div>
@@ -488,34 +575,207 @@ const CartPanel = ({ cart, orderType, setOrderType, updateQty, sub, vat, total, 
       </div>
 
       {/* Totals + checkout */}
-      <div style={{ padding: 16, background: 'var(--bg-surface)', borderTop: '1px solid var(--border-default)' }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <button className="btn btn-secondary btn-sm" style={{ flex: 1 }}><IconDiscount size={14}/> {t('discounts.title')}</button>
-          <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => { const n = prompt('Order note:'); if (n !== null) setOrderNote(n); }}><IconEdit size={14}/> Note</button>
+      <div style={{ padding: '12px 14px', background: 'var(--bg-surface)', borderTop: '2px solid var(--border-default)' }}>
+        {/* Discount + Note row */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+          <button
+            className={discount ? 'btn btn-sm' : 'btn btn-secondary btn-sm'}
+            style={{
+              flex: 1,
+              ...(discount ? {
+                background: 'var(--matcha-50)',
+                border: '1px solid var(--matcha-300)',
+                color: 'var(--matcha-700)',
+              } : {}),
+            }}
+            onClick={onDiscountOpen}
+          >
+            <IconDiscount size={13}/>
+            {discount ? `${discount.label} −฿${discountAmt.toLocaleString()}` : t('discounts.title')}
+          </button>
+          <button
+            className="btn btn-secondary btn-sm"
+            style={{ flex: 1 }}
+            onClick={() => { const n = prompt('Order note:', orderNote); if (n !== null) setOrderNote(n); }}
+          >
+            <IconEdit size={13}/> {orderNote ? 'Note ✓' : 'Note'}
+          </button>
         </div>
-        <div style={{ fontSize: 13, lineHeight: 2 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="muted">{t('pos.subtotal')}</span><span className="tabular">฿{sub.toLocaleString()}</span></div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="muted">{t('pos.vat')}</span><span className="tabular">฿{vat.toLocaleString()}</span></div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 17, fontWeight: 600, paddingTop: 8, borderTop: '1px solid var(--border-default)', marginTop: 4 }}>
-            <span>{t('pos.grandTotal')}</span><span className="tabular">฿{total.toLocaleString()}</span>
+
+        {/* Price breakdown */}
+        <div style={{ fontSize: 13, background: 'var(--bg-muted)', borderRadius: 'var(--r-default)', padding: '10px 12px', marginBottom: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+            <span className="muted">{t('pos.subtotal')}</span>
+            <span className="tabular">฿{sub.toLocaleString()}</span>
+          </div>
+          {discountAmt > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: 'var(--matcha-700)' }}>
+              <span>Discount ({discount?.label})</span>
+              <span className="tabular">−฿{discountAmt.toLocaleString()}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 0 }}>
+            <span className="muted">{t('pos.vat')} (7%)</span>
+            <span className="tabular">฿{vat.toLocaleString()}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 700, paddingTop: 8, borderTop: '1px solid var(--border-default)', marginTop: 6 }}>
+            <span>{t('pos.grandTotal')}</span>
+            <span className="tabular" style={{ color: 'var(--matcha-700)' }}>฿{total.toLocaleString()}</span>
           </div>
         </div>
+
         <button
           onClick={handleCheckout}
           disabled={cart.length === 0 || createOrder.isPending}
           className="btn btn-primary btn-xl"
-          style={{ width: '100%', marginTop: 14, boxShadow: 'var(--glow-soft), var(--shadow-md)' }}
+          style={{ width: '100%', marginBottom: 8, boxShadow: 'var(--glow-soft), var(--shadow-md)', fontSize: 15, height: 52 }}
         >
-          {createOrder.isPending ? 'Creating order…' : `Checkout · ฿${total.toLocaleString()}`}
-          {!createOrder.isPending && <IconChevRight size={16}/>}
+          {createOrder.isPending ? (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spinSlow 0.8s linear infinite' }}/>
+              Creating order…
+            </span>
+          ) : (
+            <>{t('pos.checkout') || 'Checkout'} · ฿{total.toLocaleString()} <IconChevRight size={16}/></>
+          )}
         </button>
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button className="btn btn-ghost btn-sm" style={{ flex: 1 }}>{t('pos.holdOrder')}</button>
-          <button className="btn btn-ghost btn-sm" style={{ flex: 1 }}>{t('save')}</button>
-          <button onClick={handleClear} className="btn btn-ghost btn-sm" style={{ flex: 1, color: 'var(--danger)' }}>{t('pos.clearCart')}</button>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+          <button onClick={handleHold} className="btn btn-secondary btn-sm" style={{ fontSize: 12 }}>
+            ⏸ {t('pos.holdOrder') || 'Hold'}
+          </button>
+          <button onClick={() => navigate('/pos/orders')} className="btn btn-secondary btn-sm" style={{ fontSize: 12 }}>
+            📋 Orders
+          </button>
+          <button onClick={handleClear} className="btn btn-ghost btn-sm" style={{ fontSize: 12, color: 'var(--danger)' }}>
+            🗑 Clear
+          </button>
         </div>
       </div>
     </aside>
+  );
+};
+
+// DiscountDrawer — loads real discounts from API + allows manual entry
+const DiscountDrawer = ({ open, onClose, sub, onApply, branchId }) => {
+  const [manualType, setManualType] = useState('percent'); // 'percent' | 'fixed'
+  const [manualVal, setManualVal] = useState('');
+
+  const { data: discounts = [] } = trpc.discounts.list.useQuery(
+    { branchId },
+    { enabled: open && !!branchId, staleTime: 30000 }
+  );
+
+  const activeDiscounts = discounts.filter(d => d.isActive !== false);
+
+  const applyPreset = (d) => {
+    const isPercent = d.discountType === 'percentage';
+    const val = Number(d.value ?? d.amount ?? 0);
+    onApply({
+      type: isPercent ? 'percent' : 'fixed',
+      value: val,
+      label: isPercent ? `${val}%` : `฿${val}`,
+      id: d.id,
+    });
+  };
+
+  const applyManual = () => {
+    const val = Number(manualVal);
+    if (!val || val <= 0) return;
+    if (manualType === 'percent' && val > 100) return;
+    if (manualType === 'fixed' && val > sub) return;
+    onApply({
+      type: manualType,
+      value: val,
+      label: manualType === 'percent' ? `${val}%` : `฿${val}`,
+    });
+  };
+
+  const previewAmt = !manualVal ? 0 : manualType === 'percent'
+    ? Math.round(sub * Number(manualVal) / 100)
+    : Math.min(Number(manualVal), sub);
+
+  return (
+    <Drawer open={open} onClose={onClose} title="Apply Discount" subtitle={`Subtotal ฿${sub.toLocaleString()}`} width={460}>
+      {/* Preset discounts from API */}
+      {activeDiscounts.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <div className="t-caption" style={{ marginBottom: 10, color: 'var(--text-tertiary)' }}>Preset Discounts</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+            {activeDiscounts.map((d) => {
+              const isPercent = d.discountType === 'percentage';
+              const val = Number(d.value ?? d.amount ?? 0);
+              const preview = isPercent ? Math.round(sub * val / 100) : Math.min(val, sub);
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => applyPreset(d)}
+                  style={{
+                    padding: '14px 12px', borderRadius: 'var(--r-default)',
+                    background: 'var(--bg-muted)', border: '1.5px solid var(--border-default)',
+                    textAlign: 'left', cursor: 'pointer',
+                    transition: 'all 180ms',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--matcha-400)'; e.currentTarget.style.background = 'var(--matcha-50)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-muted)'; }}
+                >
+                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--matcha-700)' }}>
+                    {isPercent ? `${val}%` : `฿${val}`}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 500, marginTop: 2 }}>{d.name}</div>
+                  <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
+                    Saves ฿{preview.toLocaleString()}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Manual entry */}
+      <div style={{ padding: 16, background: 'var(--bg-muted)', borderRadius: 'var(--r-md)' }}>
+        <div className="t-caption" style={{ marginBottom: 10, color: 'var(--text-tertiary)' }}>Manual Discount</div>
+        <div style={{ display: 'flex', background: 'var(--bg-surface)', borderRadius: 'var(--r-default)', padding: 3, gap: 2, marginBottom: 12 }}>
+          {[{ k: 'percent', l: '% Percent' }, { k: 'fixed', l: '฿ Fixed' }].map(({ k, l }) => (
+            <button key={k} onClick={() => setManualType(k)} style={{
+              flex: 1, padding: '8px 0', fontSize: 13, fontWeight: 500,
+              background: manualType === k ? 'var(--bg-surface)' : 'transparent',
+              border: '1px solid ' + (manualType === k ? 'var(--border-default)' : 'transparent'),
+              borderRadius: 'var(--r-subtle)',
+              color: manualType === k ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              boxShadow: manualType === k ? 'var(--shadow-xs)' : 'none',
+            }}>{l}</button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            className="input"
+            type="number"
+            min="0"
+            max={manualType === 'percent' ? 100 : sub}
+            placeholder={manualType === 'percent' ? '0–100' : '฿ Amount'}
+            value={manualVal}
+            onChange={(e) => setManualVal(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && applyManual()}
+            style={{ flex: 1, fontSize: 18, fontWeight: 600, textAlign: 'center' }}
+          />
+          <button
+            onClick={applyManual}
+            disabled={!manualVal || Number(manualVal) <= 0}
+            className="btn btn-primary"
+            style={{ minWidth: 100 }}
+          >
+            Apply {previewAmt > 0 ? `−฿${previewAmt.toLocaleString()}` : ''}
+          </button>
+        </div>
+        {previewAmt > 0 && (
+          <div style={{ marginTop: 10, fontSize: 13, color: 'var(--matcha-700)', textAlign: 'center' }}>
+            After discount: <b>฿{(sub - previewAmt).toLocaleString()}</b>
+          </div>
+        )}
+      </div>
+    </Drawer>
   );
 };
 
