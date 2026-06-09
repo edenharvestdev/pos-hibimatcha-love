@@ -14,6 +14,7 @@ const adminCtx: TrpcContext = {
     primaryBranchId: 1,
     currentBranchId: 1,
   },
+  req: { protocol: "https", headers: {} } as any,
   res: { cookie: () => {}, clearCookie: () => {} } as any,
 };
 
