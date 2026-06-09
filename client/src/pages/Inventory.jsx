@@ -1135,6 +1135,13 @@ const CategoryDropdown = ({ categories, items, catMap, value, onChange }) => {
   const [search, setSearch] = useState('');
   const ref = useRef(null);
 
+  // TRPC utils and mutations for Category management
+  const utils = trpc.useUtils();
+  const createCategoryMut = trpc.inventory.createCategory.useMutation();
+  const deleteCategoryMut = trpc.inventory.deleteCategory.useMutation();
+  const [newCatText, setNewCatText] = useState('');
+  const [creating, setCreating] = useState(false);
+
   // Close on outside click
   useEffect(() => {
     if (!open) return;
@@ -1156,6 +1163,37 @@ const CategoryDropdown = ({ categories, items, catMap, value, onChange }) => {
   const filteredCats = categories.filter((c) =>
     !search || c.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleAddNewCategory = async () => {
+    if (!newCatText.trim()) return;
+    setCreating(true);
+    try {
+      await createCategoryMut.mutateAsync({
+        name: newCatText.trim(),
+      });
+      await utils.inventory.listCategories.invalidate();
+      setNewCatText('');
+    } catch (err) {
+      alert('Failed to create category: ' + (err.message || 'Unknown error'));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDeleteCategory = async (e, id, name) => {
+    e.stopPropagation(); // Prevent dropdown item selection click
+    if (window.confirm(`ลบหมวดหมู่ "${name}"? ไอเทมที่อยู่ในหมวดหมู่นี้จะกลายเป็นไม่มีหมวดหมู่`)) {
+      try {
+        await deleteCategoryMut.mutateAsync({ id });
+        await utils.inventory.listCategories.invalidate();
+        if (value === name) {
+          onChange('all');
+        }
+      } catch (err) {
+        alert('Failed to delete category: ' + (err.message || 'Unknown error'));
+      }
+    }
+  };
 
   const currentLabel = value === 'all' ? 'All Categories' : value;
 
@@ -1181,7 +1219,7 @@ const CategoryDropdown = ({ categories, items, catMap, value, onChange }) => {
         <div style={{
           position: 'absolute', top: '100%', left: 0, marginTop: 6, zIndex: 9999,
           background: '#ffffff', border: '1px solid rgba(20,30,20,0.1)', borderRadius: 12,
-          boxShadow: '0 16px 40px rgba(20,30,20,0.12), 0 6px 12px rgba(20,30,20,0.08)', width: 280, maxHeight: 360, display: 'flex', flexDirection: 'column',
+          boxShadow: '0 16px 40px rgba(20,30,20,0.12), 0 6px 12px rgba(20,30,20,0.08)', width: 280, maxHeight: 380, display: 'flex', flexDirection: 'column',
           animation: 'fadeIn 120ms ease-out', overflow: 'hidden',
         }}>
           {/* Search */}
@@ -1232,25 +1270,76 @@ const CategoryDropdown = ({ categories, items, catMap, value, onChange }) => {
               const isActive = value === c.name;
               const count = countMap.get(c.name) || 0;
               return (
-                <button
+                <div
                   key={c.id}
-                  onClick={() => { onChange(c.name); setOpen(false); setSearch(''); }}
                   style={{
-                    width: '100%', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
                     background: isActive ? 'var(--matcha-50)' : 'transparent',
-                    color: isActive ? 'var(--matcha-700)' : 'var(--text-primary)',
-                    fontSize: 13, fontWeight: isActive ? 500 : 400, textAlign: 'left',
-                    border: 'none', cursor: 'pointer',
                   }}
                   onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--bg-muted)'; }}
                   onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <span style={{ flex: 1 }}>{c.name}</span>
-                  <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{count}</span>
-                  {isActive && <IconCheck size={14} style={{ color: 'var(--matcha-600)' }}/>}
-                </button>
+                  <button
+                    onClick={() => { onChange(c.name); setOpen(false); setSearch(''); }}
+                    style={{
+                      flex: 1, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 10,
+                      color: isActive ? 'var(--matcha-700)' : 'var(--text-primary)',
+                      fontSize: 13, fontWeight: isActive ? 500 : 400, textAlign: 'left',
+                      border: 'none', background: 'transparent', cursor: 'pointer',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{count}</span>
+                    {isActive && <IconCheck size={14} style={{ color: 'var(--matcha-600)', flexShrink: 0 }}/>}
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteCategory(e, c.id, c.name)}
+                    style={{
+                      padding: '4px 10px',
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--red-500)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      opacity: 0.6,
+                      flexShrink: 0,
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                    onMouseLeave={(e) => e.currentTarget.style.opacity = 0.6}
+                    title="Delete Category"
+                  >
+                    <IconX size={13} />
+                  </button>
+                </div>
               );
             })}
+          </div>
+
+          {/* Add Category Input */}
+          <div style={{ display: 'flex', gap: 6, padding: '10px 12px', borderTop: '1px solid var(--border-default)', background: 'var(--bg-muted)', alignItems: 'center' }}>
+            <input
+              type="text"
+              className="input"
+              style={{ flex: 1, height: 32, fontSize: 12, padding: '0 8px', background: '#ffffff' }}
+              placeholder="New category..."
+              value={newCatText}
+              onChange={(e) => setNewCatText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddNewCategory(); }}
+            />
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ height: 32, width: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              onClick={handleAddNewCategory}
+              disabled={creating}
+            >
+              <IconPlus size={14}/>
+            </button>
           </div>
         </div>
         </>
