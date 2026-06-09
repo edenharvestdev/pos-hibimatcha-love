@@ -7,7 +7,13 @@ import { eq } from "drizzle-orm";
 
 const adminCtx: TrpcContext = {
   user: null,
-  staff: { id: 1, employeeCode: "HMC-0001", firstName: "Super", lastName: "Admin", role: "super_admin" },
+  staff: {
+    staffId: 1,
+    employeeCode: "HMC-0001",
+    role: "super_admin",
+    primaryBranchId: 1,
+    currentBranchId: 1,
+  },
   res: { cookie: () => {}, clearCookie: () => {} } as any,
 };
 
@@ -82,9 +88,9 @@ describe("inventoryAttributes router", () => {
     // Each attribute should have options array
     const variety = result.find((a: any) => a.attributeKey === "variety");
     expect(variety).toBeDefined();
-    expect(variety.labelTh).toBe("สายพันธุ์");
-    expect(Array.isArray(variety.options)).toBe(true);
-    expect(variety.options.length).toBeGreaterThanOrEqual(1);
+    expect(variety!.labelTh).toBe("สายพันธุ์");
+    expect(Array.isArray(variety!.options)).toBe(true);
+    expect(variety!.options.length).toBeGreaterThanOrEqual(1);
   });
 
   it("listByCategory returns empty array for category with no attributes", async () => {
@@ -102,7 +108,7 @@ describe("inventoryAttributes router", () => {
 
     const testValue = `test_opt_${Date.now()}`;
     const result = await caller.inventoryAttributes.addOption({
-      attributeId: varietyAttr.id,
+      attributeId: varietyAttr!.id,
       value: testValue,
       labelTh: "ทดสอบ",
       labelEn: "Test",
