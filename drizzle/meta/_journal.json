@@ -1,0 +1,90 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1779775155361,
+      "tag": "0000_bitter_strong_guy",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1779850615772,
+      "tag": "0001_tiresome_the_watchers",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1779872504553,
+      "tag": "0002_warm_bill_hollister",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1779876990119,
+      "tag": "0003_mushy_johnny_blaze",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1779942528234,
+      "tag": "0004_amusing_bug",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1779952003382,
+      "tag": "0005_even_payback",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1780028223536,
+      "tag": "0006_overconfident_luke_cage",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1780031133382,
+      "tag": "0007_overconfident_stature",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1780397485368,
+      "tag": "0008_nostalgic_toro",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1780398068317,
+      "tag": "0009_icy_ender_wiggin",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1780649714980,
+      "tag": "0010_fat_reavers",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1780987036453,
+      "tag": "0011_normal_alice",
+      "breakpoints": true
+    }
+  ]
+}

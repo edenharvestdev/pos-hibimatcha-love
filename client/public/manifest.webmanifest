@@ -1,0 +1,56 @@
+{
+  "name": "Hibi Matcha · Store Operation Automation System",
+  "short_name": "Hibi 日々",
+  "description": "Point of Sale and Store Operation Automation System for Hibi Matcha cafes",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1e3a2b",
+  "theme_color": "#1e3a2b",
+  "lang": "th",
+  "categories": ["business", "productivity", "food"],
+  "icons": [
+    {
+      "src": "/manus-storage/icon-192_5e551bf9.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manus-storage/icon-512_02d72b13.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manus-storage/icon-maskable_b55d8b47.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "POS Terminal",
+      "short_name": "POS",
+      "description": "Open POS to take orders",
+      "url": "/#/pos/terminal",
+      "icons": [{ "src": "/manus-storage/icon-192_5e551bf9.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Kitchen Display",
+      "short_name": "Kitchen",
+      "description": "View order tickets",
+      "url": "/#/pos/kitchen",
+      "icons": [{ "src": "/manus-storage/icon-192_5e551bf9.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "SOP Library",
+      "short_name": "SOP",
+      "description": "View SOPs and recipes",
+      "url": "/#/sop",
+      "icons": [{ "src": "/manus-storage/icon-192_5e551bf9.png", "sizes": "192x192" }]
+    }
+  ]
+}

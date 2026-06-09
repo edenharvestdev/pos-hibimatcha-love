@@ -1,0 +1,1 @@
+ALTER TABLE `pos_inventory_movements` MODIFY COLUMN `movementType` enum('received','used','transferred_in','transferred_out','adjusted','wasted','expired','sold');

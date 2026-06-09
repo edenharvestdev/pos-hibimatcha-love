@@ -1,0 +1,428 @@
+/**
+ * Print Payload Generators
+ * Generates HTML-based print payloads for thermal printers (80mm paper)
+ * Documents: Order Slip, Sticker Labels, Kitchen Ticket, Tax Receipt
+ */
+import * as generatePayloadModule from "promptpay-qr";
+import * as QRCode from "qrcode";
+
+const generatePayload = (generatePayloadModule as any).default || generatePayloadModule;
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+export interface OrderData {
+  id: number;
+  orderNumber: string;
+  orderType: string;
+  tableNumber?: string | null;
+  customerName?: string | null;
+  branchName: string;
+  branchAddress?: string;
+  branchPhone?: string;
+  staffName: string;
+  createdAt: Date | string;
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  serviceCharge: number;
+  totalAmount: number;
+  notes?: string | null;
+  items: OrderItemData[];
+  // New fields for real receipt format
+  pickupNumber?: string; // หมายเลขการรับอาหาร (e.g. 002)
+  receiptNumber?: string; // เลขที่ใบเสร็จ (e.g. 2026000000000143)
+  deviceSN?: string; // SN (Sunmi device serial)
+  paymentMethodName?: string; // ชื่อวิธีชำระเงิน
+  paidAmount?: number; // ยอดชำระ
+  roundingAmount?: number; // ปัดเศษ
+}
+
+export interface OrderItemData {
+  id: number;
+  menuItemName: string;
+  menuItemSku?: string; // SKU code e.g. HBM01M18L
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  notes?: string | null;
+  options: { name: string; priceAdjustment: number }[];
+}
+
+export interface BranchPaymentSettings {
+  promptpayId?: string | null;
+  promptpayName?: string | null;
+  promptpayType?: string | null;
+  taxId?: string | null;
+  companyName?: string | null;
+  companyAddress?: string | null;
+  receiptHeaderImage?: string | null;
+  receiptFooterText?: string | null;
+}
+
+// ─── PromptPay QR ─────────────────────────────────────────────────────────────
+export function generatePromptPayPayload(promptpayId: string, amount: number): string {
+  return generatePayload(promptpayId, { amount });
+}
+
+export async function generatePromptPayQRDataUrl(promptpayId: string, amount: number): Promise<string> {
+  const payload = generatePromptPayPayload(promptpayId, amount);
+  return QRCode.toDataURL(payload, { width: 280, margin: 2, errorCorrectionLevel: "M" });
+}
+
+// ─── Shared Styles ────────────────────────────────────────────────────────────
+const THERMAL_STYLE = `
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; padding: 3mm; }
+  .center { text-align: center; }
+  .right { text-align: right; }
+  .bold { font-weight: bold; }
+  .large { font-size: 16px; }
+  .xlarge { font-size: 20px; }
+  .small { font-size: 10px; }
+  .line { border-top: 1px dashed #000; margin: 4px 0; }
+  .double-line { border-top: 2px solid #000; margin: 4px 0; }
+  .row { display: flex; justify-content: space-between; }
+  .item-row { display: flex; justify-content: space-between; margin: 2px 0; }
+  .option { padding-left: 12px; font-size: 10px; color: #333; }
+  .qr { text-align: center; margin: 8px 0; }
+  .qr img { width: 50mm; height: 50mm; }
+  .note { background: #f0f0f0; padding: 4px; margin: 4px 0; font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 1px 0; vertical-align: top; }
+  .cut { page-break-after: always; }
+  @media print {
+    body { width: 80mm; margin: 0; padding: 2mm; }
+    .no-print { display: none; }
+  }
+</style>`;
+
+// ─── Order Slip (Counter) ─────────────────────────────────────────────────────
+export async function generateOrderSlipHTML(
+  order: OrderData,
+  settings: BranchPaymentSettings,
+  qrDataUrl?: string
+): Promise<string> {
+  const time = new Date(order.createdAt).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" });
+
+  let qrSection = "";
+  if (qrDataUrl) {
+    qrSection = `
+      <div class="line"></div>
+      <div class="center bold">สแกนจ่ายเงิน PromptPay</div>
+      <div class="qr"><img src="${qrDataUrl}" alt="PromptPay QR" /></div>
+      <div class="center bold large">฿${order.totalAmount.toFixed(2)}</div>
+      ${settings.promptpayName ? `<div class="center small">${settings.promptpayName}</div>` : ""}
+      ${settings.promptpayId ? `<div class="center small">ID: ${settings.promptpayId}</div>` : ""}
+    `;
+  }
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">${THERMAL_STYLE}</head><body>
+    <div class="center bold xlarge">HIBI MATCHA</div>
+    <div class="center small">${order.branchName}</div>
+    <div class="line"></div>
+    <div class="row"><span>Order: <b>${order.orderNumber}</b></span><span>${order.orderType}</span></div>
+    ${order.tableNumber ? `<div>โต๊ะ: ${order.tableNumber}</div>` : ""}
+    ${order.customerName ? `<div>ลูกค้า: ${order.customerName}</div>` : ""}
+    <div class="row"><span>พนักงาน: ${order.staffName}</span></div>
+    <div class="small">${time}</div>
+    <div class="double-line"></div>
+    
+    ${order.items.map((item, i) => `
+      <div class="item-row">
+        <span>${item.quantity}x ${item.menuItemName}</span>
+        <span>฿${item.totalPrice.toFixed(2)}</span>
+      </div>
+      ${item.options.map(opt => `<div class="option">  └ ${opt.name}${opt.priceAdjustment > 0 ? ` +฿${opt.priceAdjustment}` : ""}</div>`).join("")}
+      ${item.notes ? `<div class="option note">📝 ${item.notes}</div>` : ""}
+    `).join("")}
+    
+    <div class="double-line"></div>
+    <div class="row"><span>รวม</span><span>฿${order.subtotal.toFixed(2)}</span></div>
+    ${order.discountAmount > 0 ? `<div class="row"><span>ส่วนลด</span><span>-฿${order.discountAmount.toFixed(2)}</span></div>` : ""}
+    ${order.taxAmount > 0 ? `<div class="row"><span>VAT 7%</span><span>฿${order.taxAmount.toFixed(2)}</span></div>` : ""}
+    ${order.serviceCharge > 0 ? `<div class="row"><span>Service Charge</span><span>฿${order.serviceCharge.toFixed(2)}</span></div>` : ""}
+    <div class="line"></div>
+    <div class="row bold large"><span>รวมทั้งหมด</span><span>฿${order.totalAmount.toFixed(2)}</span></div>
+    
+    ${qrSection}
+    
+    ${order.notes ? `<div class="line"></div><div class="note">หมายเหตุ: ${order.notes}</div>` : ""}
+    <div class="line"></div>
+    <div class="center small">ขอบคุณที่อุดหนุน ♥</div>
+    <div class="center small">Thank you for your purchase</div>
+  </body></html>`;
+}
+
+// ─── Sticker Label (per item) ─────────────────────────────────────────────────
+export function generateLabelHTML(
+  order: OrderData,
+  item: OrderItemData,
+  itemIndex: number,
+  totalItems: number
+): string {
+  const time = new Date(order.createdAt).toLocaleString("th-TH", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  // Generate labels for each quantity
+  const labels: string[] = [];
+  for (let q = 0; q < item.quantity; q++) {
+    const seqNum = itemIndex + q + 1;
+    labels.push(`
+      <div class="label" style="border: 1px dashed #000; padding: 4mm; margin-bottom: 2mm; page-break-after: always;">
+        <div class="row">
+          <span class="bold">${order.orderNumber}</span>
+          <span class="bold">${seqNum}/${totalItems}</span>
+        </div>
+        <div class="bold large" style="margin: 2px 0;">${item.menuItemName}</div>
+        ${item.options.length > 0 ? `<div style="margin: 2px 0;">${item.options.map(o => o.name).join(" | ")}</div>` : ""}
+        ${item.notes ? `<div class="note bold">⚠️ ${item.notes}</div>` : ""}
+        <div class="row small" style="margin-top: 4px;">
+          <span>${time}</span>
+          <span>${order.staffName}</span>
+        </div>
+      </div>
+    `);
+  }
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; padding: 2mm; }
+    .bold { font-weight: bold; }
+    .large { font-size: 16px; }
+    .small { font-size: 10px; }
+    .row { display: flex; justify-content: space-between; }
+    .note { background: #ff0; padding: 2px 4px; margin: 2px 0; }
+    .label { break-inside: avoid; }
+    @media print { body { width: 80mm; margin: 0; padding: 1mm; } }
+  </style></head><body>${labels.join("")}</body></html>`;
+}
+
+// ─── All Labels for an Order ──────────────────────────────────────────────────
+export function generateAllLabelsHTML(order: OrderData): string {
+  const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  let currentIndex = 0;
+  const allLabels: string[] = [];
+
+  for (const item of order.items) {
+    const labelHtml = generateLabelHTML(order, item, currentIndex, totalItems);
+    allLabels.push(labelHtml);
+    currentIndex += item.quantity;
+  }
+
+  // Combine all into one document
+  const time = new Date(order.createdAt).toLocaleString("th-TH", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const labels: string[] = [];
+  currentIndex = 0;
+  for (const item of order.items) {
+    for (let q = 0; q < item.quantity; q++) {
+      currentIndex++;
+      labels.push(`
+        <div class="label">
+          <div class="row">
+            <span class="bold">${order.orderNumber}</span>
+            <span class="bold">${currentIndex}/${totalItems}</span>
+          </div>
+          <div class="bold large" style="margin: 2px 0;">${item.menuItemName}</div>
+          ${item.options.length > 0 ? `<div style="margin: 2px 0;">${item.options.map(o => o.name).join(" | ")}</div>` : ""}
+          ${item.notes ? `<div class="note bold">⚠️ ${item.notes}</div>` : ""}
+          <div class="row small" style="margin-top: 4px;">
+            <span>${time}</span>
+            <span>${order.staffName}</span>
+          </div>
+        </div>
+      `);
+    }
+  }
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; padding: 2mm; }
+    .bold { font-weight: bold; }
+    .large { font-size: 16px; }
+    .small { font-size: 10px; }
+    .row { display: flex; justify-content: space-between; }
+    .note { background: #ff0; padding: 2px 4px; margin: 2px 0; }
+    .label { border: 1px dashed #000; padding: 4mm; margin-bottom: 2mm; page-break-after: always; break-inside: avoid; }
+    @media print { body { width: 80mm; margin: 0; padding: 1mm; } }
+  </style></head><body>${labels.join("")}</body></html>`;
+}
+
+// ─── Kitchen Ticket ───────────────────────────────────────────────────────────
+export function generateKitchenTicketHTML(order: OrderData): string {
+  const time = new Date(order.createdAt).toLocaleString("th-TH", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Courier New', monospace; font-size: 14px; width: 80mm; padding: 3mm; }
+    .center { text-align: center; }
+    .bold { font-weight: bold; }
+    .xlarge { font-size: 24px; }
+    .large { font-size: 18px; }
+    .small { font-size: 11px; }
+    .line { border-top: 2px dashed #000; margin: 6px 0; }
+    .item { margin: 6px 0; padding: 4px 0; border-bottom: 1px dotted #ccc; }
+    .qty { font-size: 20px; font-weight: bold; }
+    .option { padding-left: 16px; font-size: 13px; }
+    .note { background: #ff0; padding: 4px; margin: 4px 0; font-weight: bold; font-size: 14px; }
+    .row { display: flex; justify-content: space-between; }
+    @media print { body { width: 80mm; margin: 0; padding: 2mm; } }
+  </style></head><body>
+    <div class="center bold xlarge">🍵 KITCHEN</div>
+    <div class="line"></div>
+    <div class="row">
+      <span class="bold large">${order.orderNumber}</span>
+      <span class="bold">${order.orderType}</span>
+    </div>
+    ${order.tableNumber ? `<div class="bold large">โต๊ะ: ${order.tableNumber}</div>` : ""}
+    <div class="row"><span>${time}</span><span>${order.staffName}</span></div>
+    <div class="line"></div>
+    
+    ${order.items.map(item => `
+      <div class="item">
+        <div class="row">
+          <span class="qty">${item.quantity}x</span>
+          <span class="bold large" style="flex:1; margin-left: 8px;">${item.menuItemName}</span>
+        </div>
+        ${item.options.map(opt => `<div class="option">→ ${opt.name}</div>`).join("")}
+        ${item.notes ? `<div class="note">⚠️ ${item.notes}</div>` : ""}
+      </div>
+    `).join("")}
+    
+    ${order.notes ? `<div class="line"></div><div class="note">📝 ORDER NOTE: ${order.notes}</div>` : ""}
+    <div class="line"></div>
+    <div class="center small">จำนวนรายการ: ${order.items.reduce((s, i) => s + i.quantity, 0)} ชิ้น</div>
+  </body></html>`;
+}
+
+// ─── Tax Receipt (matches real Hibi Matcha Café receipt format) ───────────────
+export function generateReceiptHTML(
+  order: OrderData,
+  settings: BranchPaymentSettings,
+  paymentMethod?: string,
+  referenceNumber?: string
+): string {
+  const dt = new Date(order.createdAt);
+  const dateStr = `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${dt.getFullYear()}`;
+  const timeStr = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}:${String(dt.getSeconds()).padStart(2, "0")}`;
+  const dateTimeStr = `${dateStr} ${timeStr}`;
+
+  // Generate receipt number if not provided: YYYY + 12-digit running
+  const receiptNo = order.receiptNumber || `${dt.getFullYear()}${String(order.id).padStart(12, "0")}`;
+  // Pickup number: short sequential (e.g. 002)
+  const pickupNo = order.pickupNumber || String(order.id % 1000).padStart(3, "0");
+  // Order number: short (e.g. 0002)
+  const orderNo = order.orderNumber?.replace(/\D/g, "").slice(-4).padStart(4, "0") || String(order.id).padStart(4, "0");
+
+  const totalQty = order.items.reduce((s, i) => s + i.quantity, 0);
+  const payMethodName = paymentMethod || order.paymentMethodName || "เงินสด";
+  const paidAmt = order.paidAmount ?? order.totalAmount;
+  const roundingAmt = order.roundingAmount ?? 0;
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; padding: 3mm; }
+  .center { text-align: center; }
+  .right { text-align: right; }
+  .bold { font-weight: bold; }
+  .large { font-size: 16px; }
+  .xlarge { font-size: 20px; }
+  .small { font-size: 10px; }
+  .line { border-top: 1px dashed #000; margin: 6px 0; }
+  .double-line { border-top: 2px solid #000; margin: 6px 0; }
+  .row { display: flex; justify-content: space-between; margin: 1px 0; }
+  .option { padding-left: 8px; font-size: 10px; color: #333; margin: 1px 0; }
+  .item-table { width: 100%; border-collapse: collapse; margin: 4px 0; }
+  .item-table th { text-align: left; font-size: 11px; border-bottom: 1px solid #000; padding: 2px 0; }
+  .item-table th:nth-child(2) { text-align: right; }
+  .item-table th:nth-child(3) { text-align: center; }
+  .item-table th:nth-child(4) { text-align: right; }
+  .totals-row { display: flex; justify-content: space-between; margin: 2px 0; }
+  @media print {
+    body { width: 80mm; margin: 0; padding: 2mm; }
+    .no-print { display: none; }
+  }
+</style></head><body>
+    <div class="center bold large">ใบเสร็จ</div>
+    ${settings.receiptHeaderImage ? `<div class="center" style="margin: 6px 0;"><img src="${settings.receiptHeaderImage}" style="max-width: 50mm; max-height: 25mm;" /></div>` : ""}
+    <div class="center" style="margin-top: 4px;">Hibi Matcha Caf\u00e9</div>
+    <div class="center bold large" style="margin: 4px 0;">Hibi Matcha Cafe ${order.branchName}</div>
+    
+    <div class="line"></div>
+    
+    <div>หมายเลขการรับอาหาร: ${pickupNo}</div>
+    <div>หมายเลขคำสั่งซื้อ: ${orderNo}</div>
+    <div>วันและเวลา: ${dateTimeStr}</div>
+    ${order.deviceSN ? `<div>SN:${order.deviceSN}</div>` : ""}
+    <div>เลขที่ใบเสร็จ:${receiptNo}</div>
+    
+    <div class="line"></div>
+    
+    <table class="item-table">
+      <tr><th>สินค้า</th><th>ราคา</th><th>จำนวน</th><th>รวม</th></tr>
+    </table>
+    
+    ${order.items.map(item => {
+      const skuPrefix = item.menuItemSku ? `${item.menuItemSku}-` : "";
+      return `
+      <div style="margin: 4px 0;">
+        <div class="row">
+          <span style="flex:1; font-weight: bold; font-size: 11px;">${skuPrefix}${item.menuItemName}</span>
+        </div>
+        <div class="row">
+          <span></span>
+          <span style="min-width: 50px; text-align: right;">${item.unitPrice.toFixed(2)}</span>
+          <span style="min-width: 40px; text-align: center;">${item.quantity}</span>
+          <span style="min-width: 55px; text-align: right;">${item.totalPrice.toFixed(2)}</span>
+        </div>
+        ${item.options.map(opt => `<div class="option">- ${opt.name}${opt.priceAdjustment > 0 ? `  +${opt.priceAdjustment.toFixed(2)}` : ""}</div>`).join("")}
+      </div>`;
+    }).join("")}
+    
+    <div class="line"></div>
+    <div class="row bold">
+      <span>รวม</span>
+      <span>${totalQty}</span>
+      <span>${order.subtotal.toFixed(2)}</span>
+    </div>
+    
+    <div class="line"></div>
+    
+    <div class="totals-row"><span>ยอดรวมส่วนลด</span><span>${order.discountAmount > 0 ? order.discountAmount.toFixed(2) : ""}</span></div>
+    <div class="totals-row"><span>ปัดเศษ</span><span>${roundingAmt !== 0 ? roundingAmt.toFixed(2) : ""}</span></div>
+    <div class="totals-row"><span>ยอดรวม</span><span>${order.subtotal.toFixed(2)}</span></div>
+    <div class="totals-row"><span>ภาษีมูลค่าเพิ่ม (7%)</span><span>${order.taxAmount.toFixed(2)}</span></div>
+    <div class="totals-row bold"><span>ยอดรวมทั้งหมด</span><span>${order.totalAmount.toFixed(2)}</span></div>
+    
+    <div class="line"></div>
+    
+    ${roundingAmt !== 0 ? `<div class="totals-row"><span></span><span>${(order.totalAmount + roundingAmt).toFixed(2)}</span></div>` : ""}
+    <div class="totals-row"><span></span><span>${order.totalAmount.toFixed(2)}</span></div>
+    
+    <div class="line"></div>
+    
+    <div>ประเภทการชำระเงิน</div>
+    <div>${payMethodName}</div>
+    <div class="row"><span>ยอดชำระ</span><span>${payMethodName}</span></div>
+    <div class="right">${paidAmt.toFixed(2)}</div>
+    <div class="right bold large">${order.totalAmount.toFixed(2)}</div>
+    
+    <div class="line"></div>
+    <div class="center small">${order.branchName}</div>
+  </body></html>`;
+}

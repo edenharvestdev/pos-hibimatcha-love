@@ -1,0 +1,3069 @@
+{
+  "categories": [
+    {
+      "slug": "matcha_classic",
+      "name": "Matcha Classic",
+      "nameThai": "มัทฉะคลาสสิก",
+      "sortOrder": 1
+    },
+    {
+      "slug": "matcha_refreshers",
+      "name": "Matcha Refreshers",
+      "nameThai": "เครื่องดื่มสดชื่น",
+      "sortOrder": 2
+    },
+    {
+      "slug": "matcha_milk",
+      "name": "Matcha Milk & Rich",
+      "nameThai": "เมนูนมครีมมี่",
+      "sortOrder": 3
+    },
+    {
+      "slug": "fixed_recipe",
+      "name": "Fixed Recipe",
+      "nameThai": "สูตรคงที่",
+      "sortOrder": 4
+    },
+    {
+      "slug": "signature",
+      "name": "Hibi Signature",
+      "nameThai": "สูตรพิเศษ",
+      "sortOrder": 5
+    },
+    {
+      "slug": "non_matcha",
+      "name": "Non Matcha",
+      "nameThai": "ไม่มีมัทฉะ",
+      "sortOrder": 6
+    },
+    {
+      "slug": "topping",
+      "name": "Toppings",
+      "nameThai": "ท็อปปิ้ง",
+      "sortOrder": 7
+    },
+    {
+      "slug": "fusion_dessert",
+      "name": "Fusion Dessert",
+      "nameThai": "ขนมหวานฟิวชัน",
+      "sortOrder": 8
+    },
+    {
+      "slug": "pink_is_fine",
+      "name": "Pink is Fine",
+      "nameThai": "พิงค์ คอลเลกชัน",
+      "sortOrder": 9
+    }
+  ],
+  "items": [
+    {
+      "code": "HBC01M08C",
+      "name": "Classic Clear Matcha Gyokuro Yame",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 315.0,
+      "priceDelivery": 390.0,
+      "description": "มัทฉะใสจากชาเกรดพิเศษสำหรับเมนูคลาสสิก เผยรสอูมามิแท้และความหอมบริสุทธิ์ของชาเขียว ดื่มสดชื่นแบบคลีน",
+      "optionCodes": [
+        "A1",
+        "C1",
+        "B3",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "M08 Gyokuro Yame ซุปดาชิ  สาหร่ายคอมบุ",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-71.png"
+    },
+    {
+      "code": "HBC01M04C",
+      "name": "Classic Clear Matcha Uji Samidori",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 304.0,
+      "priceDelivery": 325.0,
+      "description": "หวานละมุน ไม่ขม หอมกลิ่นถั่วและเต้าหู้ขาว",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M03C",
+      "name": "Classic Clear Matcha Uji Kazen",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 210.0,
+      "priceDelivery": 229.0,
+      "description": "หอมดอกไม้และข้าวคั่ว ขมนุ่ม สดชื่นสะอาด",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M06C",
+      "name": "Classic Clear Matcha Uji Okumidori",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 235.0,
+      "priceDelivery": 255.0,
+      "description": "สายพันธ์เดี่ยวหายากUji (Kyoto)  เก็บเกี่ยวได้ปีละ 1 เดือน  \"Okumidori\"โทนสาหร่ายโนริ และรสละมุนถั่วพิตาชิโอ ติดเขียวอูมามิสูงละมุน",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M05C",
+      "name": "Classic Clear Matcha Kagoshima Hikari",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 201.0,
+      "priceDelivery": 219.0,
+      "description": "อูมามิหวานละมุน หอมถั่วเขียว สะอาดใส",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M01C",
+      "name": "Classic Clear Matcha Kagoshima Asanoka",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 130.0,
+      "priceDelivery": 150.0,
+      "description": "Ceremonial (Organic) จากเมือง Kagoshima โทนหวานหอมโดด “ข้าวโพดหวาน + ดอกไม้” ปลายมี “มะม่วงอ่อนๆ” ฟีลฟรุตตี้นิดๆ ทานได้ทั้ง Clear และ Latte",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "M01 Kagoshima Asanoka ข้าวโพดหวาน ดอกไม้",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-72.png"
+    },
+    {
+      "code": "HBC01M09C",
+      "name": "Classic Clear Matcha Organic Yabukita",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 180.0,
+      "priceDelivery": 199.0,
+      "description": "หอมหญ้าสดและถั่วอ่อน กลมกล่อม หวานธรรมชาติ",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "M09 Organic Yabukita เขียวสดสะอาด คลีน",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-73.png"
+    },
+    {
+      "code": "HBC01M02C",
+      "name": "Classic Clear Matcha Kagoshima Shinju",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 180.0,
+      "priceDelivery": 199.0,
+      "description": "หอมข้าวโพดหวาน อูมามิกลมลึก ครีมมี่ละมุน",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M31C",
+      "name": "Classic Clear Matcha Kagoshima Loishi",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 115.0,
+      "priceDelivery": 135.0,
+      "description": "Organic Ceremonial Loishi Matcha (First Harvest)\nมัทฉะออร์แกนิกเก็บเกี่ยวครั้งแรก โทนพิธีชาที่ เข้มแต่สดชื่นยาวนาน\nให้รสสัมผัสที่ สดชื่นค้างในปากนานมาก พร้อมกลิ่นสดใสที่ไม่ใช่แค่ความเขียวธรรมดา แต่มีมิติของ\nอูมามิถั่วเขียวอ่อนๆ ผสมกลิ่นหญ้าอ่อน และความละมุนคล้าย เต้าหู้สดโทนถั่วขาว\nรสเข้มแบบ ceremonial แต่บาลานซ์ด้วยความหวานธรรมชาติ\nปลายรสยาว สะอาด และทิ้งโทนเขียวหวานแบบนุ่มลึก",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M10C",
+      "name": "Classic Clear Matcha Yame Saemidori",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 105.0,
+      "priceDelivery": 125.0,
+      "description": "เซนฉะสายพันธุ์ Saemidori จากแหล่งปลูกยาเมะ ให้กลิ่นหอมละมุนแบบ ถั่วเขียวอ่อนและหญ้าอ่อนสด สะอาด นุ่มนวลตั้งแต่จิบแรก",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "M10 Yame Saemidori หอมถั่ว และเต้าหู้",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-74.png"
+    },
+    {
+      "code": "HBC01M06C",
+      "name": "Classic Clear Matcha Yame Okumidori",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 145.0,
+      "priceDelivery": 159.0,
+      "description": "สายพันธ์เดี่ยวหายากUji (Kyoto)  เก็บเกี่ยวได้ปีละ 1 เดือน  \"Okumidori\"โทนสาหร่ายโนริ และรสละมุนถั่วพิตาชิโอ ติดเขียวอูมามิสูงละมุน",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M26C",
+      "name": "Classic Clear Matcha Kagoshima Okumidori",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 145.0,
+      "priceDelivery": 165.0,
+      "description": "Ceremonial (Organic) จากเมือง Kagoshima โทนพิสตาชิโอ + สาหร่ายอ่อน + กลิ่นซุปดาชิ\n(หอมอูมามิชัด นุ่มละมุน)",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M16C",
+      "name": "Classic Clear Matcha Yame Saeakari",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 105.0,
+      "priceDelivery": 125.0,
+      "description": "รสเบา นุ่มละมุน หวานปลาย เหมาะผู้เริ่มต้น",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M12C",
+      "name": "Classic Clear Matcha Yame First Harvest",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 80.0,
+      "priceDelivery": 99.0,
+      "description": "หอมหญ้าและดอกไม้อ่อนๆ สดชื่น รสสมดุล",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M32C",
+      "name": "Classic Clear Matcha Kagoshima Saemidori Baisen",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 95.0,
+      "priceDelivery": 115.0,
+      "description": "ฝาดน้อย หอมถั่วคั่ว อูมามิสาหร่ายธรรมชาติ",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M33C",
+      "name": "Classic Clear Matcha Kagoshima Kanayamidori Baisen",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 95.0,
+      "priceDelivery": 115.0,
+      "description": "อูมามิหวานธรรมชาติสูง หอมถั่วคั่วเป็นเอกลักษณ์",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M40C",
+      "name": "Classic Clear Matcha O-Matcha Sou",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 99.0,
+      "priceDelivery": 119.0,
+      "description": "หอมสาหร่ายและหญ้าอ่อน หวานธรรมชาติ นุ่ม ไม่ฝาด",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M42C",
+      "name": "Classic Clear Matcha Fuji Yabukita Second Flush",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 100.0,
+      "priceDelivery": 120.0,
+      "description": "หอมหญ้าสด อูมามิละมุน หวานปลายลิ้น",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M19C",
+      "name": "Classic Clear Matcha Hibi Tsuchi Blend",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 69.0,
+      "priceDelivery": 89.0,
+      "description": "อูมามิสดชื่น กลิ่นไม้ซิตรัส สมดุลชาเข้มกับความเบา",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D13",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M20C",
+      "name": "Classic Clear Matcha Hibi Kumo Blend",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 79.0,
+      "priceDelivery": 99.0,
+      "description": "หวานละมุน ข้าวโพด ถั่วเขียว พิสตาชิโอ ดื่มง่ายทุกวัน",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M21C",
+      "name": "Classic Clear Matcha Hibi Sayaka",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 79.0,
+      "priceDelivery": 99.0,
+      "description": "หอมสดใส ถั่วเขียวอ่อน วานิลลา หวานนวล สะอาด",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D6",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M22C",
+      "name": "Classic Clear Matcha Hibi Shizuku",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 79.0,
+      "priceDelivery": 99.0,
+      "description": "อูมามิสูง สดชื่นแบบเปลือกส้ม ถั่วอ่อน ดอกไม้ขาว",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M23C",
+      "name": "Classic Clear Matcha Hibi Noko",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 69.0,
+      "priceDelivery": 89.0,
+      "description": "กลิ่นทะเลและไม้ซิตรัส เข้มข้น ติดขมปลาย",
+      "optionCodes": [
+        "A1",
+        "B3",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M04L",
+      "name": "Classic Matcha Latte Uji Samidori",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 445.0,
+      "priceDelivery": 465.0,
+      "description": "เซนฉะสายพันธุ์ Saemidori จากแหล่งปลูกยาเมะ ให้กลิ่นหอมละมุนแบบ ถั่วเขียวอ่อนและหญ้าอ่อนสด สะอาด นุ่มนวลตั้งแต่จิบแรก\n\nรสชาติ หวานนวลตามธรรมชาติ ไม่ขม โครงสร้างรสกลมกล่อม ดื่มง่าย แต่ยังคงความสดชื่นและอูมามิแบบเซนฉะคุณภาพดี\n\nเหมาะสำหรับผู้ที่ชอบชาเขียวโทน หวานละมุน สดใส ดื่มสบาย และต้องการเซนฉะที่สมดุลในทุกมิติ",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M06L",
+      "name": "Classic Matcha Latte Uji Okumidori",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 340.0,
+      "priceDelivery": 360.0,
+      "description": "สายพันธ์เดี่ยวหายากUji (Kyoto)  เก็บเกี่ยวได้ปีละ 1 เดือน  \"Okumidori\"โทนสาหร่ายโนริ และรสละมุนถั่วพิตาชิโอ ติดเขียวอูมามิสูงละมุน",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "M06 Uji Okumidori หอมนมละมุนเนียนครีม",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-75.png"
+    },
+    {
+      "code": "HBC01M26L",
+      "name": "Classic Matcha Latte Kagoshima Okumidori",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 205.0,
+      "priceDelivery": 225.0,
+      "description": "Ceremonial (Organic) จากเมือง Kagoshima โทนพิสตาชิโอ + สาหร่ายอ่อน + กลิ่นซุปดาชิ\n(หอมอูมามิชัด นุ่มละมุน)",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "M26 Kagoshima Okumidori พิสตาชิโอสาหร่าย",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-76.png"
+    },
+    {
+      "code": "HBC01M07L",
+      "name": "Classic Matcha Latte Mie Matcha Seian",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 165.0,
+      "priceDelivery": 185.0,
+      "description": "กลมกล่อม หอมสาหร่ายสะอาด ถั่วอ่อน",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M10L",
+      "name": "Classic Matcha Latte Yame Saemidori",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 145.0,
+      "priceDelivery": 165.0,
+      "description": "อูมามิเด่น โนริสาหร่าย ยและถั่ววอลนัทคั่ว ปลายรสหวาน",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "M10 Yame Saemidori หอมถั่วและเต้าหู้",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-77.png"
+    },
+    {
+      "code": "HBC01M11L",
+      "name": "Classic Matcha Latte Yame Okumidori",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 145.0,
+      "priceDelivery": 159.0,
+      "description": "อูมามิเด่น โนริสาหร่าย ยและถั่ววอลนัทคั่ว ปลายรสหวาน",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "M11 Yame Okumidori หอมสาหร่ายและถั่วคั่ว",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-78.png"
+    },
+    {
+      "code": "HBC01M01L",
+      "name": "Classic Matcha Latte Kagoshima Asanoka",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 195.0,
+      "priceDelivery": 215.0,
+      "description": "Ceremonial (Organic) จากเมือง Kagoshima โทนหวานหอมโดด “ข้าวโพดหวาน + ดอกไม้” ปลายมี “มะม่วงอ่อนๆ” ฟีลฟรุตตี้นิดๆ ทานได้ทั้ง Clear และ Latte",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "M01 Kagoshima Asanoka ข้าวโพดหวาน ดอกไม้",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-79.png"
+    },
+    {
+      "code": "HBC01M30L",
+      "name": "Classic Matcha Latte Kagoshima Loishi",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 165.0,
+      "priceDelivery": 230.0,
+      "description": "Organic Ceremonial Loishi Matcha (First Harvest)\nมัทฉะออร์แกนิกเก็บเกี่ยวครั้งแรก โทนพิธีชาที่ เข้มแต่สดชื่นยาวนาน\nให้รสสัมผัสที่ สดชื่นค้างในปากนานมาก พร้อมกลิ่นสดใสที่ไม่ใช่แค่ความเขียวธรรมดา แต่มีมิติของ\nอูมามิถั่วเขียวอ่อนๆ ผสมกลิ่นหญ้าอ่อน และความละมุนคล้าย เต้าหู้สดโทนถั่วขาว\nรสเข้มแบบ ceremonial แต่บาลานซ์ด้วยความหวานธรรมชาติ\nปลายรสยาว สะอาด และทิ้งโทนเขียวหวานแบบนุ่มลึก",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M17L",
+      "name": "Classic Matcha Latte Yame Fukamushi",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 145.0,
+      "priceDelivery": 165.0,
+      "description": "เข้มข้น อูมามิเด่น เนื้อนุ่มครีมมี่",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M31L",
+      "name": "Classic Matcha Latte Kagoshima Hiri",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 135.0,
+      "priceDelivery": 155.0,
+      "description": "หอมสะอาดบริสุทธิ์ อูมามิสมดุล",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M15L",
+      "name": "Classic Matcha Latte Yame Hojun",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 120.0,
+      "priceDelivery": 139.0,
+      "description": "หอมถั่ววอลนัทและลิสงคั่ว รสเข้มอบอุ่น Grade Premium Latte จาก Yame Fukuoka สำหรับเมนูคลาสสิก เข้มข้น เนียนละเอียด รสชาติที่หลายๆคนถูกใจ",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D7",
+        "F1",
+        "E2"
+      ],
+      "tea": "M15 Yame Hojun หอมถั่วเข้ม นมและเต้าหู้",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-80.png"
+    },
+    {
+      "code": "HBC01M32L",
+      "name": "Classic Matcha Latte Kagoshima Saemidori Baisen",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 135.0,
+      "priceDelivery": 155.0,
+      "description": "ฝาดน้อย หอมถั่วคั่ว อูมามิสาหร่ายธรรมชาติ",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M33L",
+      "name": "Classic Matcha Latte Kagoshima Kanayamidori Baisen",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 135.0,
+      "priceDelivery": 155.0,
+      "description": "อูมามิหวานธรรมชาติสูง หอมถั่วคั่วเป็นเอกลักษณ์",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M34L",
+      "name": "Classic Matcha Latte Kagoshima Okumidori Baisen",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 135.0,
+      "priceDelivery": 145.0,
+      "description": "อูมามิเข้มข้น หอมถั่วคั่ว มีมิติซับซ้อน",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M42L",
+      "name": "Classic Matcha Latte Fuji Yabukita Second Flush",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 135.0,
+      "priceDelivery": 155.0,
+      "description": "หอมหญ้าสด อูมามิละมุน หวานปลายลิ้น",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M41L",
+      "name": "Classic Matcha Latte Kakegawa-san Fukamushi-cha Powder Tsubaski",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 70.0,
+      "priceDelivery": 90.0,
+      "description": "เข้มข้นเต็มปาก หอมหญ้าและผักโขม หวานแบบผักสด",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M40L",
+      "name": "Classic Matcha Latte O-Matcha Sou",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 155.0,
+      "priceDelivery": 175.0,
+      "description": "มัทฉะสีเขียวมรกตสด เนื้อเนียนละเอียด ให้รสอุมามิชัดและสะอาด\nโทนรสเหมือน “ชิ้นสาหร่ายพรีเมียมที่อร่อยมาก”\nหอมสาหร่ายทะเลสดและหญ้าอ่อนตั้งแต่แรกสัมผัส\nรสเปิดนุ่ม หวานธรรมชาติจากกรดอะมิโน\nปลายลิ้นมีกลิ่นถั่วบาง ๆ พร้อมรสชาที่ซับซ้อนยาวนาน\nกลางลิ้นอุมามิกลมลึก\nจบสะอาด ละเอียด ไม่ฝาด",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M19L",
+      "name": "Classic Matcha Latte Hibi Tsuchi Blend",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 80.0,
+      "priceDelivery": 99.0,
+      "description": "อูมามิสดชื่น กลิ่นไม้ซิตรัส สมดุลชาเข้มกับความเบา",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D13",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC01M20L",
+      "name": "Classic Matcha Latte Hibi Kumo Blend",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 95.0,
+      "priceDelivery": 115.0,
+      "description": "หวานละมุน ข้าวโพด ถั่วเขียว พิสตาชิโอ ดื่มง่ายทุกวัน",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D2",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-01.png"
+    },
+    {
+      "code": "HBC02H02C",
+      "name": "Classic Clear Hojicha Kokoro",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 80.0,
+      "priceDelivery": 99.0,
+      "description": "โฮจิฉะชงใสจากชาเกรดพิเศษสำหรับเมนูคลาสสิก กลิ่นคั่วหอมละมุน รสนุ่ม เบา สบาย",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C2",
+        "D8",
+        "F1",
+        "E2"
+      ],
+      "tea": "M13 Hojicha Kokoro หอมนวลคาราเมลเข้ม",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-81.png"
+    },
+    {
+      "code": "HBC02H01C",
+      "name": "Classic Clear Hojicha Kaori",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 70.0,
+      "priceDelivery": 89.0,
+      "description": "หอมข้าวคั่วและอัลมอนด์ รสเข้มกลมกล่อม",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C2",
+        "D14",
+        "F1",
+        "E2"
+      ],
+      "tea": "M14 Hojicha Kaori หอมอัลมอนคั่ว เนย",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-82.png"
+    },
+    {
+      "code": "HBC02H04C",
+      "name": "Classic Clear Kōbashii Hōjicha",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 80.0,
+      "priceDelivery": 99.0,
+      "description": "นุ่มละมุน ขมน้อย หอมถั่วคั่ว โกโก้ คาราเมล",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C2",
+        "D14",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-02.png"
+    },
+    {
+      "code": "HBC02H05C",
+      "name": "Classic Clear Shizuoka Maple Fumi Hojicha Powder",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 60.0,
+      "priceDelivery": 79.0,
+      "description": "หอมถั่วอบและคาราเมล คล้ายเมเปิ้ลไซรัป",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C2",
+        "D14",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-02.png"
+    },
+    {
+      "code": "HBC02H06C",
+      "name": "Classic Clear Hojicha Shinbai",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 85.0,
+      "priceDelivery": 105.0,
+      "description": "หอมเฮเซลนัทคั่ว คาราเมล คล้ายกาแฟคั่วอ่อน",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C2",
+        "D14",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-02.png"
+    },
+    {
+      "code": "HBC02H02L",
+      "name": "Classic Hojicha Latte Kokoro",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 105.0,
+      "priceDelivery": 125.0,
+      "description": "โฮจิฉะจากชาเกรดพิเศษสำหรับเมนูคลาสสิก ตีกับนมสดจนเนียน ให้รสนุ่มลึก อบอุ่น",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D8",
+        "F1",
+        "E2"
+      ],
+      "tea": "M13 Hojicha Kokoro หอมนวลคาราเมลเข้ม",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-83.png"
+    },
+    {
+      "code": "HBC02H01L",
+      "name": "Classic Hojicha Latte Kaori",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 95.0,
+      "priceDelivery": 105.0,
+      "description": "หอมข้าวคั่วและอัลมอนด์ รสเข้มกลมกล่อม",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D8",
+        "F1",
+        "E2"
+      ],
+      "tea": "M14 Hojicha Kaori หอมอัลมอนคั่ว เนย",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-84.png"
+    },
+    {
+      "code": "HBC02H04L",
+      "name": "Classic Hojicha Latte Kōbashii Hōjicha",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 95.0,
+      "priceDelivery": 105.0,
+      "description": "นุ่มละมุน ขมน้อย หอมถั่วคั่ว โกโก้ คาราเมล",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D8",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-02.png"
+    },
+    {
+      "code": "HBC02H05L",
+      "name": "Classic Hojicha Latte Shizuoka Maple Fumi Hojicha Powder",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 80.0,
+      "priceDelivery": 99.0,
+      "description": "หอมถั่วอบและคาราเมล คล้ายเมเปิ้ลไซรัป",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D8",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-02.png"
+    },
+    {
+      "code": "HBC02H06L",
+      "name": "Classic Hojicha Latte Hojicha Shinbai",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 120.0,
+      "priceDelivery": 140.0,
+      "description": "หอมเฮเซลนัทคั่ว คาราเมล คล้ายกาแฟคั่วอ่อน",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D8",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-02.png"
+    },
+    {
+      "code": "HBC03G01C",
+      "name": "Classic Clear Genmaicha",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 65.0,
+      "priceDelivery": 85.0,
+      "description": "Genmaicha Uguisu ชาข้าวคั่วจากชาเกรดพิเศษสำหรับเมนูคลาสสิก หอมกลิ่นข้าวอ่อนๆ เรียบหรู",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C2",
+        "D3",
+        "F1",
+        "E2"
+      ],
+      "tea": "M28 \"Genmaicha Uguisu\"ชาข้าวคั่วชงใส",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-85.png"
+    },
+    {
+      "code": "HBC03G01L",
+      "name": "Classic Genmaicha Latte",
+      "category_slug": "matcha_classic",
+      "category_name": "Matcha Classic",
+      "price": 75.0,
+      "priceDelivery": 95.0,
+      "description": "Genmaicha Uguisu ชาข้าวคั่วจากชาเกรดพิเศษสำหรับเมนูคลาสสิก ชงนม หอมละมุน รสนุ่มสมดุล",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D3",
+        "F1",
+        "E2"
+      ],
+      "tea": "M28 \"Genmaicha Uguisu\"ชาข้าวคั่วชงนม",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-86.png"
+    },
+    {
+      "code": "HBR01M23C",
+      "name": "Clear Matcha",
+      "category_slug": "matcha_refreshers",
+      "category_name": "Matcha Refreshers",
+      "price": 69.0,
+      "priceDelivery": 79.0,
+      "description": "มัทฉะใสเย็นสดชื่น ให้รสอูมามิและความหอมของชาเขียว ดื่มง่ายแบบคลีน ไม่มีนมผสม",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C3",
+        "D6",
+        "E2"
+      ],
+      "tea": "M21 Hibi Sayakaหอมถั่วเขียวอ่อน วานิลลา",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-27.png"
+    },
+    {
+      "code": "HBR02M23C",
+      "name": "Matcha Honey Lemon (Home Made)",
+      "category_slug": "matcha_refreshers",
+      "category_name": "Matcha Refreshers",
+      "price": 89.0,
+      "priceDelivery": 99.0,
+      "description": "มัทฉะใสผสมน้ำผึ้งเลมอนโฮมเมด รสเปรี้ยวหวานสดใส เลือกได้ทั้งแบบน้ำเปล่าหรือโซดา",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C3",
+        "D6",
+        "E1"
+      ],
+      "tea": "M21 Hibi Sayakaหอมถั่วเขียวอ่อน วานิลลา",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-28.png"
+    },
+    {
+      "code": "HBR03M23C",
+      "name": "Matcha Honey Lime (Home Made)",
+      "category_slug": "matcha_refreshers",
+      "category_name": "Matcha Refreshers",
+      "price": 89.0,
+      "priceDelivery": 99.0,
+      "description": "มัทฉะใสผสมน้ำผึ้งและไลม์โฮมเมด ให้รสสดชื่น เปรี้ยวละมุน ดื่มสบาย",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C3",
+        "D6",
+        "E1"
+      ],
+      "tea": "M21 Hibi Sayakaหอมถั่วเขียวอ่อน วานิลลา",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-29.png"
+    },
+    {
+      "code": "HBR04M23C",
+      "name": "Kirei Yuzu Matcha",
+      "category_slug": "matcha_refreshers",
+      "category_name": "Matcha Refreshers",
+      "price": 89.0,
+      "priceDelivery": 99.0,
+      "description": "มัทฉะใสผสานยูสุ ให้กลิ่นหอมสดใสแบบญี่ปุ่น รสเปรี้ยวละมุน ดื่มแล้วสดชื่น",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C3",
+        "D6",
+        "E1"
+      ],
+      "tea": "M21 Hibi Sayakaหอมถั่วเขียวอ่อน วานิลลา",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-30.png"
+    },
+    {
+      "code": "HBR05M23C",
+      "name": "Kori Osmanthus Matcha",
+      "category_slug": "matcha_refreshers",
+      "category_name": "Matcha Refreshers",
+      "price": 89.0,
+      "priceDelivery": 99.0,
+      "description": "มัทฉะใสกลิ่นดอกหอมหมื่นลี้ หอมอ่อนๆ ละมุน สดชื่น ผ่อนคลาย",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C3",
+        "D6",
+        "E1"
+      ],
+      "tea": "M21 Hibi Sayakaหอมถั่วเขียวอ่อน วานิลลา",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-31.png"
+    },
+    {
+      "code": "HBR06M23C",
+      "name": "Clear Matcha Coconut Jasmine Tea",
+      "category_slug": "matcha_refreshers",
+      "category_name": "Matcha Refreshers",
+      "price": 89.0,
+      "priceDelivery": 99.0,
+      "description": "มัทฉะใสผสมน้ำมะพร้าวและชามะลิ หอมสดชื่นซ้อนกันอย่างลงตัว เสิร์ฟพร้อมมะพร้าวคั่ว",
+      "optionCodes": [
+        "A1",
+        "C5",
+        "D6",
+        "E2"
+      ],
+      "tea": "M21 Hibi Sayakaหอมถั่วเขียวอ่อน วานิลลา",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-27.png"
+    },
+    {
+      "code": "HBR07M23C",
+      "name": "Clear Matcha Coconut",
+      "category_slug": "matcha_refreshers",
+      "category_name": "Matcha Refreshers",
+      "price": 79.0,
+      "priceDelivery": 89.0,
+      "description": "มัทฉะใสผสมน้ำมะพร้าวแท้ หอมหวานจากธรรมชาติ ให้ความสดชื่นแบบคลีน พร้อมมะพร้าวคั่ว",
+      "optionCodes": [
+        "A1",
+        "C6",
+        "D6",
+        "E2"
+      ],
+      "tea": "M21 Hibi Sayakaหอมถั่วเขียวอ่อน วานิลลา",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-27.png"
+    },
+    {
+      "code": "HBR08H03C",
+      "name": "Clear Hojicha",
+      "category_slug": "matcha_refreshers",
+      "category_name": "Matcha Refreshers",
+      "price": 69.0,
+      "priceDelivery": 79.0,
+      "description": "โฮจิฉะชงใส กลิ่นคั่วหอมละมุน รสนุ่ม เบา สบาย คาเฟอีนน้อย",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C3",
+        "D10",
+        "E2"
+      ],
+      "tea": "M21 Hibi Sayakaหอมถั่วเขียวอ่อน วานิลลา",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-27.png"
+    },
+    {
+      "code": "HBR09M23C",
+      "name": "Clear Matcha Chrysanthemum",
+      "category_slug": "matcha_refreshers",
+      "category_name": "Matcha Refreshers",
+      "price": 79.0,
+      "priceDelivery": 89.0,
+      "description": "มัทฉะเกรดพิธีชงแบบใส ผสานความหอมอ่อนของดอกเก๊กฮวย ให้รสชาติสะอาด สดชื่น พร้อมความหวานนุ่มตามธรรมชาติของดอกไม้",
+      "optionCodes": [
+        "A1",
+        "C9",
+        "D2",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-27.png"
+    },
+    {
+      "code": "HBM09M19L",
+      "name": "Hibi Cold Whisk Latte",
+      "category_slug": "matcha_milk",
+      "category_name": "Matcha Milk & Rich",
+      "price": 59.0,
+      "priceDelivery": 79.0,
+      "description": "สัมผัสรสชาติมัทฉะที่ลุ่มลึกในสไตล์ญี่ปุ่นแท้ๆ เมนูสุดพิเศษที่ใช้ มัทฉะพรีเมียมซึ่งมีรสชาติเป็นเอกลักษณ์ ให้โทน Earthy & Nutty เราบรรจงตีมัทฉะกับน้ำเย็นด้วยเทคนิคดั้งเดิม ก่อนราดลงบนนมสดเย็นฉ่ำ ทำให้ได้รสชาติที่เข้มข้น หอมกรุ่นสดชื่นแต่ยังคงความลุ่มลึกของมัทฉะคุณภาพสูงไว้เต็มคำ",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D5",
+        "E2",
+        "G1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-11.png"
+    },
+    {
+      "code": "HBM01M18L",
+      "name": "Matcha Latte (Milk Whisk)",
+      "category_slug": "matcha_milk",
+      "category_name": "Matcha Milk & Rich",
+      "price": 79.0,
+      "priceDelivery": 89.0,
+      "description": "มัทฉะลาเต้เนื้อเนียน ด้วยเทคนิคการตีมัทฉะกับนมสดจนกลมกล่อม ให้รสเข้ม หอมชา และสัมผัสที่นุ่มละมุน",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D5",
+        "E2",
+        "G1"
+      ],
+      "tea": "M18 Hibi Daichi สายนัวถั่วครีมมี่",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-13.png"
+    },
+    {
+      "code": "HBM02M18L",
+      "name": "Matcha Latte Milk Mochi",
+      "category_slug": "matcha_milk",
+      "category_name": "Matcha Milk & Rich",
+      "price": 105.0,
+      "priceDelivery": 129.0,
+      "description": "มัทฉะลาเต้คลาสสิก เพิ่มโมจิหนึบหนับ เคี้ยวเพลิน ให้ทั้งความหอม นุ่ม และสนุกในแก้วเดียว",
+      "optionCodes": [
+        "A1",
+        "C7",
+        "D5",
+        "E2",
+        "G1"
+      ],
+      "tea": "M18 Hibi Daichi สายนัวถั่วครีมมี่",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-14.png"
+    },
+    {
+      "code": "HBM03M18L",
+      "name": "Osmanthus Matcha Latte",
+      "category_slug": "matcha_milk",
+      "category_name": "Matcha Milk & Rich",
+      "price": 99.0,
+      "priceDelivery": 109.0,
+      "description": "มัทฉะลาเต้หอมละมุน ผสานกลิ่นดอกหอมหมื่นลี้อ่อนๆ ให้รสนุ่ม สดชื่น และผ่อนคลาย",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D5",
+        "E1",
+        "G1"
+      ],
+      "tea": "M18 Hibi Daichi สายนัวถั่วครีมมี่",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-15.png"
+    },
+    {
+      "code": "HBM04M18L",
+      "name": "Matcha Mango Latte",
+      "category_slug": "matcha_milk",
+      "category_name": "Matcha Milk & Rich",
+      "price": 99.0,
+      "priceDelivery": 109.0,
+      "description": "มัทฉะลาเต้ผสานมะม่วงสุก ให้รสหวานฉ่ำแบบทรอปิคอล ตัดกับความเข้มของมัทฉะอย่างลงตัว",
+      "optionCodes": [
+        "A1",
+        "C7",
+        "D5",
+        "E2",
+        "G1"
+      ],
+      "tea": "M18 Hibi Daichi สายนัวถั่วครีมมี่",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-16.png"
+    },
+    {
+      "code": "HBM05M18L",
+      "name": "Matcha Strawberry Latte",
+      "category_slug": "matcha_milk",
+      "category_name": "Matcha Milk & Rich",
+      "price": 89.0,
+      "priceDelivery": 109.0,
+      "description": "มัทฉะลาเต้เข้มข้น ผสานซอสสตรอว์เบอร์รีโฮมเมด เปรี้ยวหวานกลมกล่อม สีสันสวย ดื่มง่าย",
+      "optionCodes": [
+        "A1",
+        "C7",
+        "D5",
+        "E2",
+        "G1"
+      ],
+      "tea": "M18 Hibi Daichi สายนัวถั่วครีมมี่",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-17.png"
+    },
+    {
+      "code": "HBM06M18L",
+      "name": "Matcha Milk Mochi Taro Latte",
+      "category_slug": "matcha_milk",
+      "category_name": "Matcha Milk & Rich",
+      "price": 125.0,
+      "priceDelivery": 149.0,
+      "description": "มัทฉะลาเต้ผสมเผือกกวนเนื้อเนียน เพิ่มโมจิหนึบหนับ ให้รสหอมมัน นุ่ม และเต็มอิ่มทุกคำ",
+      "optionCodes": [
+        "A1",
+        "C7",
+        "D5",
+        "E2",
+        "G1"
+      ],
+      "tea": "M18 Hibi Daichi สายนัวถั่วครีมมี่",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-18.png"
+    },
+    {
+      "code": "HBM07M18L",
+      "name": "Matcha Milk Mochi Red Bean Latte",
+      "category_slug": "matcha_milk",
+      "category_name": "Matcha Milk & Rich",
+      "price": 125.0,
+      "priceDelivery": 149.0,
+      "description": "มัทฉะลาเต้ผสานถั่วแดงและโมจิ ให้รสหวานนุ่มแบบญี่ปุ่น เคี้ยวเพลิน อบอุ่นลงตัว",
+      "optionCodes": [
+        "A1",
+        "C7",
+        "D5",
+        "E2",
+        "G1"
+      ],
+      "tea": "M18 Hibi Daichi สายนัวถั่วครีมมี่",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-19.png"
+    },
+    {
+      "code": "HBM08H03L",
+      "name": "Hojicha Latte (Milk Whisk)",
+      "category_slug": "matcha_milk",
+      "category_name": "Matcha Milk & Rich",
+      "price": 79.0,
+      "priceDelivery": 89.0,
+      "description": "โฮจิฉะลาเต้กลิ่นคั่วหอม ตีกับนมสดจนเนียน ให้รสนุ่ม ละมุน คาเฟอีนน้อย ดื่มสบาย",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C7",
+        "D10",
+        "E2",
+        "G1"
+      ],
+      "tea": "M18 Hibi Daichi สายนัวถั่วครีมมี่",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-13.png"
+    },
+    {
+      "code": "HBF01",
+      "name": "Coconut on Cloud",
+      "category_slug": "fixed_recipe",
+      "category_name": "Fixed Recipe",
+      "price": 79.0,
+      "priceDelivery": 99.0,
+      "description": "เครื่องดื่มน้ำมะพร้าวหอมสดชื่น ท็อปด้วยฟองครีมมัทฉะเนื้อเนียน ให้รสหวานมันของมะพร้าวตัดกับความหอมสดใสของชา ดื่มสนุก มีเลเยอร์",
+      "optionCodes": [
+        "A1",
+        "C6",
+        "D7",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-21.png"
+    },
+    {
+      "code": "HBF02M18L",
+      "name": "Coconut Milk Whisk Latte",
+      "category_slug": "fixed_recipe",
+      "category_name": "Fixed Recipe",
+      "price": 79.0,
+      "priceDelivery": 99.0,
+      "description": "มัทฉะลาเต้ตีน้ำนมมะพร้าวแท้จนเนียน ให้รสหอมมันเป็นเอกลักษณ์ เหมาะสำหรับผู้ที่ไม่ดื่มนมวัว เสิร์ฟพร้อมมะพร้าวคั่วเพิ่มสัมผัส",
+      "optionCodes": [
+        "A1",
+        "C6",
+        "D5",
+        "E2"
+      ],
+      "tea": "M18 Hibi Daichi สายนัวถั่วครีมมี่",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-22.png"
+    },
+    {
+      "code": "HBF03",
+      "name": "Matcha Cloud Latte",
+      "category_slug": "fixed_recipe",
+      "category_name": "Fixed Recipe",
+      "price": 79.0,
+      "priceDelivery": 99.0,
+      "description": "มัทฉะลาเต้เข้มข้น ท็อปด้วยฟองนมสดนุ่มฟู ให้สัมผัสเบา ละมุน ดื่มแล้วสมดุลทั้งรสและเนื้อสัมผัส",
+      "optionCodes": [
+        "A1",
+        "C8",
+        "D7",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-23.png"
+    },
+    {
+      "code": "HBF04",
+      "name": "Matcha Cheesecake Cloud",
+      "category_slug": "fixed_recipe",
+      "category_name": "Fixed Recipe",
+      "price": 99.0,
+      "priceDelivery": 129.0,
+      "description": "มัทฉะลาเต้ท็อปฟองชีสเค้กเนื้อนุ่ม หอมมัน รสละมุนคล้ายของหวาน ดื่มง่าย ให้ความเข้มข้นอย่างพอดี",
+      "optionCodes": [
+        "A1",
+        "C8",
+        "D7",
+        "E2"
+      ],
+      "tea": "M18 Hibi Daichi สายนัวถั่วครีมมี่",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-24.png"
+    },
+    {
+      "code": "HBF05M18L",
+      "name": "Matcha Cream Cheese Latte",
+      "category_slug": "fixed_recipe",
+      "category_name": "Fixed Recipe",
+      "price": 99.0,
+      "priceDelivery": 119.0,
+      "description": "มัทฉะลาเต้เข้มข้น ผสานครีมชีสหอมมันเค็มนิดๆ ให้รสซับซ้อน กลมกล่อม ดื่มพร้อมกันสองเลเยอร์อย่างลงตัว",
+      "optionCodes": [
+        "A1",
+        "C8",
+        "D5",
+        "E2"
+      ],
+      "tea": "M18 Hibi Daichi สายนัวถั่วครีมมี่",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-25.png"
+    },
+    {
+      "code": "HBF06M18L",
+      "name": "Jasmine Thai Tea x Matcha Latte",
+      "category_slug": "fixed_recipe",
+      "category_name": "Fixed Recipe",
+      "price": 109.0,
+      "priceDelivery": 119.0,
+      "description": "การผสมผสานระหว่างชาไทยกลิ่นมะลิและมัทฉะลาเต้ ให้รสหอมหวานละมุน มีเอกลักษณ์เฉพาะของสูตรร้าน",
+      "optionCodes": [
+        "A1",
+        "C8",
+        "D11",
+        "E3"
+      ],
+      "tea": "M25\tJasmine Thai Tea & M18 Hibi Daichi",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-21.png"
+    },
+    {
+      "code": "HBS02M15L",
+      "name": "Matcha Velvet Whisk Latte Cold Foam",
+      "category_slug": "signature",
+      "category_name": "Hibi Signature",
+      "price": 129.0,
+      "priceDelivery": 149.0,
+      "description": "มัทฉะซิกเนเจอร์ที่ออกแบบมาเพื่อสายลาเต้โดยเฉพาะ\nหอมมันนมเนย ฟองเนียนนุ่ม กลมกล่อมแบบถั่วนัว\nเลือกสายพันธุ์มัทฉะที่มีโทนนัตตี้เป็นธรรมชาติ\nให้รสเข้มแต่ละมุน ดื่มง่าย อบอุ่น และมีเอกลักษณ์เฉพาะของ Hibi",
+      "optionCodes": [
+        "A1",
+        "C9",
+        "D2",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-62.png"
+    },
+    {
+      "code": "HBS03",
+      "name": "Matcha Creamcheese Mochi Skewer",
+      "category_slug": "signature",
+      "category_name": "Hibi Signature",
+      "price": 159.0,
+      "priceDelivery": 179.0,
+      "description": "มัทฉะเข้มข้นจับคู่ครีมชีสหอมมัน เสริมโมจิหนึบหนับบนไม้สคิวเวอร์ ให้ทั้งความนัว ความนุ่ม และความสนุกในทุกคำ",
+      "optionCodes": [
+        "A1",
+        "C8",
+        "D4",
+        "E2"
+      ],
+      "tea": "M18 Hibi Daichi สายนัวถั่วครีมมี่",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-67.png"
+    },
+    {
+      "code": "HBS04H02L",
+      "name": "Kokoro Hojicha Honey Comb Velvet",
+      "category_slug": "signature",
+      "category_name": "Hibi Signature",
+      "price": 159.0,
+      "priceDelivery": 179.0,
+      "description": "โฮจิฉะหอมกลิ่นคั่ว ละมุนลึก ท็อปด้วยฮันนี่คอมบ์คาราเมลกรอบ ให้รสหวานนุ่ม สมดุล ดื่มแล้วอบอุ่นใจ",
+      "optionCodes": [
+        "A1",
+        "C8",
+        "D9",
+        "E2"
+      ],
+      "tea": "M27 Hojicha Roast Aroma (EU)",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-69.png"
+    },
+    {
+      "code": "HBS05H02L",
+      "name": "Kokoro Hojicha Cheesecake Mochi",
+      "category_slug": "signature",
+      "category_name": "Hibi Signature",
+      "price": 179.0,
+      "priceDelivery": 199.0,
+      "description": "โฮจิฉะหอมกลิ่นคั่ว ละมุนลึก เสิร์ฟพร้อมโมจิหนึบหนับ ราดถั่วและซอสคาราเมล วางบนครีมชีสเนื้อเนียน ให้รสหวานมันอย่างลงตัว",
+      "optionCodes": [
+        "A1",
+        "C8",
+        "D9",
+        "E2"
+      ],
+      "tea": "M27 Hojicha Roast Aroma (EU)",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-70.png"
+    },
+    {
+      "code": "HBS06",
+      "name": "Matcha Mango Pandan Cloud",
+      "category_slug": "signature",
+      "category_name": "Hibi Signature",
+      "price": 169.0,
+      "priceDelivery": 189.0,
+      "description": "มัทฉะเข้มข้นผสานมะม่วงสุกและกลิ่นใบเตย ท็อปด้วยฟองนุ่ม ให้รสหวานหอมแบบทรอปิคอลอย่างมีมิติ",
+      "optionCodes": [
+        "A1",
+        "C10",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-65.png"
+    },
+    {
+      "code": "HBS07M29",
+      "name": "Pandan Coconut Matcha Velvet",
+      "category_slug": "signature",
+      "category_name": "Hibi Signature",
+      "price": 159.0,
+      "priceDelivery": 179.0,
+      "description": "มัทฉะลาเต้ผสานมิลค์โมจิ ใบเตย และนมมะพร้าว เติมความหอมหวานด้วยน้ำตาลคาราเมลไหม้ ให้เนื้อสัมผัสนุ่มแบบเวลเวท ดื่มง่ายแต่มีเอกลักษณ์",
+      "optionCodes": [
+        "A1",
+        "C6",
+        "D4",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-12.png"
+    },
+    {
+      "code": "HBS08M29",
+      "name": "Pistachio Kunafa Matcha Luxe",
+      "category_slug": "signature",
+      "category_name": "Hibi Signature",
+      "price": 189.0,
+      "priceDelivery": 199.0,
+      "description": "มัทฉะเข้มข้นจับคู่พิสตาชิโอและคูนาฟา ให้รสหอมมัน หรูหรา เนื้อสัมผัสกรอบนุ่มตัดกันอย่างลงตัว",
+      "optionCodes": [
+        "A1",
+        "C8",
+        "D4",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-12.png"
+    },
+    {
+      "code": "HBS09M29",
+      "name": "Matcha Tiramisu Lady",
+      "category_slug": "signature",
+      "category_name": "Hibi Signature",
+      "price": 179.0,
+      "priceDelivery": 189.0,
+      "description": "มัทฉะสไตล์ทิรามิสุ ผสานเลดี้ฟิงเกอร์และครีมเนียน ให้รสเข้ม หอม นุ่ม ละมุนเหมือนของหวานคลาสสิก",
+      "optionCodes": [
+        "A1",
+        "C8",
+        "D4",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-12.png"
+    },
+    {
+      "code": "HBS10",
+      "name": "Velvet Matcha Banoffee",
+      "category_slug": "signature",
+      "category_name": "Hibi Signature",
+      "price": 0,
+      "priceDelivery": null,
+      "description": "คาราเมลกล้วยด้านล่าง\nราดด้วยมัทฉะวิสค์ลาเต้\nท็อปมาสคาโปนครีม และบิสกิตเคลือบช็อกโกแลตกรุบกรอบ\nพร้อม Hojun Matcha โทนถั่วเข้มข้น จาก yame",
+      "optionCodes": [
+        "A1",
+        "C8",
+        "D4",
+        "E2",
+        "G1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-12.png"
+    },
+    {
+      "code": "HBN01",
+      "name": "Honey Lime Soda",
+      "category_slug": "non_matcha",
+      "category_name": "Non Matcha",
+      "price": 69.0,
+      "priceDelivery": 79.0,
+      "description": "น้ำผึ้งโฮมเมดผสานไลม์สด เติมโซดาให้ซ่ากำลังดี รสเปรี้ยวหวานสดชื่น ดื่มแล้วปลุกความสดใส",
+      "optionCodes": [
+        "A1",
+        "C3",
+        "E1"
+      ],
+      "tea": "M21 Hibi Sayakaหอมถั่วเขียวอ่อน วานิลลา",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-37.png"
+    },
+    {
+      "code": "HBN02",
+      "name": "Orange Yuzu Soda",
+      "category_slug": "non_matcha",
+      "category_name": "Non Matcha",
+      "price": 69.0,
+      "priceDelivery": 79.0,
+      "description": "ส้มผสานยูสุ ให้รสเปรี้ยวหวานหอมสดใส เพิ่มความซ่าด้วยโซดา ดื่มง่ายและสดชื่น",
+      "optionCodes": [
+        "A1",
+        "C3",
+        "E1"
+      ],
+      "tea": "M21 Hibi Sayakaหอมถั่วเขียวอ่อน วานิลลา",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-38.png"
+    },
+    {
+      "code": "HBN03",
+      "name": "Osmanthus Honey Coconut",
+      "category_slug": "non_matcha",
+      "category_name": "Non Matcha",
+      "price": 69.0,
+      "priceDelivery": 79.0,
+      "description": "หอมหมื่นลี้ผสมน้ำผึ้งและน้ำมะพร้าว ให้กลิ่นหอมอ่อนๆ รสหวานละมุน สดชื่นและผ่อนคลาย",
+      "optionCodes": [
+        "A1",
+        "E1"
+      ],
+      "tea": "M21 Hibi Sayakaหอมถั่วเขียวอ่อน วานิลลา",
+      "imageUrl": "/menu/app_deli_800800_drawing-38_2.png"
+    },
+    {
+      "code": "HBN04T01",
+      "name": "Jasmine Thai Tea",
+      "category_slug": "non_matcha",
+      "category_name": "Non Matcha",
+      "price": 69.0,
+      "priceDelivery": 79.0,
+      "description": "ชานมไทยสูตรเฉพาะ เบลนด์ชามะลิหอมธรรมชาติ\nให้รสชาเข้มชัด มันละมุนจากนมคุณภาพ\nดื่มแล้วได้ทั้งความหอม ความเข้ม และความนุ่มในแก้วเดียว",
+      "optionCodes": [
+        "A1",
+        "C8",
+        "D12",
+        "E3"
+      ],
+      "tea": "M25 Jasmine Thai Tea หอมชาไทยเข้ม มะลิ",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-40.png"
+    },
+    {
+      "code": "HBN05T01",
+      "name": "Jasmine Thai Tea Mochi",
+      "category_slug": "non_matcha",
+      "category_name": "Non Matcha",
+      "price": 89.0,
+      "priceDelivery": 109.0,
+      "description": "ชานมไทยกลิ่นมะลิ เพิ่มโมจิเนื้อนุ่มให้ทั้งความหอม ความเข้ม",
+      "optionCodes": [
+        "A1",
+        "C8",
+        "D12",
+        "E3"
+      ],
+      "tea": "M25 Jasmine Thai Tea หอมชาไทยเข้ม มะลิ",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-41.png"
+    },
+    {
+      "code": "HBN06T01",
+      "name": "Jasmine Taro Milk Tea Mochi",
+      "category_slug": "non_matcha",
+      "category_name": "Non Matcha",
+      "price": 109.0,
+      "priceDelivery": 139.0,
+      "description": "ชานมไทยกลิ่นมะลิผสานเผือกเนื้อเนียน เพิ่มโมจิ รสนุ่ม หอม",
+      "optionCodes": [
+        "A1",
+        "C8",
+        "D12",
+        "E3"
+      ],
+      "tea": "M25 Jasmine Thai Tea หอมชาไทยเข้ม มะลิ",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-42.png"
+    },
+    {
+      "code": "HBN07",
+      "name": "Honey Lemon Soda",
+      "category_slug": "non_matcha",
+      "category_name": "Non Matcha",
+      "price": 69.0,
+      "priceDelivery": 79.0,
+      "description": "น้ำผึ้งผสานเลมอนสด เติมโซดาให้ซ่ากำลังดี รสเปรี้ยวหวานสดชื่น ดื่มแล้วสบาย",
+      "optionCodes": [
+        "A1",
+        "C3",
+        "E1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-36.png"
+    },
+    {
+      "code": "HBN08",
+      "name": "Aged Honey Lime & Plum",
+      "category_slug": "non_matcha",
+      "category_name": "Non Matcha",
+      "price": 79.0,
+      "priceDelivery": 89.0,
+      "description": "น้ำผึ้งหมักผสานไลม์และบ๊วย ให้รสเปรี้ยวหวานลึก มีเอกลักษณ์ สดชื่นแบบเต็มรสชาติ",
+      "optionCodes": [
+        "A1",
+        "E1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-44.png"
+    },
+    {
+      "code": "HBN09",
+      "name": "Ichigo Ume Refresher",
+      "category_slug": "non_matcha",
+      "category_name": "Non Matcha",
+      "price": 79.0,
+      "priceDelivery": 89.0,
+      "description": "สตรอว์เบอร์รีผสานบ๊วยและน้ำผึ้ง เติมโซดา ให้รสเปรี้ยวหวานสดใส ซ่ากำลังดี",
+      "optionCodes": [
+        "A1",
+        "C3",
+        "E1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-43.png"
+    },
+    {
+      "code": "HBN10",
+      "name": "Matcha Mango Pandan Cloud",
+      "category_slug": "non_matcha",
+      "category_name": "Non Matcha",
+      "price": 139.0,
+      "priceDelivery": 179.0,
+      "description": "มัทฉะลาเต้ผสานมิลค์โมจิ ใบเตย และนมมะพร้าว เติมความหอมหวานด้วยน้ำตาลคาราเมลไหม้ ให้เนื้อสัมผัสนุ่มแบบเวลเวท ดื่มง่ายแต่มีเอกลักษณ์",
+      "optionCodes": [
+        "A1",
+        "C3",
+        "E1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-37.png"
+    },
+    {
+      "code": "HBN11",
+      "name": "Pandan Coconut Matcha Velvet",
+      "category_slug": "non_matcha",
+      "category_name": "Non Matcha",
+      "price": 129.0,
+      "priceDelivery": 189.0,
+      "description": "มัทฉะลาเต้ผสานมิลค์โมจิ ใบเตย และนมมะพร้าว เติมความหอมหวานด้วยน้ำตาลคาราเมลไหม้ ให้เนื้อสัมผัสนุ่มแบบเวลเวท ดื่มง่ายแต่มีเอกลักษณ์",
+      "optionCodes": [
+        "A1",
+        "C3",
+        "E1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-37.png"
+    },
+    {
+      "code": "HBN12",
+      "name": "Strawberry Milk Snow Biscoff",
+      "category_slug": "non_matcha",
+      "category_name": "Non Matcha",
+      "price": 0,
+      "priceDelivery": null,
+      "description": "",
+      "optionCodes": [
+        "A1",
+        "C3",
+        "E1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/93app_deli_800800_drawing_main.png"
+    },
+    {
+      "code": "HBT01",
+      "name": "Topping Matcha Cloud",
+      "category_slug": "topping",
+      "category_name": "Toppings",
+      "price": 50.0,
+      "priceDelivery": 50.0,
+      "description": "เพิ่มชั้นมัทฉะให้เข้มข้นขึ้นอีกระดับ ด้วยฟองนมมัทฉะเนื้อเนียนนุ่ม เพิ่มทั้งความหอมและความลึกของรสมัทฉะ",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-45.png"
+    },
+    {
+      "code": "HBT02",
+      "name": "Topping Cream Cheese",
+      "category_slug": "topping",
+      "category_name": "Toppings",
+      "price": 30.0,
+      "priceDelivery": 30.0,
+      "description": "โฟมครีมชีสสูตรพิเศษของร้าน เนื้อเนียนนุ่ม ให้รสเค็มมันพอดี ช่วยตัดกับความหวานของเครื่องดื่มอย่างลงตัว",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-48.png"
+    },
+    {
+      "code": "HBT03",
+      "name": "Topping Milk Mochi",
+      "category_slug": "topping",
+      "category_name": "Toppings",
+      "price": 30.0,
+      "priceDelivery": 30.0,
+      "description": "ครีมโมจินมสดเนื้อนุ่มหนึบ เพิ่มความสนุกในการเคี้ยว ให้เครื่องดื่มอร่อยเพลินยิ่งขึ้น",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-46.png"
+    },
+    {
+      "code": "HBT04",
+      "name": "Topping Matcha Cheesecake Cloud",
+      "category_slug": "topping",
+      "category_name": "Toppings",
+      "price": 50.0,
+      "priceDelivery": 50.0,
+      "description": "การผสมผสานของมัทฉะเข้มข้นและครีมชีสเนียนนุ่ม ให้รสนัว หอม และกลมกล่อมในหนึ่งชั้นท็อป",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-49.png"
+    },
+    {
+      "code": "HBT05",
+      "name": "Topping Crispy Coco",
+      "category_slug": "topping",
+      "category_name": "Toppings",
+      "price": 5.0,
+      "priceDelivery": 5.0,
+      "description": "มะพร้าวอบกรอบ โรยหน้าเพิ่มความกรุบกรอบและกลิ่นหอมมันของมะพร้าวคั่วสดใหม่",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-47.png"
+    },
+    {
+      "code": "HBT06",
+      "name": "Topping Honey Comb Toffee Crispy",
+      "category_slug": "topping",
+      "category_name": "Toppings",
+      "price": 50.0,
+      "priceDelivery": 50.0,
+      "description": "ฮันนี่คอมบ์ทอฟฟี่กรอบ หอมหวานคาราเมล เพิ่มทั้งรสชาติและเนื้อสัมผัสให้เครื่องดื่มโดดเด่น",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-50.png"
+    },
+    {
+      "code": "HBT07",
+      "name": "Topping Taro Puree",
+      "category_slug": "topping",
+      "category_name": "Toppings",
+      "price": 30.0,
+      "priceDelivery": 30.0,
+      "description": "เนื้อเผือกกวน100%เนื้อเนียน ให้รสหอมมัน เพิ่มความนุ่มละมุนและความอิ่มเอม",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-90.png"
+    },
+    {
+      "code": "HBT08",
+      "name": "Topping Red Bean Puree",
+      "category_slug": "topping",
+      "category_name": "Toppings",
+      "price": 30.0,
+      "priceDelivery": 30.0,
+      "description": "ถั่วแดงกวนเนื้อนุ่ม รสหวานกำลังดี ให้กลิ่นอายขนมญี่ปุ่นแบบคลาสสิก",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-88.png"
+    },
+    {
+      "code": "HBT09",
+      "name": "Topping Mango Puree",
+      "category_slug": "topping",
+      "category_name": "Toppings",
+      "price": 30.0,
+      "priceDelivery": 30.0,
+      "description": "มะม่วงสุกปั่นเนื้อเนียน ให้รสหวานฉ่ำ สดใส เพิ่มความสดชื่นแบบทรอปิคอล",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-87.png"
+    },
+    {
+      "code": "HBT10",
+      "name": "Topping Fresh Strawberry Honey",
+      "category_slug": "topping",
+      "category_name": "Toppings",
+      "price": 30.0,
+      "priceDelivery": 30.0,
+      "description": "สตรอว์เบอร์รีสดผสานน้ำผึ้ง ให้รสเปรี้ยวหวานสดชื่น หอมธรรมชาติ",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-89.png"
+    },
+    {
+      "code": "HBT11",
+      "name": "Topping Velvet Milk Foam",
+      "category_slug": "topping",
+      "category_name": "Toppings",
+      "price": 30.0,
+      "priceDelivery": 40.0,
+      "description": "ยกระดับมัทฉะถ้วยโปรดด้วย Velvet Milk Foam โฟมนมพิเศษ นำไปปั่นจนเนื้อเนียนละเอียดดุจผ้ากำมะหยี่ ให้สัมผัสนุ่มละมุน หอมมัน และเข้มข้นกว่าโฟมนมทั่วไป เพิ่มมิติความอร่อยที่หาทานได้เฉพาะที่นี่เท่านั้น\"",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-94_hbt.png"
+    },
+    {
+      "code": "HBD01",
+      "name": "Truffle Noir Basque",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 89.0,
+      "priceDelivery": 99.0,
+      "description": "\"ชีสเค้กบาสก์หน้าไหม้สูตรพรีเมียม เนื้อเนียนนุ่ม\nเข้มข้นด้วยครีมชีสจากฝรั่งเศส ผสานแบล็คทรัฟเฟิลแท้ 5%\nให้กลิ่นหอมลึก รสนัวละมุน มีเอกลักษณ์ เหมาะสำหรับคนรักชีสและทรัฟเฟิลอย่างแท้จริง\nชีสเค้กบาสก์หน้าไหม้ เนื้อเนียนนุ่ม\nใช้ครีมชีสจากฝรั่งเศส ผสมแบล็คทรัฟเฟิลแท้ 5%\nหอมลึก นัวละมุน รสชาติพรีเมียมไม่เหมือนใคร\nเหมาะสำหรับคนรักชีสและทรัฟเฟิลตัวจริง\"",
+      "optionCodes": [
+        "H2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-58.png"
+    },
+    {
+      "code": "HBD02",
+      "name": "Basque Matcha Azuki Mochi",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 89.0,
+      "priceDelivery": 99.0,
+      "description": "ชีสเค้กบาสก์มัทฉะเนื้อเนียน เข้มข้น ผสานถั่วแดงกวนและโมจินุ่มหนึบ ให้รสหวานละมุนแบบญี่ปุ่นร่วมสมัย",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-59.png"
+    },
+    {
+      "code": "HBD03",
+      "name": "Shiro Tofu Cheesecake",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 69.0,
+      "priceDelivery": 79.0,
+      "description": "ชีสเค้กเต้าหู้เนื้อเนียน นุ่ม เบา ให้รสละมุน หวานน้อย ดื่มคู่ชาได้อย่างสบาย",
+      "optionCodes": [
+        "H2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/95app_deli_800800_drawing_main.png"
+    },
+    {
+      "code": "HBD04A",
+      "name": "Black Truffle Financier",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 35.0,
+      "priceDelivery": 45.0,
+      "description": "ชีสเค้กเต้าหู้เนื้อเนียน นุ่ม เบา ให้รสละมุน หวานน้อย ดื่มคู่ชาได้อย่างสบาย",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-58.png"
+    },
+    {
+      "code": "HBD04B",
+      "name": "Citrus Noisette Financier",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 35.0,
+      "priceDelivery": 40.0,
+      "description": "บราวน์บัตเตอร์หอมถั่วคั่ว ผสานซิตรัสสดใส\nให้รสเปรี้ยวบาง ๆ ตัดความละมุนของเนยอย่างลงตัว",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-58.png"
+    },
+    {
+      "code": "HBD04C",
+      "name": "Matcha Yuzu Financier",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 39.0,
+      "priceDelivery": 45.0,
+      "description": "มัทฉะโทนถั่วละมุน สอดไส้ยูซุพิวเร่เปรี้ยวหอม\nได้ความเข้มของชาเขียวและความสดชื่นในคำเดียว",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-58.png"
+    },
+    {
+      "code": "HBD04D",
+      "name": "Matcha Noisette Financier",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 35.0,
+      "priceDelivery": 40.0,
+      "description": "บราวน์บัตเตอร์ผสานมัทฉะคุณภาพดี\nกลิ่นถั่วคั่วจากเนยตัดกับโทนชาเขียวหอมละมุน",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-58.png"
+    },
+    {
+      "code": "HBD04E",
+      "name": "Noisette Financier",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 30.0,
+      "priceDelivery": 35.0,
+      "description": "สูตรต้นตำรับ กลิ่น Brown Butter ชัดเจน\nหอมถั่วคั่ว เนื้อฉ่ำแน่นกำลังดี",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-58.png"
+    },
+    {
+      "code": "HBD05",
+      "name": "Roasted Hojicha Tiramisu",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 69.0,
+      "priceDelivery": 79.0,
+      "description": "ทีรามิสุโฮจิฉะคั่วหอม รสนุ่มลึก ผสานมาสคาร์โปนชีสเนียนละมุน ให้กลิ่นอบอุ่นและความหวานพอดี",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-57.png"
+    },
+    {
+      "code": "HBD06M",
+      "name": "Tiramisu Matcha (Homemade)",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 69.0,
+      "priceDelivery": 79.0,
+      "description": "\"ทีรามิสุมัทฉะโฮมเมด ทำจาก Matcha Organic คัดพิเศษ\nรสชาติเข้มข้น หอมมัทฉะแท้ ผสานความนัวละมุนของ Mascarpone Cheese\nหวานกำลังดี ไม่เลี่ยน ทานเพลิน ๆ หมดถ้วยแบบไม่รู้ตัว\nเหมาะสำหรับคนรักมัทฉะและสายของหวานที่อยากได้อะไรพรีเมียมแต่สบายใจ\"",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-56.png"
+    },
+    {
+      "code": "HBD06C",
+      "name": "Classic Tiramisu  (Homemade)",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 69.0,
+      "priceDelivery": 79.0,
+      "description": "ทีรามิสุสูตรดั้งเดิม มาสคาร์โปนและไข่แดงแท้ เนียนนุ่ม เข้มข้นแบบอิตาเลียนแท้",
+      "optionCodes": [],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-58.png"
+    },
+    {
+      "code": "HBD07A",
+      "name": "Matcha Milk Mochi Brown Sugar Azuki",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 69.0,
+      "priceDelivery": 69.0,
+      "description": "มัทฉะนมเข้มข้น ผสานมิลค์โมจิเนื้อละมุนคล้ายครีมชีส ราดน้ำตาลทรายแดงหอมคาราเมล และถั่วแดงกวน ให้รสนัว หวานละมุนแบบญี่ปุ่น",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-51.png"
+    },
+    {
+      "code": "HBD07B",
+      "name": "Matcha Milk Mochi Brown Sugar Chestnut",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 75.0,
+      "priceDelivery": 75.0,
+      "description": "มัทฉะนมเข้มข้น ผสานมิลค์โมจิเนื้อละมุน ราดน้ำตาลทรายแดงหอมคาราเมล เพิ่มความหอมมันจากเกาลัด ให้รสนุ่มลึกเป็นพิเศษ",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-51.png"
+    },
+    {
+      "code": "HBD08A",
+      "name": "Milk Mochi Brown Sugar Azuki",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 59.0,
+      "priceDelivery": 59.0,
+      "description": "มิลค์โมจิเนื้อละมุนคล้ายครีมชีส ราดน้ำตาลทรายแดงหอมเข้ม เติมถั่วแดงกวน ให้รสหวานกลมกล่อม เรียบง่ายแต่ลงตัว",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-52.png"
+    },
+    {
+      "code": "HBD08B",
+      "name": "Milk Mochi Brown Sugar Chestnut",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 65.0,
+      "priceDelivery": 65.0,
+      "description": "มิลค์โมจิเนื้อละมุน ราดน้ำตาลทรายแดงหอมหวาน เติมเกาลัดเนื้อนุ่ม ให้รสละมุน อบอุ่น ทานเพลิน",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-52.png"
+    },
+    {
+      "code": "HBD11",
+      "name": "Mochi Butter Bun",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 39.0,
+      "priceDelivery": 49.0,
+      "description": "ขนมเค้กโมจิกรอบนอก นุ่มใน หอมเนย ให้สัมผัสตัดกันอย่างลงตัว ทานเพลินทุกคำ",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-60.png"
+    },
+    {
+      "code": "HBD11M",
+      "name": "Matcha Mochi Butter Bun",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 49.0,
+      "priceDelivery": 59.0,
+      "description": "ขนมเค้กมัทฉะโมจิกรอบนอก นุ่มใน หอมเนย ให้สัมผัสตัดกันอย่างลงตัว ทานเพลินทุกคำ",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-60.png"
+    },
+    {
+      "code": "HBD12",
+      "name": "Matcha Mochi Kinako Caramel",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 69.0,
+      "priceDelivery": 79.0,
+      "description": "โมจิเนื้อนุ่มหนึบหั่นเป็นชิ้นพอดีคำ คลุกเคล้าด้วย ผงมัทฉะโทนถั่ว  สีเขียวสดเข้ม กลิ่นหอมชาเด่นชัดแบบญี่ปุ่นแท้ ๆ จากนั้นราดด้วย ซอสคาราเมล/คุโรมิตสึ เข้มข้นหอมหวานกำลังดี เพิ่มมิติรสชาติด้วยการโรย ผงคินาโกะ (Kinako – ถั่วเหลืองคั่วบดละเอียด)",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-53.png"
+    },
+    {
+      "code": "HBD13M",
+      "name": "Premium Matcha Banana Cheesecake",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 69.0,
+      "priceDelivery": 69.0,
+      "description": "ชีสเค้กมัทฉะกล้วยหอมสูตรพรีเมียม ผสานความหอมละมุนของมัทฉะกับเค้กกล้วยหอมนุ่มชุ่ม และครีมชีสเนียนเข้มข้น\nให้รสหวานน้อย ขมปลายเบาๆ จากมัทฉะ ตัดด้วยความมันของเนยแท้และครีมชีสอย่างสมดุล\nการผสมผสานที่ลงตัวของมัทฉะหอมละมุนกับเค้กกล้วยหอมนุ่ม ๆ และครีมชีสเนียนเข้มข้น\nรสชาติหวานน้อย ขมปลายเบา ๆ จากมัทฉะตัดด้วยความมันของเนยแท้และครีมชีสอย่างพอดี",
+      "optionCodes": [
+        "H2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-54.png"
+    },
+    {
+      "code": "HBD13",
+      "name": "Premium Banana Cheesecake",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 59.0,
+      "priceDelivery": 59.0,
+      "description": "ชีสเค้กกล้วยหอมสูตรพรีเมียม ใช้กล้วยหอมแท้ เนื้อเค้กนุ่มชุ่ม ปาดด้วยครีมชีสเนียนละมุน\nอบสดใหม่ หอมเนยแท้จากนิวซีแลนด์ ผสานครีมชีสคุณภาพจากฝรั่งเศส ให้รสหวานกำลังดี ไม่เลี่ยน ดื่มคู่ชาได้ทุกเวลา\nอบสดใหม่ หอมเนยแท้จากนิวซีแลนด์ เข้มข้นด้วยครีมชีสคุณภาพจากฝรั่งเศส หวานกำลังดี ไม่เลี่ยน เหมาะกับทุกช่วงเวลา",
+      "optionCodes": [
+        "H2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-54.png"
+    },
+    {
+      "code": "HBD14A",
+      "name": "Milk Caramel Custard Mochi",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 79.0,
+      "priceDelivery": 89.0,
+      "description": "โมจิเนื้อนุ่มหนึบ สอดไส้คัสตาร์ดนมเข้มข้น\nหอมหวานละมุน ราดด้วยคาราเมลเคี่ยวจนหอมไหม้อ่อน ๆ\nเพิ่มความนัวและกลิ่นหอมลึกในทุกคำ",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_mainn-97.png"
+    },
+    {
+      "code": "HBD14B",
+      "name": "Peach Caramel Custard Mochi",
+      "category_slug": "fusion_dessert",
+      "category_name": "Fusion Dessert",
+      "price": 79.0,
+      "priceDelivery": 89.0,
+      "description": "โมจิเนื้อนุ่ม สอดไส้พีชคัสตาร์ดหวานอมเปรี้ยว\nราดคาราเมลหอมไหม้ เพิ่มมิติรสชาติ\nละมุน สดชื่น และหอมพีชในทุกคำ",
+      "optionCodes": [
+        "H1"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_mainn-96.png"
+    },
+    {
+      "code": "HBPC01M01",
+      "name": "Pink Clear Coconut Matcha",
+      "category_slug": "pink_is_fine",
+      "category_name": "Pink is Fine",
+      "price": 185.0,
+      "priceDelivery": null,
+      "description": "",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-07.png"
+    },
+    {
+      "code": "HBPC02M30",
+      "name": "Sakura Pink Coconut Matcha Cloud",
+      "category_slug": "pink_is_fine",
+      "category_name": "Pink is Fine",
+      "price": 189.0,
+      "priceDelivery": null,
+      "description": "",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C11",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-08.png"
+    },
+    {
+      "code": "HBPC03M31",
+      "name": "Pink Coconut Matcha Velvet",
+      "category_slug": "pink_is_fine",
+      "category_name": "Pink is Fine",
+      "price": 259.0,
+      "priceDelivery": null,
+      "description": "",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C11",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-09.png"
+    },
+    {
+      "code": "HBPC04M30",
+      "name": "Pink Coconut Citrus Matcha",
+      "category_slug": "pink_is_fine",
+      "category_name": "Pink is Fine",
+      "price": 195.0,
+      "priceDelivery": null,
+      "description": "",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_main-10.png"
+    },
+    {
+      "code": "HBPC05M23",
+      "name": "Clear Matcha Pink Coconut",
+      "category_slug": "pink_is_fine",
+      "category_name": "Pink is Fine",
+      "price": 79.0,
+      "priceDelivery": 109.0,
+      "description": "",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C1",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_mainn-99.png"
+    },
+    {
+      "code": "HBPC05M23",
+      "name": "Pink Coconut Cloud",
+      "category_slug": "pink_is_fine",
+      "category_name": "Pink is Fine",
+      "price": 79.0,
+      "priceDelivery": 109.0,
+      "description": "",
+      "optionCodes": [
+        "A1",
+        "B1",
+        "C11",
+        "D1",
+        "F1",
+        "E2"
+      ],
+      "tea": "",
+      "imageUrl": "/menu/app_deli_800800_drawing_mainn-99.png"
+    }
+  ],
+  "optionGroups": [
+    {
+      "code": "A1",
+      "name": "เลือกรูปแบบการแพ็คเครื่องดื่ม",
+      "options": [
+        {
+          "name": "Standard (พร้อมดื่ม)",
+          "price": 0.0
+        },
+        {
+          "name": "Cool Pack (แยกน้ำแข็ง)",
+          "price": 5.0
+        }
+      ]
+    },
+    {
+      "code": "A4",
+      "name": "เลือกรูปแบบการแพ็คเครื่องดื่มสำหรับเมนู DIY",
+      "options": [
+        {
+          "name": "DIY Pack แพ็คแยกสำหรับประกอบที่บ้าน",
+          "price": 0
+        }
+      ]
+    },
+    {
+      "code": "B1",
+      "name": "เลือกรูปแบบการเสิร์ฟเมนู",
+      "options": [
+        {
+          "name": "Cold เสิร์ฟแบบเย็น",
+          "price": 0.0
+        },
+        {
+          "name": "Hot เสิร์ฟแบบร้อน",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "B3",
+      "name": "เลือกระดับความเข้มของมัทฉะเคลียร์",
+      "options": [
+        {
+          "name": "Ice Clear Matcha เมนูเย็น มาตรฐาน",
+          "price": 0.0
+        },
+        {
+          "name": "Hot Usucha เมนูร้อน มาตรฐาน",
+          "price": 0.0
+        },
+        {
+          "name": "Koicha เมนูร้อน เข้มมาก",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "C1",
+      "name": "เลือกน้ำสำหรับเมนูมัทฉะคลาสสิค",
+      "options": [
+        {
+          "name": "Mont Fleur น้ำแร่ปรกติ",
+          "price": 0.0
+        },
+        {
+          "name": "Soda โซดา",
+          "price": 0.0
+        },
+        {
+          "name": "Mont Fleur Elite Ox น้ำแร่พรีเมียม",
+          "price": 30.0
+        },
+        {
+          "name": "Coconut Water น้ำมะพร้าว",
+          "price": 30.0
+        },
+        {
+          "name": "Coconut Jasmine Tea ชาจัสมินน้ำมะพร้าว",
+          "price": 35.0
+        },
+        {
+          "name": "Pink Coconut น้ำมะพร้าวสีชมพู",
+          "price": 30.0
+        },
+        {
+          "name": "Honey Lemon ฮันนี่เลม่อน",
+          "price": 35.0
+        },
+        {
+          "name": "Honey Lime ฮันนี่ไลม์",
+          "price": 35.0
+        }
+      ]
+    },
+    {
+      "code": "C2",
+      "name": "เลือกน้ำสำหรับเมนูโฮจิฉะและเกนไมฉะคลาสสิค",
+      "options": [
+        {
+          "name": "Mont Fleur น้ำแร่ปรกติ",
+          "price": 0.0
+        },
+        {
+          "name": "Soda โซดา",
+          "price": 0.0
+        },
+        {
+          "name": "Mont Fleur Elite Ox น้ำแร่พรีเมียม",
+          "price": 30.0
+        },
+        {
+          "name": "Coconut Water น้ำมะพร้าว",
+          "price": 30.0
+        },
+        {
+          "name": "Coconut Jasmine Tea ชาจัสมินน้ำมะพร้าว",
+          "price": 35.0
+        },
+        {
+          "name": "Pink Coconut น้ำมะพร้าวสีชมพู",
+          "price": 30.0
+        }
+      ]
+    },
+    {
+      "code": "C3",
+      "name": "เลือกน้ำสำหรับเมนูเคลียร์และเมนูโซดา",
+      "options": [
+        {
+          "name": "Water น้ำเปล่า",
+          "price": 0.0
+        },
+        {
+          "name": "Soda โซดา",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "C4",
+      "name": "เลือกน้ำสำหรับเมนูมัทฉะคลาสสิคพรีเมี่ยม",
+      "options": [
+        {
+          "name": "Mont Fleur Elite Ox น้ำแร่พรีเมียม",
+          "price": 0.0
+        },
+        {
+          "name": "Soda โซดา",
+          "price": 0.0
+        },
+        {
+          "name": "Coconut Water น้ำมะพร้าว",
+          "price": 30.0
+        },
+        {
+          "name": "Coconut Jasmine Tea ชาจัสมินน้ำมะพร้าว",
+          "price": 35.0
+        },
+        {
+          "name": "Pink Coconut น้ำมะพร้าวชมพู",
+          "price": 30.0
+        },
+        {
+          "name": "Honey Lemon ฮันนี่เลม่อน",
+          "price": 35.0
+        },
+        {
+          "name": "Honey Lime ฮันนี่ไลม์",
+          "price": 35.0
+        }
+      ]
+    },
+    {
+      "code": "C5",
+      "name": "เลือกชาจัสมินน้ำมะพร้าวสำหรับเมนูมัทฉะ",
+      "options": [
+        {
+          "name": "Coconut Jasmine Tea ชาจัสมินน้ำมะพร้าว",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "C6",
+      "name": "เลือกน้ำมะพร้าวสำหรับเมนูมัทฉะ",
+      "options": [
+        {
+          "name": "Coconut Water น้ำมะพร้าว",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "C7",
+      "name": "เลือกนมสำหรับเมนูลาเต้",
+      "options": [
+        {
+          "name": "Milk นมสด",
+          "price": 0.0
+        },
+        {
+          "name": "Oat Milk นมโอ๊ต",
+          "price": 20.0
+        },
+        {
+          "name": "Almond Milk นมอัลมอนด์",
+          "price": 25.0
+        },
+        {
+          "name": "Lactose Free Milk นมปราศจากน้ำตาลแลคโตส",
+          "price": 10.0
+        }
+      ]
+    },
+    {
+      "code": "C8",
+      "name": "เลือกนมสำหรับเมนูที่ใช้เฉพาะนมสด",
+      "options": [
+        {
+          "name": "Milk นมสด",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "C10",
+      "name": "เลือกนมมะพร้าวสำหรับเมนูมัทฉะ",
+      "options": [
+        {
+          "name": "Coconut Milk นมมะพร้าว",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "C11",
+      "name": "เลือกมะพร้าวสำหรับเมนูมัทฉะคลาวด์",
+      "options": [
+        {
+          "name": "Coconut Water น้ำมะพร้าว",
+          "price": 0.0
+        },
+        {
+          "name": "Coconut Jasmine Tea ชาจัสมินน้ำมะพร้าว",
+          "price": 5.0
+        },
+        {
+          "name": "Pink Coconut น้ำมะพร้าวสีชมพู",
+          "price": 10.0
+        }
+      ]
+    },
+    {
+      "code": "D1",
+      "name": "เลือกสายพันธุ์มัทฉะ Clear Classic",
+      "options": [
+        {
+          "name": "M10 Yame Saemidori หอมถั่วและเต้าหู้",
+          "price": 0.0
+        },
+        {
+          "name": "M01 Kagoshima Asanoka ข้าวโพดหวาน ดอกไม้",
+          "price": 40.0
+        },
+        {
+          "name": "M09 Organic Yabukita เขียวสดสะอาด คลีน",
+          "price": 111.0
+        },
+        {
+          "name": "M08 Gyokuro Yame ซุปดาชิ  สาหร่ายคอมบุ",
+          "price": 251.0
+        }
+      ]
+    },
+    {
+      "code": "D2",
+      "name": "เลือกสายพันธุ์มัทฉะ Latte Classic",
+      "options": [
+        {
+          "name": "M15 Yame Hojun หอมถั่วเข้ม นมและเต้าหู้",
+          "price": 0.0
+        },
+        {
+          "name": "M10 Yame Saemidori หอมถั่ว และเต้าหู้",
+          "price": 24.0
+        },
+        {
+          "name": "M11 Yame Okumidori หอมสาหร่ายและถั่วคั่ว",
+          "price": 24.0
+        },
+        {
+          "name": "M01 Kagoshima Asanoka หอมถั่วคั่ว Earthy",
+          "price": 64.0
+        },
+        {
+          "name": "M26 Kagoshima Okumidori",
+          "price": 94.0
+        },
+        {
+          "name": "M06 Uji Okumidori หอมนมละมุนเนียนครีม",
+          "price": 224.0
+        }
+      ]
+    },
+    {
+      "code": "D3",
+      "name": "เลือกสายพันธุ์เก็นไมฉะ Genmaicha Classic",
+      "options": [
+        {
+          "name": "G01 Genmaicha Uguisu",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "D4",
+      "name": "เลือกสายพันธุ์มัทฉะ Noko Sen",
+      "options": [
+        {
+          "name": "M29 Noko Sen",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "D5",
+      "name": "เลือกสายพันธุ์มัทฉะ Daichi",
+      "options": [
+        {
+          "name": "M18 Hibi Daichi Blend",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "D6",
+      "name": "เลือกสายพันธุ์มัทฉะ Sayaka",
+      "options": [
+        {
+          "name": "M21 Hibi Sayaka หอมถั่วเขียวอ่อน วานิลลา",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "D7",
+      "name": "เลือกสายพันธุ์มัทฉะ Yame Hojun",
+      "options": [
+        {
+          "name": "M15 Yame Hojun หอมถั่วเข้ม นมและเต้าหู้",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "D14",
+      "name": "เลือกสายพันธุ์ Hojicha Clear",
+      "options": [
+        {
+          "name": "H01 Hojicha Kaori หอมอัลมอนคั่ว เนย",
+          "price": 0.0
+        },
+        {
+          "name": "H02 Hojicha Kokoro หอมนวลคาราเมลเข้ม",
+          "price": 10.0
+        }
+      ]
+    },
+    {
+      "code": "D8",
+      "name": "เลือกสายพันธุ์ Hojicha Latte",
+      "options": [
+        {
+          "name": "H01 Hojicha Kaori หอมอัลมอนคั่ว เนย",
+          "price": 0.0
+        },
+        {
+          "name": "H02 Hojicha Kokoro หอมนวลคาราเมลเข้ม",
+          "price": 20.0
+        }
+      ]
+    },
+    {
+      "code": "D9",
+      "name": "เลือกสายพันธุ์ Hojicha Kokoro",
+      "options": [
+        {
+          "name": "H02 Hojicha Kokoro หอมนวลคาราเมลเข้ม",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "D10",
+      "name": "เลือกสายพันธุ์โฮจิฉะ Hojicha Roast Aroma (EU)",
+      "options": [
+        {
+          "name": "H03 Hojicha Roast Aroma (EU)",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "D11",
+      "name": "เลือกสายพันธุ์มัทฉะ x ชาไทย",
+      "options": [
+        {
+          "name": "T01 Jasmine Thai Tea & M18 Hibi Daichi",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "D12",
+      "name": "เลือกสายพันธุ์ชาไทยมะลิ",
+      "options": [
+        {
+          "name": "T01 Jasmine Thai Tea",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "D13",
+      "name": "เลือกสายพันธุ์มัทฉะ Tsuchi",
+      "options": [
+        {
+          "name": "M19 Hibi Tsuchi Blend สายเข้ม นัว",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "E1",
+      "name": "เลือกระดับความหวานน้ำผึ้ง (Honey)",
+      "options": [
+        {
+          "name": "หวานปรกติ (ตามสูตรของทางร้าน)",
+          "price": 0.0
+        },
+        {
+          "name": "เพิ่ม Honey หวานมาก 5g",
+          "price": 0.0
+        },
+        {
+          "name": "เพิ่ม Honey หวานสุดๆ 10g",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "F1",
+      "name": "เลือกประเภทของไซรัป",
+      "options": [
+        {
+          "name": "Syrup ไซรัป",
+          "price": 0.0
+        },
+        {
+          "name": "Keto Syrup คีโต ไซรัป",
+          "price": 0.0
+        },
+        {
+          "name": "Honey Acacia น้ำผึ้งดอกอาคาเชีย",
+          "price": 8.0
+        },
+        {
+          "name": "Maple Syrup เมเปิ้ลไซรัป",
+          "price": 15.0
+        }
+      ]
+    },
+    {
+      "code": "E2",
+      "name": "เลือกระดับความหวาน (Sweetness)",
+      "options": [
+        {
+          "name": "(ไซรัป 0g) ไม่หวานเลย",
+          "price": 0.0
+        },
+        {
+          "name": "(ไซรัป 3g) หวานดึงรสชาติ",
+          "price": 0.0
+        },
+        {
+          "name": "(ไซรัป 5g)หวานเล็กน้อย",
+          "price": 0.0
+        },
+        {
+          "name": "(ไซรัป 8g) หวานปรกติ",
+          "price": 0.0
+        },
+        {
+          "name": "(ไซรัป 10g) หวานชื่นใจ",
+          "price": 0.0
+        },
+        {
+          "name": "(ไซรัป 15g) หวานใจเกินร้อย",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "E3",
+      "name": "เลือกระดับความหวานเมนูชาไทย",
+      "options": [
+        {
+          "name": "(ไซรัป 0g) ไม่หวานเลย",
+          "price": 0.0
+        },
+        {
+          "name": "(ไซรัป 3g) หวานน้อย",
+          "price": 0.0
+        },
+        {
+          "name": "(ไซรัป 5g) หวานปรกติ",
+          "price": 0.0
+        },
+        {
+          "name": "(ไซรัป 8g) หวานใจเกินร้อย",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "E4",
+      "name": "เลือกระดับความหวานเมนูดอกเก๊กฮวย",
+      "options": [
+        {
+          "name": "(ไซรัปเก๊กฮวย 35g) หวานน้อย",
+          "price": 0.0
+        },
+        {
+          "name": "(ไซรัปเก๊กฮวย 40g) หวานปรกติ",
+          "price": 0.0
+        },
+        {
+          "name": "(ไซรัปเก๊กฮวย 50g) หวานใจเกินร้อย",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "E5",
+      "name": "เลือกระดับความหวานเมนูคลาสสิค",
+      "options": [
+        {
+          "name": "(0g) ไม่หวานเลย",
+          "price": 0.0
+        },
+        {
+          "name": "(3g) หวานดึงรสชาติ",
+          "price": 0.0
+        },
+        {
+          "name": "(5g)หวานเล็กน้อย",
+          "price": 0.0
+        },
+        {
+          "name": "(8g) หวานปรกติ",
+          "price": 0.0
+        },
+        {
+          "name": "(10g) หวานชื่นใจ",
+          "price": 0.0
+        },
+        {
+          "name": "(15g) หวานใจเกินร้อย",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "E6",
+      "name": "เลือกระดับความหวานเมนูดอกหอมหมื่นลี้",
+      "options": [
+        {
+          "name": "(15g) หวานน้อย",
+          "price": 0.0
+        },
+        {
+          "name": "(20g) หวานปรกติ",
+          "price": 0.0
+        },
+        {
+          "name": "(25g) หวานมาก",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "G1",
+      "name": "เพิ่ม Topping จากเมนู",
+      "options": [
+        {
+          "name": "ไม่เพิ่ม Topping",
+          "price": 0.0
+        },
+        {
+          "name": "Matcha Cloud มัทฉะสัมผัสโฟมนุ่มละมุน",
+          "price": 50.0
+        },
+        {
+          "name": "Taro Puree เผือกบด หอม มันและหวานน้อย",
+          "price": 30.0
+        },
+        {
+          "name": "Red Bean Puree ถั่วแดง หวานกลมกล่อม",
+          "price": 30.0
+        },
+        {
+          "name": "Mango Puree มะม่วงสุกบด ซอสหวานอมเปรี้ยว",
+          "price": 30.0
+        },
+        {
+          "name": "Strawberry Honey สตรอว์เบอร์รีฮันนี่",
+          "price": 30.0
+        },
+        {
+          "name": "Cream Cheese Foam ครีมชีส",
+          "price": 30.0
+        },
+        {
+          "name": "Milk Moji Cream โมจินม",
+          "price": 30.0
+        },
+        {
+          "name": "Crispy Coco มะพร้าวคั่ว",
+          "price": 5.0
+        }
+      ]
+    },
+    {
+      "code": "H1",
+      "name": "เลือกรูปแบบการอุ่นสำหรับขนมที่เน้นความกรอบ",
+      "options": [
+        {
+          "name": "อุ่นร้อนกรอบนอก นุ่มใน",
+          "price": 0.0
+        },
+        {
+          "name": "ไม่อุ่น ทานเย็นเหนียวหนึบ",
+          "price": 0.0
+        }
+      ]
+    },
+    {
+      "code": "H2",
+      "name": "เลือกรูปแบบการอุ่นสำหรับขนมที่เน้นความนุ่ม",
+      "options": [
+        {
+          "name": "อุ่นร้อนนุ่มละมุน",
+          "price": 0.0
+        },
+        {
+          "name": "ไม่อุ่น ทานเย็นเหนียวหนึบ",
+          "price": 0.0
+        }
+      ]
+    }
+  ]
+}

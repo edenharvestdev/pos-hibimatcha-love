@@ -1,0 +1,1 @@
+ALTER TABLE `pos_export_documents` MODIFY COLUMN `docType` enum('receipt_tax_invoice','shipping_note','pos_receipt') NOT NULL;
