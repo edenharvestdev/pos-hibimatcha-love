@@ -32,7 +32,7 @@ const BranchInput = z.object({
   openingDate: z.string().optional(),
   contractStartDate: z.string().optional(),
   contractEndDate: z.string().optional(),
-  royaltyType: z.enum(["percentage", "fixed", "none"]).optional(),
+  royaltyType: z.enum(["percentage", "fixed", "hybrid", "none"]).optional(),
   royaltyValue: z.string().optional(),
   franchiseOwnerId: z.number().optional(),
   accessCode: z.string().max(20).optional(),

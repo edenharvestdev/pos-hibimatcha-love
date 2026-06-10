@@ -35,7 +35,7 @@ import {
  *
  * Returns { success: true } or throws TRPCError with details about insufficient stock.
  */
-async function deductStockForOrder(
+export async function deductStockForOrder(
   orderId: number,
   branchId: number,
   staffId: number,
@@ -1131,7 +1131,7 @@ export const ordersRouter = router({
     }),
 });
 
-async function getFullOrder(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, orderId: number) {
+export async function getFullOrder(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, orderId: number) {
   const [order] = await db.select().from(posOrders).where(eq(posOrders.id, orderId)).limit(1);
   if (!order) return null;
 

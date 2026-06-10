@@ -3,8 +3,8 @@
 // ============================================
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { EmptyZen,IconBell,IconBook,IconBox,IconBrand,IconBuilding,IconChevRight,IconExport,IconGlobe,IconInfo,IconLock,IconPhone,IconPrint,IconQR,IconReceipt,IconScanner,IconShare,IconSun,IconUser,IconWallet } from "@/icons";
-const ICON_MAP = { IconBell,IconBook,IconBox,IconBrand,IconBuilding,IconGlobe,IconInfo,IconLock,IconPhone,IconPrint,IconQR,IconReceipt,IconScanner,IconShare,IconSun,IconUser,IconWallet };
+import { EmptyZen,IconBell,IconBook,IconBox,IconBrand,IconBuilding,IconChevRight,IconExport,IconGlobe,IconGrid,IconInfo,IconLock,IconPhone,IconPrint,IconQR,IconReceipt,IconScanner,IconShare,IconSun,IconUser,IconWallet } from "@/icons";
+const ICON_MAP = { IconBell,IconBook,IconBox,IconBrand,IconBuilding,IconGlobe,IconGrid,IconInfo,IconLock,IconPhone,IconPrint,IconQR,IconReceipt,IconScanner,IconShare,IconSun,IconUser,IconWallet };
 import { useApp,Drawer,Field,Select,Toggle,Checkbox,EmptyState,SectionHeader,Avatar } from "@/components";
 import { Logo } from "@/components/Shell";
 import { trpc } from "@/lib/trpc";
@@ -26,6 +26,7 @@ const SETTINGS_TABS = [
   { id: 'receipt', label: 'Receipt & Print', labelKey: 'settings.receipt', icon: 'IconReceipt' },
   { id: 'hardware', label: 'Hardware', labelKey: 'settings.hardware', icon: 'IconScanner' },
   { id: 'data', label: 'Data & Privacy', labelKey: 'settings.data', icon: 'IconBook' },
+  { id: 'master', label: 'Master Data', labelKey: 'settings.masterData', icon: 'IconGrid' },
   { id: 'about', label: 'About', labelKey: 'settings.about', icon: 'IconInfo' },
 ];
 
@@ -76,6 +77,7 @@ export const PageSettings = () => {
           {tab === 'receipt' && <SettingsReceipt/>}
           {tab === 'hardware' && <SettingsHardware/>}
           {tab === 'billing' && <SettingsBilling/>}
+          {tab === 'master' && <SettingsMaster/>}
           {tab === 'about' && <SettingsAbout/>}
           {(tab === 'branches' || tab === 'data') && (
             <div className="card" style={{ padding: 24 }}>
@@ -1048,11 +1050,187 @@ const SettingsReceipt = () => {
           <div style={{ borderTop: '1px dashed #ccc', margin: '6px 0' }}/>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}><span>Total</span><span>฿160</span></div>
           <div style={{ borderTop: '1px dashed #ccc', margin: '6px 0' }}/>
-          <div style={{ textAlign: 'center', fontSize: 10, color: '#666' }}>
-            {receiptFooter || 'Thank you! ขอบคุณค่ะ'}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── SettingsMaster (Volume 3: Master Data Engine) ─────────────────────────────
+const SettingsMaster = () => {
+  const [domain, setDomain] = useState("units");
+  const [search, setSearch] = useState("");
+  
+  const DEFAULTS = {
+    units: ["กรัม (g)", "มิลลิลิตร (ml)", "กิโลกรัม (kg)", "ลิตร (L)", "แก้ว (Cup)", "ชิ้น (Piece)", "กล่อง (Box)", "ถุง (Bag)"],
+    positions: ["Super Admin", "Shop Manager", "Head Barista", "Barista", "Cashier", "HQ Admin"],
+    customer_tags: ["VIP", "Regular", "Green Tea Fan", "Member", "New Customer"],
+    expense_cats: ["ค่าเช่าร้าน", "ค่าไฟ/ค่าน้ำ", "นมสด/วัตถุดิบหน้าร้าน", "อุปกรณ์สิ้นเปลือง", "ซ่อมบำรุง", "เบ็ดเตล็ด"]
+  };
+
+  const [data, setData] = useState(() => {
+    const saved = localStorage.getItem("hibi-master-data");
+    return saved ? JSON.parse(saved) : DEFAULTS;
+  });
+
+  const save = (newData) => {
+    setData(newData);
+    localStorage.setItem("hibi-master-data", JSON.stringify(newData));
+  };
+
+  const list = data[domain] || [];
+  const filtered = list.filter(item => item.toLowerCase().includes(search.toLowerCase()));
+
+  const [newItem, setNewItem] = useState("");
+  const [editingIndex, setEditingIndex] = useState(-1);
+  const [editingValue, setEditingValue] = useState("");
+  const toast = useToast();
+
+  const handleAdd = () => {
+    if (!newItem.trim()) return;
+    const updated = [...list, newItem.trim()];
+    const newData = { ...data, [domain]: updated };
+    save(newData);
+    setNewItem("");
+    toast.success("เพิ่มรายการข้อมูลหลักสำเร็จ");
+  };
+
+  const handleEdit = (idx) => {
+    setEditingIndex(idx);
+    setEditingValue(list[idx]);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingValue.trim()) return;
+    const updated = [...list];
+    updated[editingIndex] = editingValue.trim();
+    const newData = { ...data, [domain]: updated };
+    save(newData);
+    setEditingIndex(-1);
+    setEditingValue("");
+    toast.success("แก้ไขรายการเรียบร้อย");
+  };
+
+  const handleDelete = (idx) => {
+    if (confirm("ต้องการลบรายการนี้?")) {
+      const updated = list.filter((_, i) => i !== idx);
+      const newData = { ...data, [domain]: updated };
+      save(newData);
+      toast.success("ลบรายการสำเร็จ");
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="card" style={{ padding: 20 }}>
+        <div className="t-h4" style={{ fontWeight: 600 }}>🗂️ ข้อมูลระบบหลัก (Master Data Engine)</div>
+        <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+          จัดการหน่วยนับ ตำแหน่งงาน และหมวดหมู่ต่าง ๆ ที่ใช้ร่วมกันทั้งองค์กรและทุกสาขา
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 20 }}>
+        <div className="card" style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {[
+            { id: "units", label: "📏 หน่วยนับ (Units)" },
+            { id: "positions", label: "👥 ตำแหน่งงาน (Positions)" },
+            { id: "customer_tags", label: "🏷️ แท็กลูกค้า (Customer Tags)" },
+            { id: "expense_cats", label: "💰 หมวดหมู่ค่าใช้จ่าย (Expense Cats)" }
+          ].map(d => (
+            <button
+              key={d.id}
+              onClick={() => { setDomain(d.id); setSearch(""); }}
+              style={{
+                width: '100%', padding: '8px 12px', borderRadius: 4, textAlign: 'left', fontSize: 13,
+                background: domain === d.id ? 'var(--matcha-50)' : 'transparent',
+                color: domain === d.id ? 'var(--matcha-700)' : 'var(--text-secondary)',
+                fontWeight: domain === d.id ? 600 : 400
+              }}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Controls */}
+          <div className="card" style={{ padding: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="text"
+              placeholder="ค้นหารายการ..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="input"
+              style={{ flex: 1, height: 38 }}
+            />
+            <input
+              type="text"
+              placeholder="เพิ่มรายการใหม่..."
+              value={newItem}
+              onChange={e => setNewItem(e.target.value)}
+              className="input"
+              style={{ flex: 1, height: 38 }}
+            />
+            <button className="btn btn-primary" onClick={handleAdd} style={{ height: 38 }}>
+              เพิ่ม
+            </button>
+          </div>
+
+          {/* List items */}
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center' }} className="muted">
+                ไม่พบรายการข้อมูลหลัก
+              </div>
+            ) : (
+              filtered.map((item, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '12px 16px', borderBottom: idx === filtered.length - 1 ? 'none' : '1px solid var(--border-default)'
+                  }}
+                >
+                  {editingIndex === idx ? (
+                    <div style={{ display: 'flex', gap: 8, flex: 1 }}>
+                      <input
+                        type="text"
+                        value={editingValue}
+                        onChange={e => setEditingValue(e.target.value)}
+                        className="input"
+                        style={{ height: 32 }}
+                      />
+                      <button className="btn btn-primary btn-sm" onClick={handleSaveEdit}>บันทึก</button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setEditingIndex(-1)}>ยกเลิก</button>
+                    </div>
+                  ) : (
+                    <>
+                      <span style={{ fontSize: 14, fontWeight: 500 }}>{item}</span>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          style={{ padding: 4 }}
+                          onClick={() => handleEdit(idx)}
+                        >
+                          แก้ไข
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          style={{ padding: 4, color: '#ef4444' }}
+                          onClick={() => handleDelete(idx)}
+                        >
+                          ลบ
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 };
+

@@ -83,11 +83,23 @@ import { PageRequisitions } from "@/pages/Requisitions";
 import { PageExportDocuments } from "@/pages/ExportDocuments";
 import PageExpenseReceipts from "@/pages/ExpenseReceipts";
 import PageInventoryLots from "@/pages/InventoryLots";
+import PageProduction from "@/pages/Production";
 import { PageCustomerApp, PageCustomerProfile } from "@/pages/CustomerApp";
 import { PagePnLDashboard } from "@/pages/PnLDashboard";
 import { PageStaffKPI } from "@/pages/StaffKPI";
 import { PageFranchiseWizard } from "@/pages/FranchiseWizard";
 import { trpc } from "@/lib/trpc";
+import { PageMasterData } from "@/pages/MasterData";
+import { PageAuditLogCenter } from "@/pages/AuditLogCenter";
+import { PageWasteManagement } from "@/pages/WasteManagement";
+import { PageCustomers } from "@/pages/Customers";
+import { PageInventoryForecast } from "@/pages/InventoryForecast";
+import { PageCountSession } from "@/pages/CountSession";
+import { PageFranchiseCompliance } from "@/pages/FranchiseCompliance";
+import { PageAccounting } from "@/pages/Accounting";
+import { PagePaymentMethods } from "@/pages/PaymentMethods";
+import { PageDocumentSettings } from "@/pages/DocumentSettings";
+import { PageHardwareSettings } from "@/pages/HardwareSettings";
 
 // ============================================
 // Inline pages (small ones — kept here)
@@ -237,7 +249,10 @@ const ROUTES = {
   '/backoffice/categories': () => <PageAdminCategories/>,
   '/backoffice/options': () => <PageAdminOptions/>,
   '/backoffice/discounts': () => <PageAdminDiscounts/>,
-  '/backoffice/payments': () => <PageAdminPayments/>,
+  '/backoffice/payments': () => <PagePaymentMethods defaultTab="methods"/>,
+  '/backoffice/payments/methods': () => <PagePaymentMethods defaultTab="methods"/>,
+  '/backoffice/payments/permissions': () => <PagePaymentMethods defaultTab="permissions"/>,
+  '/backoffice/payments/settlements': () => <PagePaymentMethods defaultTab="settlements"/>,
   '/backoffice/staff': () => <PageAdminStaff/>,
   '/backoffice/reports': () => <PageAdminReports/>,
   '/backoffice/orders': () => <PageOrders/>,
@@ -253,6 +268,7 @@ const ROUTES = {
   '/backoffice/documents': () => <PageExportDocuments/>,
   '/backoffice/expense-receipts': () => <PageExpenseReceipts/>,
   '/backoffice/inventory-lots': () => <PageInventoryLots/>,
+  '/backoffice/production': () => <PageProduction/>,
   '/backoffice/suppliers': () => <PageSuppliers/>,
   '/backoffice/purchase-orders': () => <PagePurchaseOrders/>,
   '/backoffice/franchise': () => <PageFranchise/>,
@@ -265,6 +281,20 @@ const ROUTES = {
   '/backoffice/sop/my-variants': () => <PageSOPVariants/>,
   '/backoffice/sop/material-usage': () => <PageSOPMaterialUsage/>,
   '/backoffice/settings': () => <PageSettings/>,
+  '/backoffice/settings/master-data': () => <PageMasterData/>,
+  '/backoffice/settings/document-numbering': () => <PageDocumentSettings/>,
+  '/backoffice/settings/hardware': () => <PageHardwareSettings/>,
+  '/backoffice/audit': () => <PageAuditLogCenter/>,
+  '/backoffice/waste': () => <PageWasteManagement/>,
+  '/backoffice/customers': () => <PageCustomers defaultTab="directory"/>,
+  '/backoffice/customers/segments': () => <PageCustomers defaultTab="segments"/>,
+  '/backoffice/inventory/forecast': () => <PageInventoryForecast/>,
+  '/backoffice/inventory/count-session': () => <PageCountSession/>,
+  '/backoffice/franchise/royalty': () => <PageFranchiseCompliance defaultTab="royalty"/>,
+  '/backoffice/franchise/compliance': () => <PageFranchiseCompliance defaultTab="compliance"/>,
+  '/backoffice/accounting/ap': () => <PageAccounting defaultTab="ap"/>,
+  '/backoffice/accounting/ar': () => <PageAccounting defaultTab="ar"/>,
+  '/backoffice/accounting/cashflow': () => <PageAccounting defaultTab="cashflow"/>,
   // Legacy aliases
   '/admin': () => <PageAdminDash/>,
   '/admin/pnl': () => <PagePnLDashboard/>,

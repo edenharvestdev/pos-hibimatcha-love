@@ -1872,6 +1872,11 @@ export const PagePayment = () => {
   const [cash, setCash] = useState(0);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
+  // Split Payment states
+  const [splitEnabled, setSplitEnabled] = useState(false);
+  const [splitPayments, setSplitPayments] = useState([]);
+  const [splitAmount, setSplitAmount] = useState(0);
+
   const hash = location.hash.replace(/^#/, '');
   const qs = hash.includes('?') ? hash.split('?')[1] : '';
   const orderId = new URLSearchParams(qs).get('orderId');
@@ -1882,39 +1887,23 @@ export const PagePayment = () => {
   );
   const { data: methods = [] } = trpc.payments.listMethods.useQuery({ activeOnly: true }, { staleTime: 5000, refetchOnWindowFocus: true });
   const networkPrintReceipt = trpc.printing.autoPrintOnPaid.useMutation();
-  const addPayment = trpc.orders.addPayment.useMutation({
-    onSuccess: async () => {
-      const auto = getAutomation();
-      const selected = methods.find((x) => x.code === method);
-      const sess = getSession();
-      const branchId = sess?.currentBranchId || 1;
-      try {
-        // Network print receipt + cash drawer via backend TCP
-        if (auto.autoPrintReceipt || (auto.autoOpenCashDrawer && selected?.type === 'cash')) {
-          networkPrintReceipt.mutate({
-            orderId: Number(orderId),
-            branchId,
-            openDrawer: !!(auto.autoOpenCashDrawer && selected?.type === 'cash'),
-          });
-        }
-      } catch (err) {
-        console.warn('Network auto-print failed:', err);
-      }
-      // Invalidate inventory/stock queries so other pages see updated stock immediately
-      queryClient.invalidateQueries({ queryKey: [['inventory']] });
-      queryClient.invalidateQueries({ queryKey: [['orders']] });
-      navigate(`/pos/receipt?orderId=${orderId}`);
-    },
-    onError: (e) => alert(e.message),
-  });
+  const addPayment = trpc.orders.addPayment.useMutation();
 
   const total = Number(order?.totalAmount ?? 0);
+  const splitTotalPaid = splitPayments.reduce((acc, curr) => acc + curr.amount, 0);
+  const splitRemaining = Math.max(0, total - splitTotalPaid);
 
   useEffect(() => {
     setPaymentSuccess(false);
-  }, [method]);
+    if (splitEnabled) {
+      setSplitAmount(splitRemaining);
+    }
+  }, [method, splitEnabled, splitPayments]);
 
   const isConfirmDisabled = (() => {
+    if (splitEnabled) {
+      return splitTotalPaid < total || addPayment.isPending;
+    }
     if (!method || !orderId || addPayment.isPending) return true;
     const m = methods.find((x) => x.code === method);
     if (!m) return true;
@@ -1927,36 +1916,73 @@ export const PagePayment = () => {
     return false;
   })();
 
-  const confirmPayment = () => {
-    if (!method) { alert('Select a payment method'); return; }
+  const confirmPayment = async () => {
     if (!orderId) { alert('No order selected'); return; }
-    const m = methods.find((x) => x.code === method);
-    if (!m) { alert('Payment method not found'); return; }
-
-    if (m.type === 'qr') {
-      if (!paymentSuccess) {
-        alert('Please scan the QR code and complete the payment first.');
-        return;
-      }
-      navigate(`/pos/receipt?orderId=${orderId}`);
-      return;
-    }
-
-    // Build the reference string for traceability across method types
-    let ref;
-    if (m.type === 'cash') ref = `Cash received: ฿${cash || total}`;
-    else if (m.type === 'card') ref = `EDC approval: pending`;
-    else if (m.type === 'transfer') ref = `Bank ref: pending`;
-    else if (m.type === 'voucher') ref = `Voucher code: pending`;
     const auto = getAutomation();
-    addPayment.mutate({
-      orderId: Number(orderId),
-      paymentMethodId: m.id,
-      amount: String(total),
-      reference: ref,
-      autoComplete: auto.autoCompleteOrderOnPayment,
-      autoSyncSheet: auto.autoGoogleSheetSync,
-    });
+    const sess = getSession();
+    const branchId = sess?.currentBranchId || 1;
+
+    try {
+      if (splitEnabled) {
+        // Sequentially execute all payment transactions
+        for (let i = 0; i < splitPayments.length; i++) {
+          const isLast = i === splitPayments.length - 1;
+          const p = splitPayments[i];
+          await addPayment.mutateAsync({
+            orderId: Number(orderId),
+            paymentMethodId: p.methodId,
+            amount: String(p.amount),
+            reference: p.reference,
+            autoComplete: isLast ? auto.autoCompleteOrderOnPayment : false,
+            autoSyncSheet: isLast ? auto.autoGoogleSheetSync : false,
+          });
+        }
+      } else {
+        const m = methods.find((x) => x.code === method);
+        if (!m) { alert('Select a payment method'); return; }
+        if (m.type === 'qr' && !paymentSuccess) {
+          alert('Please scan the QR code and complete the payment first.');
+          return;
+        }
+
+        let ref;
+        if (m.type === 'cash') ref = `Cash received: ฿${cash || total}`;
+        else if (m.type === 'card') ref = `EDC approval: pending`;
+        else if (m.type === 'transfer') ref = `Bank ref: pending`;
+        else if (m.type === 'voucher') ref = `Voucher code: pending`;
+
+        await addPayment.mutateAsync({
+          orderId: Number(orderId),
+          paymentMethodId: m.id,
+          amount: String(total),
+          reference: ref,
+          autoComplete: auto.autoCompleteOrderOnPayment,
+          autoSyncSheet: auto.autoGoogleSheetSync,
+        });
+      }
+
+      // Network auto-print / open drawer trigger
+      try {
+        const lastSelected = splitEnabled
+          ? methods.find((x) => x.id === splitPayments[splitPayments.length - 1]?.methodId)
+          : methods.find((x) => x.code === method);
+        if (auto.autoPrintReceipt || (auto.autoOpenCashDrawer && lastSelected?.type === 'cash')) {
+          networkPrintReceipt.mutate({
+            orderId: Number(orderId),
+            branchId,
+            openDrawer: !!(auto.autoOpenCashDrawer && lastSelected?.type === 'cash'),
+          });
+        }
+      } catch (err) {
+        console.warn('Network auto-print failed:', err);
+      }
+
+      queryClient.invalidateQueries({ queryKey: [['inventory']] });
+      queryClient.invalidateQueries({ queryKey: [['orders']] });
+      navigate(`/pos/receipt?orderId=${orderId}`);
+    } catch (e) {
+      alert(e.message);
+    }
   };
 
   return (
@@ -1980,150 +2006,259 @@ export const PagePayment = () => {
         <div className="muted" style={{ marginTop: 6 }}>{order?.items?.length ?? 0} items · ฿{Number(order?.subtotal ?? 0).toLocaleString()} subtotal · ฿{Number(order?.taxAmount ?? 0).toLocaleString()} tax</div>
       </div>
 
-      {/* Methods */}
-      {/* Group payment methods by type */}
-      {['cash', 'qr', 'card', 'transfer', 'voucher'].map((groupType) => {
-        const groupMethods = methods.filter((m) => m.type === groupType && m.isActive !== false);
-        if (groupMethods.length === 0) return null;
-        const groupLabel = { cash: '💵 Cash', qr: '📱 QR Code', card: '💳 Card (EDC)', transfer: '🏦 Bank Transfer', voucher: '🎟️ Voucher' }[groupType] || groupType;
-        return (
-          <div key={groupType} style={{ marginBottom: 14 }}>
-            <div className="t-caption" style={{ marginBottom: 8 }}>{groupLabel}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }} className="pay-methods">
-              {groupMethods.map((m) => {
-                const I = m.type === 'cash' ? IconCoin : m.type === 'qr' ? IconQR : m.type === 'card' ? IconWallet : IconWallet;
-                const active = method === m.code;
-                return (
-                  <button key={m.id} onClick={() => setMethod(m.code)} style={{
-                    padding: 14,
-                    background: active ? 'var(--matcha-50)' : 'var(--bg-surface)',
-                    border: '1.5px solid ' + (active ? 'var(--matcha-600)' : 'var(--border-default)'),
-                    borderRadius: 'var(--r-md)',
-                    textAlign: 'left',
-                    transition: 'all 240ms var(--ease-out-expo)',
-                    boxShadow: active ? 'var(--glow-soft)' : 'none',
-                  }}>
-                    <I size={22} style={{ color: active ? 'var(--matcha-700)' : 'var(--text-secondary)' }}/>
-                    <div style={{ marginTop: 8, fontSize: 14, fontWeight: 600 }}>{m.name}</div>
-                    {m.nameThai && <div className="muted" style={{ fontSize: 11 }}>{m.nameThai}</div>}
-                    {Number(m.feePercentage ?? 0) > 0 && <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>Fee {m.feePercentage}%</div>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-      {methods.length === 0 && (
-        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', marginBottom: 16 }}>
-          No payment methods configured. Add some in Backoffice → Payments.
+      {/* Split payment toggle */}
+      <div className="card" style={{ padding: 16, marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontWeight: 600 }}>ชำระเงินแบบแยกจ่าย (Split Payment)</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>รองรับการจ่ายเงินแยกยอดตามวิธีต่าง ๆ เช่น เงินสดร่วมกับการโอนสแกน QR</div>
         </div>
+        <Toggle checked={splitEnabled} onChange={(v) => {
+          setSplitEnabled(v);
+          setSplitPayments([]);
+          setMethod(null);
+        }}/>
+      </div>
+
+      {splitEnabled && (
+        <>
+          <div className="card" style={{ padding: 20, marginBottom: 20 }}>
+            <div className="t-h4" style={{ fontWeight: 600, marginBottom: 12 }}>เพิ่มรายการยอดแบ่งจ่าย (Add Split Slot)</div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>เลือกประเภทการชำระ</label>
+                <select value={method || ''} onChange={e => setMethod(e.target.value || null)} className="input">
+                  <option value="">เลือกวิธีชำระ...</option>
+                  {methods.map(m => (
+                    <option key={m.id} value={m.code}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>จำนวนเงิน (฿)</label>
+                <input 
+                  type="number" 
+                  value={splitAmount || ''} 
+                  onChange={e => setSplitAmount(Number(e.target.value))} 
+                  className="input"
+                />
+              </div>
+            </div>
+            
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => {
+                if (!method) { alert("กรุณาเลือกช่องทางชำระเงิน"); return; }
+                const sel = methods.find(x => x.code === method);
+                if (splitAmount <= 0) { alert("จำนวนเงินต้องมากกว่า 0"); return; }
+                if (splitAmount > splitRemaining) { alert("กรอกยอดเกินจำนวนเงินที่เหลืออยู่"); return; }
+                
+                setSplitPayments([
+                  ...splitPayments,
+                  {
+                    methodId: sel.id,
+                    code: sel.code,
+                    name: sel.name,
+                    amount: splitAmount,
+                    reference: `Split payment: ${sel.name} - ฿${splitAmount}`
+                  }
+                ]);
+                setMethod(null);
+              }}
+              disabled={splitRemaining <= 0}
+            >
+              ➕ บันทึกส่วนแบ่งจ่าย
+            </button>
+          </div>
+
+          {splitPayments.length > 0 && (
+            <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+              <div style={{ fontWeight: 600, marginBottom: 10 }}>รายการยอดชำระที่สะสม ({splitPayments.length})</div>
+              {splitPayments.map((p, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-muted)', marginBottom: 6, borderRadius: 6, alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{p.name}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <span style={{ fontWeight: 700 }} className="tabular">฿{p.amount.toLocaleString()}</span>
+                    <button 
+                      className="btn btn-ghost btn-sm" 
+                      style={{ color: '#ef4444', padding: 4 }}
+                      onClick={() => setSplitPayments(splitPayments.filter((_, i) => i !== idx))}
+                    >
+                      ลบ
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, borderTop: '1px solid var(--border-default)', paddingTop: 10, fontWeight: 700 }}>
+                <span>รวมยอดชำระแล้ว</span>
+                <span className="tabular">฿{splitTotalPaid.toLocaleString()} / ฿{total.toLocaleString()}</span>
+              </div>
+              {splitRemaining > 0 ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, color: 'var(--danger)', fontSize: 13 }}>
+                  <span>ยอดเงินค้างชำระ</span>
+                  <span className="tabular">ยังขาดอีก ฿{splitRemaining.toLocaleString()}</span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, color: 'var(--matcha-700)', fontSize: 13, fontWeight: 600 }}>
+                  <span>ครบยอดชำระแล้ว</span>
+                  <span>พร้อมสำหรับการยืนยัน</span>
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Method config — match by type */}
-      {(() => {
-        const sel = methods.find((m) => m.code === method);
-        const type = sel?.type;
-        return <>
-          {type === 'cash' && (
-            <div className="card anim-fade" style={{ padding: 24 }}>
-              <div className="t-h4" style={{ fontWeight: 600, marginBottom: 14 }}>รับเงินสด (Cash Received)</div>
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '16px 20px', marginBottom: 16,
-                background: 'var(--bg-muted)', borderRadius: 'var(--r-default)',
-              }}>
-                <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>จำนวนเงินที่รับ (Amount received)</span>
-                <span className="tabular" style={{ fontSize: 28, fontWeight: 600, color: 'var(--matcha-700)' }}>฿{Number(cash || 0).toLocaleString()}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="cash-layout">
-                <div>
-                  <Numpad
-                    value={String(cash || '')}
-                    onChange={(v) => setCash(v ? Number(v) : 0)}
-                    quickValues={[100, 500, 1000, total]}
-                    onQuickPick={(v) => setCash(Number(v))}
-                  />
+      {!splitEnabled && (
+        <>
+          {/* Methods */}
+          {/* Group payment methods by type */}
+          {['cash', 'qr', 'card', 'transfer', 'voucher'].map((groupType) => {
+            const groupMethods = methods.filter((m) => m.type === groupType && m.isActive !== false);
+            if (groupMethods.length === 0) return null;
+            const groupLabel = { cash: '💵 Cash', qr: '📱 QR Code', card: '💳 Card (EDC)', transfer: '🏦 Bank Transfer', voucher: '🎟️ Voucher' }[groupType] || groupType;
+            return (
+              <div key={groupType} style={{ marginBottom: 14 }}>
+                <div className="t-caption" style={{ marginBottom: 8 }}>{groupLabel}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }} className="pay-methods">
+                  {groupMethods.map((m) => {
+                    const I = m.type === 'cash' ? IconCoin : m.type === 'qr' ? IconQR : m.type === 'card' ? IconWallet : IconWallet;
+                    const active = method === m.code;
+                    return (
+                      <button key={m.id} onClick={() => setMethod(m.code)} style={{
+                        padding: 14,
+                        background: active ? 'var(--matcha-50)' : 'var(--bg-surface)',
+                        border: '1.5px solid ' + (active ? 'var(--matcha-600)' : 'var(--border-default)'),
+                        borderRadius: 'var(--r-md)',
+                        textAlign: 'left',
+                        transition: 'all 240ms var(--ease-out-expo)',
+                        boxShadow: active ? 'var(--glow-soft)' : 'none',
+                      }}>
+                        <I size={22} style={{ color: active ? 'var(--matcha-700)' : 'var(--text-secondary)' }}/>
+                        <div style={{ marginTop: 8, fontSize: 14, fontWeight: 600 }}>{m.name}</div>
+                        {m.nameThai && <div className="muted" style={{ fontSize: 11 }}>{m.nameThai}</div>}
+                        {Number(m.feePercentage ?? 0) > 0 && <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>Fee {m.feePercentage}%</div>}
+                      </button>
+                    );
+                  })}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
-                  <div style={{ padding: 16, background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--r-default)' }}>
-                    <div className="muted" style={{ fontSize: 12 }}>ยอดที่ต้องชำระ (Order total)</div>
-                    <div className="tabular" style={{ fontSize: 22, fontWeight: 600 }}>฿{total.toLocaleString()}</div>
-                  </div>
+              </div>
+            );
+          })}
+          {methods.length === 0 && (
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', marginBottom: 16 }}>
+              No payment methods configured. Add some in Backoffice → Payments.
+            </div>
+          )}
+
+          {/* Method config — match by type */}
+          {(() => {
+            const sel = methods.find((m) => m.code === method);
+            const type = sel?.type;
+            return <>
+              {type === 'cash' && (
+                <div className="card anim-fade" style={{ padding: 24 }}>
+                  <div className="t-h4" style={{ fontWeight: 600, marginBottom: 14 }}>รับเงินสด (Cash Received)</div>
                   <div style={{
-                    padding: 18, borderRadius: 'var(--r-default)',
-                    background: (cash >= total) ? 'var(--matcha-50)' : 'rgba(239,68,68,0.06)',
-                    border: '1.5px solid ' + ((cash >= total) ? 'var(--matcha-500)' : 'rgba(239,68,68,0.2)'),
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '16px 20px', marginBottom: 16,
+                    background: 'var(--bg-muted)', borderRadius: 'var(--r-default)',
                   }}>
-                    <div style={{ fontSize: 12, color: cash >= total ? 'var(--matcha-700)' : 'var(--danger)', fontWeight: 500 }}>
-                      {cash >= total ? 'เงินทอน (Change due)' : 'ยังขาดอีก (Still needed)'}
+                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>จำนวนเงินที่รับ (Amount received)</span>
+                    <span className="tabular" style={{ fontSize: 28, fontWeight: 600, color: 'var(--matcha-700)' }}>฿{Number(cash || 0).toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="cash-layout">
+                    <div>
+                      <Numpad
+                        value={String(cash || '')}
+                        onChange={(v) => setCash(v ? Number(v) : 0)}
+                        quickValues={[100, 500, 1000, total]}
+                        onQuickPick={(v) => setCash(Number(v))}
+                      />
                     </div>
-                    <div className="tabular" style={{ fontSize: 32, fontWeight: 700, color: cash >= total ? 'var(--matcha-700)' : 'var(--danger)' }}>
-                      ฿{Math.max(0, cash >= total ? cash - total : total - cash).toLocaleString()}
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
+                      <div style={{ padding: 16, background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--r-default)' }}>
+                        <div className="muted" style={{ fontSize: 12 }}>ยอดที่ต้องชำระ (Order total)</div>
+                        <div className="tabular" style={{ fontSize: 22, fontWeight: 600 }}>฿{total.toLocaleString()}</div>
+                      </div>
+                      <div style={{
+                        padding: 18, borderRadius: 'var(--r-default)',
+                        background: (cash >= total) ? 'var(--matcha-50)' : 'rgba(239,68,68,0.06)',
+                        border: '1.5px solid ' + ((cash >= total) ? 'var(--matcha-500)' : 'rgba(239,68,68,0.2)'),
+                      }}>
+                        <div style={{ fontSize: 12, color: cash >= total ? 'var(--matcha-700)' : 'var(--danger)', fontWeight: 500 }}>
+                          {cash >= total ? 'เงินทอน (Change due)' : 'ยังขาดอีก (Still needed)'}
+                        </div>
+                        <div className="tabular" style={{ fontSize: 32, fontWeight: 700, color: cash >= total ? 'var(--matcha-700)' : 'var(--danger)' }}>
+                          ฿{Math.max(0, cash >= total ? cash - total : total - cash).toLocaleString()}
+                        </div>
+                      </div>
                     </div>
                   </div>
+                  <style>{`@media (max-width: 700px) { .cash-layout { grid-template-columns: 1fr !important; } }`}</style>
                 </div>
-              </div>
-              <style>{`@media (max-width: 700px) { .cash-layout { grid-template-columns: 1fr !important; } }`}</style>
-            </div>
-          )}
-          {type === 'qr' && (
-            <QRPaymentSection
-              orderId={Number(orderId)}
-              total={total}
-              methodName={sel.name}
-              paymentSuccess={paymentSuccess}
-              setPaymentSuccess={setPaymentSuccess}
-            />
-          )}
-          {type === 'card' && (
-            <div className="card anim-fade" style={{ padding: 24 }}>
-              <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>EDC Terminal · {sel.name}</div>
-              <div style={{ padding: 20, background: 'var(--matcha-50)', borderRadius: 'var(--r-md)', textAlign: 'center', marginBottom: 16 }}>
-                <IconWallet size={40} style={{ color: 'var(--matcha-700)' }}/>
-                <div style={{ marginTop: 12, fontWeight: 600 }}>Swipe / Insert / Tap card on EDC machine</div>
-                <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Amount: ฿{total.toLocaleString()}{Number(sel.feePercentage ?? 0) > 0 && ` (+${sel.feePercentage}% fee = ฿${(total * Number(sel.feePercentage) / 100).toFixed(2)})`}</div>
-              </div>
-              <div className="t-caption" style={{ marginBottom: 8 }}>Issuing bank</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10 }}>
-                {['SCB', 'Kbank', 'Bangkok', 'Krungsri', 'TTB', 'Krungthai', 'CIMB', 'UOB'].map((b, i) => (
-                  <button key={b} className="card" style={{ padding: 12, textAlign: 'center', fontWeight: 500, fontSize: 13 }}>
-                    <div style={{ width: 30, height: 30, margin: '0 auto 6px', borderRadius: 6, background: `oklch(70% 0.12 ${i * 45})`, display: 'grid', placeItems: 'center', color: 'white', fontWeight: 700, fontSize: 14 }}>{b[0]}</div>
-                    {b}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {type === 'transfer' && (
-            <div className="card anim-fade" style={{ padding: 24 }}>
-              <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>Bank Transfer</div>
-              <div style={{ padding: 14, background: 'var(--bg-muted)', borderRadius: 'var(--r-default)' }}>
-                <div className="mono" style={{ fontSize: 13, lineHeight: 1.7 }}>
-                  <div><strong>Bank:</strong> SCB</div>
-                  <div><strong>Account:</strong> 123-4-56789-0</div>
-                  <div><strong>Name:</strong> Hibi Matcha Co., Ltd.</div>
-                  <div><strong>Amount:</strong> ฿{total.toLocaleString()}</div>
+              )}
+              {type === 'qr' && (
+                <QRPaymentSection
+                  orderId={Number(orderId)}
+                  total={total}
+                  methodName={sel.name}
+                  paymentSuccess={paymentSuccess}
+                  setPaymentSuccess={setPaymentSuccess}
+                />
+              )}
+              {type === 'card' && (
+                <div className="card anim-fade" style={{ padding: 24 }}>
+                  <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>EDC Terminal · {sel.name}</div>
+                  <div style={{ padding: 20, background: 'var(--matcha-50)', borderRadius: 'var(--r-md)', textAlign: 'center', marginBottom: 16 }}>
+                    <IconWallet size={40} style={{ color: 'var(--matcha-700)' }}/>
+                    <div style={{ marginTop: 12, fontWeight: 600 }}>Swipe / Insert / Tap card on EDC machine</div>
+                    <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Amount: ฿{total.toLocaleString()}{Number(sel.feePercentage ?? 0) > 0 && ` (+${sel.feePercentage}% fee = ฿${(total * Number(sel.feePercentage) / 100).toFixed(2)})`}</div>
+                  </div>
+                  <div className="t-caption" style={{ marginBottom: 8 }}>Issuing bank</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10 }}>
+                    {['SCB', 'Kbank', 'Bangkok', 'Krungsri', 'TTB', 'Krungthai', 'CIMB', 'UOB'].map((b, i) => (
+                      <button key={b} className="card" style={{ padding: 12, textAlign: 'center', fontWeight: 500, fontSize: 13 }}>
+                        <div style={{ width: 30, height: 30, margin: '0 auto 6px', borderRadius: 6, background: `oklch(70% 0.12 ${i * 45})`, display: 'grid', placeItems: 'center', color: 'white', fontWeight: 700, fontSize: 14 }}>{b[0]}</div>
+                        {b}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div style={{ marginTop: 14 }}>
-                <Field label="Transfer reference / slip number">
-                  <input className="input" placeholder="Last 4 digits of slip or ref number"/>
-                </Field>
-              </div>
-            </div>
-          )}
-          {type === 'voucher' && (
-            <div className="card anim-fade" style={{ padding: 24 }}>
-              <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>{sel.name}</div>
-              <Field label="Voucher code" required>
-                <input className="input" placeholder="Enter voucher code or scan QR"/>
-              </Field>
-              <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>The voucher's value will be deducted from the total. If voucher value is greater, remaining will need another payment.</div>
-            </div>
-          )}
-        </>;
-      })()}
+              )}
+              {type === 'transfer' && (
+                <div className="card anim-fade" style={{ padding: 24 }}>
+                  <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>Bank Transfer</div>
+                  <div style={{ padding: 14, background: 'var(--bg-muted)', borderRadius: 'var(--r-default)' }}>
+                    <div className="mono" style={{ fontSize: 13, lineHeight: 1.7 }}>
+                      <div><strong>Bank:</strong> SCB</div>
+                      <div><strong>Account:</strong> 123-4-56789-0</div>
+                      <div><strong>Name:</strong> Hibi Matcha Co., Ltd.</div>
+                      <div><strong>Amount:</strong> ฿{total.toLocaleString()}</div>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 14 }}>
+                    <Field label="Transfer reference / slip number">
+                      <input className="input" placeholder="Last 4 digits of slip or ref number"/>
+                    </Field>
+                  </div>
+                </div>
+              )}
+              {type === 'voucher' && (
+                <div className="card anim-fade" style={{ padding: 24 }}>
+                  <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>{sel.name}</div>
+                  <Field label="Voucher code" required>
+                    <input className="input" placeholder="Enter voucher code or scan QR"/>
+                  </Field>
+                  <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>The voucher's value will be deducted from the total. If voucher value is greater, remaining will need another payment.</div>
+                </div>
+              )}
+            </>;
+          })()}
+        </>
+      )}
 
       {/* Bottom bar */}
       <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
@@ -2669,6 +2804,22 @@ export const PageOrders = () => {
   const totalOrders = data?.total ?? 0;
   const bulkSyncMut = trpc.orders.bulkSyncToSheet.useMutation();
   const getPrintPayload = trpc.orders.getPrintPayload.useMutation();
+  const updateStatusMut = trpc.orders.updateStatus.useMutation({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [['orders']] });
+      alert("อัปเดตสถานะออเดอร์สำเร็จ");
+      setOpenOrderId(null);
+    },
+    onError: (err) => {
+      alert("ผิดพลาด: " + err.message);
+    }
+  });
+
+  const handleVoidRefund = (id) => {
+    const reason = prompt("ระบุเหตุผลการยกเลิก/คืนเงิน (Reason for Void/Refund):");
+    if (reason === null) return;
+    updateStatusMut.mutate({ id, status: "cancelled", notes: reason });
+  };
 
   const handlePrint = async (orderId, type = 'receipt') => {
     try {
@@ -2853,17 +3004,30 @@ export const PageOrders = () => {
         title={openOrder ? openOrder.orderNumber : 'Order'}
         width={560}
         footer={openOrder && (
-          <div style={{ display: 'flex', gap: 12, width: '100%' }}>
-            <button
-              className="btn btn-primary"
-              style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-              onClick={() => handlePrint(openOrder.id, 'receipt')}
-              disabled={getPrintPayload.isPending}
-            >
-              <IconPrint size={16}/> {getPrintPayload.isPending ? 'กำลังพิมพ์...' : 'พิมพ์ใบเสร็จย้อนหลัง (Reprint Receipt)'}
-            </button>
+          <div style={{ display: 'flex', gap: 12, width: '100%', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', gap: 12, width: '100%' }}>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                onClick={() => handlePrint(openOrder.id, 'receipt')}
+                disabled={getPrintPayload.isPending}
+              >
+                <IconPrint size={16}/> {getPrintPayload.isPending ? 'กำลังพิมพ์...' : 'พิมพ์ใบเสร็จย้อนหลัง (Reprint Receipt)'}
+              </button>
+              {openOrder.status !== 'cancelled' && openOrder.status !== 'refunded' && (
+                <button
+                  className="btn"
+                  style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' }}
+                  onClick={() => handleVoidRefund(openOrder.id)}
+                  disabled={updateStatusMut.isPending}
+                >
+                  Void / Refund
+                </button>
+              )}
+            </div>
             <button
               className="btn btn-secondary"
+              style={{ width: '100%' }}
               onClick={() => setOpenOrderId(null)}
             >
               ปิด (Close)

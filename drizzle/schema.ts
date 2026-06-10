@@ -57,7 +57,7 @@ export const branches = mysqlTable("branches", {
   openingDate: date("openingDate"),
   contractStartDate: date("contractStartDate"),
   contractEndDate: date("contractEndDate"),
-  royaltyType: mysqlEnum("royaltyType", ["percentage", "fixed", "none"]).default("none"),
+  royaltyType: mysqlEnum("royaltyType", ["percentage", "fixed", "hybrid", "none"]).default("none"),
   royaltyValue: decimal("royaltyValue", { precision: 10, scale: 2 }),
 
   accessCode: varchar("accessCode", { length: 20 }),
@@ -99,7 +99,7 @@ export const staff = mysqlTable("staff", {
   passwordHash: varchar("passwordHash", { length: 255 }),
   pinHash: varchar("pinHash", { length: 255 }),
 
-  role: mysqlEnum("role", ["super_admin", "staff_admin", "staff"]).default("staff"),
+  role: mysqlEnum("role", ["super_admin", "staff_admin", "staff", "owner", "hq_admin", "branch_admin", "manager", "cashier"]).default("staff"),
   primaryBranchId: int("primaryBranchId"),
 
   employmentType: mysqlEnum("employmentType", ["full-time", "part-time", "contract"]).default("full-time"),
@@ -381,6 +381,17 @@ export const posOrderPayments = mysqlTable("pos_order_payments", {
   status: mysqlEnum("status", ["pending", "completed", "failed", "refunded"]).default("completed"),
   paidAt: timestamp("paidAt").defaultNow(),
   createdAt: timestamp("createdAt").defaultNow(),
+
+  // Slip & QR verification columns
+  qrPayload: text("qrPayload"),
+  qrGeneratedAmount: decimal("qrGeneratedAmount", { precision: 10, scale: 2 }),
+  slipImageUrl: text("slipImageUrl"),
+  bankReference: varchar("bankReference", { length: 100 }),
+  payerName: varchar("payerName", { length: 100 }),
+  transferTime: timestamp("transferTime"),
+  verificationStatus: mysqlEnum("verificationStatus", ["not_required", "pending", "verified", "rejected", "manual_review"]).default("not_required"),
+  verifiedBy: int("verifiedBy"),
+  verifiedAt: timestamp("verifiedAt"),
 });
 export type PosOrderPayment = typeof posOrderPayments.$inferSelect;
 
@@ -837,7 +848,7 @@ export type PosRequisitionItem = typeof posRequisitionItems.$inferSelect;
 // ─── Export Documents (ใบเสร็จรับเงิน/ใบกำกับภาษี + ใบขนส่งสินค้า) ──────────
 export const posExportDocuments = mysqlTable("pos_export_documents", {
   id: int("id").autoincrement().primaryKey(),
-  docType: mysqlEnum("docType", ["receipt_tax_invoice", "shipping_note", "pos_receipt"]).notNull(),
+  docType: mysqlEnum("docType", ["receipt_tax_invoice", "shipping_note", "pos_receipt", "sales_receipt", "full_tax_invoice", "credit_note", "debit_note", "delivery_note", "billing_statement", "quotation", "purchase_order", "goods_receipt", "transfer_document"]).notNull(),
   documentNumber: varchar("documentNumber", { length: 50 }).notNull(),
   branchId: int("branchId"),
   customerName: varchar("customerName", { length: 300 }),
@@ -1055,4 +1066,254 @@ export const supplierPaymentInstallments = mysqlTable("supplier_payment_installm
   notes: text("notes"),
 });
 export type SupplierPaymentInstallment = typeof supplierPaymentInstallments.$inferSelect;
+
+// ─── Batch Production (Volume 10) ─────────────────────────────────────────────
+export const posBatchProductions = mysqlTable("pos_batch_productions", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").notNull(),
+  inventoryItemId: int("inventoryItemId").notNull(), // Target house-made inventory item (e.g. Matcha Base, Syrup)
+  batchNumber: varchar("batchNumber", { length: 100 }).notNull(),
+  plannedQty: decimal("plannedQty", { precision: 10, scale: 3 }).notNull(),
+  actualQty: decimal("actualQty", { precision: 10, scale: 3 }),
+  status: mysqlEnum("status", ["draft", "in_production", "completed", "cancelled"]).default("draft").notNull(),
+  notes: text("notes"),
+  manufactureDate: date("manufactureDate"),
+  expiryDate: date("expiryDate"),
+  createdByStaffId: int("createdByStaffId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type PosBatchProduction = typeof posBatchProductions.$inferSelect;
+export type InsertPosBatchProduction = typeof posBatchProductions.$inferInsert;
+
+export const posBatchProductionIngredients = mysqlTable("pos_batch_production_ingredients", {
+  id: int("id").autoincrement().primaryKey(),
+  batchProductionId: int("batchProductionId").notNull(),
+  inventoryItemId: int("inventoryItemId").notNull(), // Ingredient consumed
+  plannedQty: decimal("plannedQty", { precision: 10, scale: 3 }).notNull(),
+  actualQty: decimal("actualQty", { precision: 10, scale: 3 }).notNull(),
+  unitOfMeasure: varchar("unitOfMeasure", { length: 20 }),
+});
+export type PosBatchProductionIngredient = typeof posBatchProductionIngredients.$inferSelect;
+export type InsertPosBatchProductionIngredient = typeof posBatchProductionIngredients.$inferInsert;
+
+
+// ─── Dynamic Payment Methods ──────────────────────────────────────────────────
+export const masterPaymentMethods = mysqlTable("master_payment_methods", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 50 }).unique().notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  nameThai: varchar("nameThai", { length: 100 }),
+  type: varchar("type", { length: 50 }).notNull(), // cash, card, transfer, qr, voucher, loyalty, credit, billing, etc.
+  iconName: varchar("iconName", { length: 50 }),
+  feePercentage: decimal("feePercentage", { precision: 5, scale: 2 }).default("0"),
+  feeFixed: decimal("feeFixed", { precision: 10, scale: 2 }).default("0"),
+  surchargePercentage: decimal("surchargePercentage", { precision: 5, scale: 2 }).default("0"),
+  surchargeFixed: decimal("surchargeFixed", { precision: 10, scale: 2 }).default("0"),
+  settlementDays: int("settlementDays").default(0),
+  isActive: boolean("isActive").default(true),
+
+  // New role availability, requirements and tags
+  roleAvailability: json("roleAvailability").$type<string[]>(), // allowed roles: ["cashier", "manager", "branch_admin", "super_admin"]
+  requiresManagerPin: boolean("requiresManagerPin").default(false),
+  requiresSlipUpload: boolean("requiresSlipUpload").default(false),
+  requiresReference: boolean("requiresReference").default(false),
+  requiresSettlement: boolean("requiresSettlement").default(false),
+  feeType: mysqlEnum("feeType", ["none", "fixed", "percentage"]).default("none"),
+  feeAmount: decimal("feeAmount", { precision: 10, scale: 2 }).default("0.00"),
+  providerName: varchar("providerName", { length: 100 }),
+  externalAccountId: varchar("externalAccountId", { length: 100 }),
+  displayOrder: int("displayOrder").default(0),
+  color: varchar("color", { length: 50 }),
+  isDeliveryPlatform: boolean("isDeliveryPlatform").default(false),
+  isCashEquivalent: boolean("isCashEquivalent").default(false),
+  isCreditAccount: boolean("isCreditAccount").default(false),
+
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+
+export const branchPaymentMethods = mysqlTable("branch_payment_methods", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").notNull(),
+  paymentMethodId: int("paymentMethodId").notNull(),
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("createdAt").defaultNow(),
+}, (t) => [unique("uniq_branch_payment").on(t.branchId, t.paymentMethodId)]);
+
+// ─── Refund System ────────────────────────────────────────────────────────────
+export const posRefunds = mysqlTable("pos_refunds", {
+  id: int("id").autoincrement().primaryKey(),
+  orderId: int("orderId").notNull(),
+  refundNumber: varchar("refundNumber", { length: 50 }).unique().notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  reason: text("reason").notNull(),
+  paymentMethodId: int("paymentMethodId"),
+  status: mysqlEnum("status", ["requested", "approved", "rejected", "refunded"]).default("requested").notNull(),
+  approvedByStaffId: int("approvedByStaffId"),
+  approvedAt: timestamp("approvedAt"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+
+// ─── Master Dropdowns ──────────────────────────────────────────────────────────
+export const masterDropdowns = mysqlTable("master_dropdowns", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  nameThai: varchar("nameThai", { length: 100 }),
+  code: varchar("code", { length: 50 }).unique().notNull(),
+  isArchived: boolean("isArchived").default(false),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+export const masterDropdownOptions = mysqlTable("master_dropdown_options", {
+  id: int("id").autoincrement().primaryKey(),
+  dropdownId: int("dropdownId").notNull(),
+  value: varchar("value", { length: 100 }).notNull(),
+  labelTh: varchar("labelTh", { length: 100 }),
+  labelEn: varchar("labelEn", { length: 100 }),
+  isArchived: boolean("isArchived").default(false),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+// ─── Waste Management ──────────────────────────────────────────────────────────
+export const posWasteRecords = mysqlTable("pos_waste_records", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").notNull(),
+  inventoryItemId: int("inventoryItemId").notNull(),
+  category: mysqlEnum("category", ["expired", "damaged", "spill", "training", "sampling", "unknown"]).notNull(),
+  quantity: decimal("quantity", { precision: 10, scale: 3 }).notNull(),
+  costPerUnit: decimal("costPerUnit", { precision: 10, scale: 4 }).notNull(),
+  totalCost: decimal("totalCost", { precision: 12, scale: 2 }).notNull(),
+  notes: text("notes"),
+  recordedByStaffId: int("recordedByStaffId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+// ─── Physical Count Session ───────────────────────────────────────────────────
+export const posInventoryCountSessions = mysqlTable("pos_inventory_count_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").notNull(),
+  assignedStaffId: int("assignedStaffId").notNull(),
+  status: mysqlEnum("status", ["draft", "in_progress", "variance_review", "completed", "closed"]).default("draft").notNull(),
+  startedAt: timestamp("startedAt").defaultNow(),
+  closedAt: timestamp("closedAt"),
+  approvedByStaffId: int("approvedByStaffId"),
+  approvedAt: timestamp("approvedAt"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+
+export const posInventoryCountSessionItems = mysqlTable("pos_inventory_count_session_items", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("sessionId").notNull(),
+  inventoryItemId: int("inventoryItemId").notNull(),
+  systemQty: decimal("systemQty", { precision: 10, scale: 3 }).notNull(),
+  countedQty: decimal("countedQty", { precision: 10, scale: 3 }),
+  varianceQty: decimal("varianceQty", { precision: 10, scale: 3 }),
+  varianceCost: decimal("varianceCost", { precision: 12, scale: 2 }),
+  status: mysqlEnum("status", ["pending", "reviewed", "approved", "rejected"]).default("pending").notNull(),
+});
+
+// ─── Accounts Receivable ──────────────────────────────────────────────────────
+export const accountsReceivable = mysqlTable("accounts_receivable", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").notNull(),
+  customerId: int("customerId").notNull(),
+  customerType: mysqlEnum("customerType", ["corporate", "franchise"]).default("corporate").notNull(),
+  invoiceNumber: varchar("invoiceNumber", { length: 50 }).unique().notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  outstandingAmount: decimal("outstandingAmount", { precision: 12, scale: 2 }).notNull(),
+  dueDate: date("dueDate").notNull(),
+  status: mysqlEnum("status", ["pending", "due_soon", "overdue", "paid"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+
+// ─── Franchise Royalty & Compliance ───────────────────────────────────────────
+export const franchiseRoyalties = mysqlTable("franchise_royalties", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").notNull(),
+  month: varchar("month", { length: 7 }).notNull(), // YYYY-MM
+  revenue: decimal("revenue", { precision: 12, scale: 2 }).notNull(),
+  royaltyType: mysqlEnum("royaltyType", ["percentage", "fixed", "hybrid"]).notNull(),
+  royaltyRate: decimal("royaltyRate", { precision: 10, scale: 2 }).notNull(),
+  calculatedAmount: decimal("calculatedAmount", { precision: 12, scale: 2 }).notNull(),
+  status: mysqlEnum("status", ["pending", "paid", "overdue"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+}, (t) => [unique("uniq_franchise_royalty_month").on(t.branchId, t.month)]);
+
+export const franchiseComplianceScores = mysqlTable("franchise_compliance_scores", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").notNull(),
+  month: varchar("month", { length: 7 }).notNull(), // YYYY-MM
+  sopCompliance: decimal("sopCompliance", { precision: 5, scale: 2 }).default("100.00"),
+  wasteRate: decimal("wasteRate", { precision: 5, scale: 2 }).default("0.00"),
+  stockCountCompletion: decimal("stockCountCompletion", { precision: 5, scale: 2 }).default("100.00"),
+  expiryCompliance: decimal("expiryCompliance", { precision: 5, scale: 2 }).default("100.00"),
+  revenueCompliance: decimal("revenueCompliance", { precision: 5, scale: 2 }).default("100.00"),
+  overallScore: decimal("overallScore", { precision: 5, scale: 2 }).default("100.00"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+}, (t) => [unique("uniq_franchise_compliance_month").on(t.branchId, t.month)]);
+
+// ─── Document Numbering Configuration ──────────────────────────────────────────
+export const posDocumentSequences = mysqlTable("pos_document_sequences", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").notNull(),
+  docType: varchar("docType", { length: 50 }).notNull(), // receipt_tax_invoice, shipping_note, full_tax_invoice, credit_note, debit_note, delivery_note, billing_statement
+  prefix: varchar("prefix", { length: 20 }).notNull(),
+  includeBranchCode: boolean("includeBranchCode").default(true),
+  includeDate: boolean("includeDate").default(true),
+  currentSequence: int("currentSequence").default(0).notNull(),
+  lastResetDate: date("lastResetDate"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+}, (t) => [unique("uniq_branch_doc_seq").on(t.branchId, t.docType)]);
+
+// ─── Settlement System Ledger ──────────────────────────────────────────────────
+export const posPaymentSettlements = mysqlTable("pos_payment_settlements", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").notNull(),
+  paymentMethodId: int("paymentMethodId").notNull(),
+  orderPaymentId: int("orderPaymentId"),
+  providerName: varchar("providerName", { length: 100 }),
+  grossAmount: decimal("grossAmount", { precision: 12, scale: 2 }).notNull(),
+  feeAmount: decimal("feeAmount", { precision: 12, scale: 2 }).default("0.00"),
+  netAmount: decimal("netAmount", { precision: 12, scale: 2 }).notNull(),
+  expectedSettlementDate: date("expectedSettlementDate"),
+  actualSettlementDate: date("actualSettlementDate"),
+  status: mysqlEnum("status", ["pending", "expected_today", "settled", "short_paid", "over_paid", "disputed"]).default("pending").notNull(),
+  settlementReference: varchar("settlementReference", { length: 100 }),
+  bankAccount: varchar("bankAccount", { length: 100 }),
+  reconciledByStaffId: int("reconciledByStaffId"),
+  reconciledAt: timestamp("reconciledAt"),
+  slipImageUrl: varchar("slipImageUrl", { length: 500 }),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+
+// ─── Cash Closings Upgrade ─────────────────────────────────────────────────────
+export const posCashClosings = mysqlTable("pos_cash_closings", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").notNull(),
+  staffId: int("staffId").notNull(), // cashier who counts
+  openingCash: decimal("openingCash", { precision: 12, scale: 2 }).notNull(),
+  cashSales: decimal("cashSales", { precision: 12, scale: 2 }).default("0.00"),
+  cashRefunds: decimal("cashRefunds", { precision: 12, scale: 2 }).default("0.00"),
+  cashIn: decimal("cashIn", { precision: 12, scale: 2 }).default("0.00"),
+  cashOut: decimal("cashOut", { precision: 12, scale: 2 }).default("0.00"),
+  expectedCash: decimal("expectedCash", { precision: 12, scale: 2 }).notNull(),
+  actualCountedCash: decimal("actualCountedCash", { precision: 12, scale: 2 }).notNull(),
+  variance: decimal("variance", { precision: 12, scale: 2 }).notNull(),
+  varianceReason: mysqlEnum("varianceReason", ["short_change", "counting_mistake", "drawer_mistake", "refund_mistake", "theft_suspected", "other"]),
+  photoUrl: varchar("photoUrl", { length: 500 }),
+  managerApprovedByStaffId: int("managerApprovedByStaffId"),
+  notes: text("notes"),
+  closedAt: timestamp("closedAt").defaultNow(),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+
 

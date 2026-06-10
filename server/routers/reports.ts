@@ -314,7 +314,11 @@ export const reportsRouter = router({
         const netProfit = revenue - expenses;
         const royalty = branch.royaltyType === "percentage"
           ? revenue * (Number(branch.royaltyValue ?? 0) / 100)
-          : Number(branch.royaltyValue ?? 0);
+          : branch.royaltyType === "hybrid"
+          ? (revenue * (Number(branch.royaltyValue ?? 0) / 100)) + 5000
+          : branch.royaltyType === "fixed"
+          ? Number(branch.royaltyValue ?? 0)
+          : 0;
         return {
           branch: { id: branch.id, name: branch.name, branchCode: branch.branchCode, royaltyType: branch.royaltyType, royaltyValue: branch.royaltyValue },
           revenue: Math.round(revenue * 100) / 100,

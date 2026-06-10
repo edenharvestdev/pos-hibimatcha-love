@@ -56,6 +56,7 @@ export const IconBook = (p) => <Icon {...p}><path d="M4 5a2 2 0 0 1 2-2h13v17H6a
 
 // Actions
 export const IconPlus = (p) => <Icon {...p}><path d="M12 5v14M5 12h14"/></Icon>;
+export const IconPlay = (p) => <Icon {...p}><polygon points="5 3 19 12 5 21 5 3"/></Icon>;
 export const IconEdit = (p) => <Icon {...p}><path d="M14 4l6 6L10 20H4v-6z"/><path d="M13 5l6 6"/></Icon>;
 export const IconTrash = (p) => <Icon {...p}><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13a2 2 0 0 0 2 1.8h6a2 2 0 0 0 2-1.8l1-13"/><path d="M10 11v6M14 11v6"/></Icon>;
 export const IconSave = (p) => <Icon {...p}><path d="M5 3h12l4 4v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v6h9V3"/><path d="M7 21v-6h10v6"/></Icon>;

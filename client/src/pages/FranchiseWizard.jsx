@@ -122,11 +122,12 @@ export const PageFranchiseWizard = () => {
                  </div>
                  <div>
                    <label className="text-sm font-medium mb-1 block">ประเภท Royalty</label>
-                   <select className="w-full border rounded px-3 py-2" value={formData.royaltyType} onChange={e => setFormData({...formData, royaltyType: e.target.value})}>
-                      <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">Fixed (THB)</option>
-                      <option value="none">None</option>
-                   </select>
+                    <select className="w-full border rounded px-3 py-2" value={formData.royaltyType} onChange={e => setFormData({...formData, royaltyType: e.target.value})}>
+                       <option value="percentage">Percentage (%)</option>
+                       <option value="fixed">Fixed (THB)</option>
+                       <option value="hybrid">Hybrid (% + Fixed)</option>
+                       <option value="none">None</option>
+                    </select>
                  </div>
                  <div>
                    <label className="text-sm font-medium mb-1 block">มูลค่า (Value)</label>
@@ -143,7 +144,7 @@ export const PageFranchiseWizard = () => {
                  <p><strong>เจ้าของ:</strong> {formData.ownerFirstName} {formData.ownerLastName} ({formData.ownerPhone})</p>
                  <p><strong>สาขา:</strong> {formData.branchName} ({formData.branchCode}) - {formData.province}</p>
                  <p><strong>สัญญา:</strong> {formData.contractStartDate} ถึง {formData.contractEndDate}</p>
-                 <p><strong>Royalty:</strong> {formData.royaltyValue} {formData.royaltyType === 'percentage' ? '%' : 'บาท'}</p>
+                  <p><strong>Royalty:</strong> {formData.royaltyValue} {formData.royaltyType === 'percentage' ? '%' : formData.royaltyType === 'hybrid' ? '% + Fixed' : 'บาท'}</p>
                </div>
                <p className="text-sm text-muted-foreground">ระบบจะทำการสร้างสาขาและผู้ใช้งานสำหรับเจ้าของแฟรนไชส์โดยอัตโนมัติ</p>
             </div>

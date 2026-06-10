@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import * as Icons from "@/icons";
-import { IconBell,IconBook,IconBox,IconBrand,IconBuilding,IconCategories,IconCheck,IconCheckCircle,IconCheckList,IconChevDown,IconChevLeft,IconChevRight,IconChevUp,IconCommand,IconDiscount,IconFlag,IconFranchise,IconGrid,IconHelp,IconHome,IconInventory,IconKitchen,IconMenu,IconMenuLines,IconMoon,IconOptions,IconOrders,IconPOS,IconPayment,IconPlus,IconPrint,IconReceipt,IconRefresh,IconReports,IconScanner,IconSearch,IconSettings,IconShare,IconStaff,IconSun,IconSupplier,IconTruck,IconUser,IconX } from "@/icons";
+import { IconBell,IconBook,IconBox,IconBrand,IconBuilding,IconCategories,IconCheck,IconCheckCircle,IconCheckList,IconChevDown,IconChevLeft,IconChevRight,IconChevUp,IconCommand,IconDiscount,IconFlag,IconFranchise,IconGrid,IconHelp,IconHome,IconInventory,IconKitchen,IconMenu,IconMenuLines,IconMoon,IconOptions,IconOrders,IconPOS,IconPayment,IconPlus,IconPrint,IconReceipt,IconRefresh,IconReports,IconScanner,IconSearch,IconSettings,IconShare,IconStaff,IconSun,IconSupplier,IconTruck,IconUser,IconX,IconTrash,IconInfo } from "@/icons";
 import {
   useApp, AppCtx, useToast, ToastProvider,
   Drawer, Modal,
@@ -34,7 +34,9 @@ const NAV = [
       { path: '/backoffice/categories', icon: 'IconCategories', labelKey: 'nav.categories' },
       { path: '/backoffice/options', icon: 'IconOptions', labelKey: 'nav.options' },
       { path: '/backoffice/discounts', icon: 'IconDiscount', labelKey: 'nav.discounts' },
-      { path: '/backoffice/payments', icon: 'IconPayment', labelKey: 'nav.payments' },
+      { path: '/backoffice/payments/methods', icon: 'IconPayment', labelKey: 'nav.payments' },
+      { path: '/backoffice/payments/permissions', icon: 'IconCheckCircle', labelKey: 'nav.paymentPermissions' },
+      { path: '/backoffice/payments/settlements', icon: 'IconReceipt', labelKey: 'nav.settlementReconciliation' },
       { path: '/backoffice/orders', icon: 'IconOrders', labelKey: 'nav.orders' },
       { path: '/backoffice/delivery', icon: 'IconTruck', labelKey: 'nav.delivery' },
       { path: '/backoffice/reports', icon: 'IconReports', labelKey: 'nav.reports' },
@@ -46,9 +48,13 @@ const NAV = [
       { path: '/backoffice/inventory/items', icon: 'IconBox', labelKey: 'inventory.allStock' },
       { path: '/backoffice/inventory/receiving', icon: 'IconTruck', labelKey: 'inventory.stockIn' },
       { path: '/backoffice/inventory/count', icon: 'IconCheckList', labelKey: 'inventory.adjustStock' },
+      { path: '/backoffice/inventory/forecast', icon: 'IconInfo', labelKey: 'nav.forecast' },
+      { path: '/backoffice/inventory/count-session', icon: 'IconCheckList', labelKey: 'nav.countSession' },
+      { path: '/backoffice/waste', icon: 'IconTrash', labelKey: 'nav.waste' },
       { path: '/backoffice/inventory/transfer', icon: 'IconShare', labelKey: 'inventory.transfer' },
       { path: '/backoffice/inventory/movements', icon: 'IconRefresh', labelKey: 'inventory.movements' },
       { path: '/backoffice/requisitions', icon: 'IconReceipt', labelKey: 'nav.requisitions' },
+      { path: '/backoffice/production', icon: 'IconKitchen', labelKey: 'nav.production' },
     ]
   },
   {
@@ -69,6 +75,19 @@ const NAV = [
     ]
   },
   {
+    labelKey: 'nav.crm', roles: ['super', 'admin'], items: [
+      { path: '/backoffice/customers', icon: 'IconUser', labelKey: 'nav.customers360' },
+      { path: '/backoffice/customers/segments', icon: 'IconCategories', labelKey: 'nav.segments' },
+    ]
+  },
+  {
+    labelKey: 'nav.accounting', roles: ['super', 'admin'], items: [
+      { path: '/backoffice/accounting/cashflow', icon: 'IconReports', labelKey: 'nav.cashflow' },
+      { path: '/backoffice/accounting/ap', icon: 'IconReceipt', labelKey: 'nav.ap' },
+      { path: '/backoffice/accounting/ar', icon: 'IconReceipt', labelKey: 'nav.ar' },
+    ]
+  },
+  {
     labelKey: 'nav.staff', roles: ['super', 'admin'], items: [
       { path: '/backoffice/staff', icon: 'IconStaff', labelKey: 'nav.staff' },
     ]
@@ -76,6 +95,8 @@ const NAV = [
   {
     labelKey: 'nav.branches', roles: ['super', 'admin'], items: [
       { path: '/backoffice/franchise', icon: 'IconFranchise', labelKey: 'nav.branches' },
+      { path: '/backoffice/franchise/royalty', icon: 'IconPayment', labelKey: 'nav.royalty' },
+      { path: '/backoffice/franchise/compliance', icon: 'IconCheckCircle', labelKey: 'nav.compliance' },
       { path: '/backoffice/franchise/new', icon: 'IconPlus', labelKey: 'add' },
     ]
   },
@@ -402,6 +423,10 @@ const Sidebar = ({ open, onClose, collapsed, onToggleCollapse }) => {
           {/* Bottom links */}
           <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
             <SideLink path="/backoffice/settings" icon={IconSettings} label="Settings" collapsed={collapsed}/>
+            <SideLink path="/backoffice/settings/master-data" icon={IconGrid} label="Master Data" collapsed={collapsed}/>
+            <SideLink path="/backoffice/settings/document-numbering" icon={IconReceipt} label="Doc Numbering" collapsed={collapsed}/>
+            <SideLink path="/backoffice/settings/hardware" icon={IconPrint} label="Hardware/Printers" collapsed={collapsed}/>
+            <SideLink path="/backoffice/audit" icon={IconCheckCircle} label="Audit Center" collapsed={collapsed}/>
             <SideLink path="/help" icon={IconHelp} label="Support" collapsed={collapsed}/>
             {role === 'super' && <SideLink path="/backoffice/audit-log" icon={IconBook} label="Audit Log" collapsed={collapsed}/>}
           </div>

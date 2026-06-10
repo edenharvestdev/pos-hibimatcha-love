@@ -1,0 +1,426 @@
+import React, { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { TopActionBar, Field, Modal, useToast } from "@/components";
+import { IconPlus, IconExport, IconImport, IconX, IconEdit, IconTrash } from "@/icons";
+
+export const PageMasterData = () => {
+  const toast = useToast();
+  const utils = trpc.useUtils();
+  const [selectedDropdownId, setSelectedDropdownId] = useState(null);
+  
+  // Modals state
+  const [showAddDropdown, setShowAddDropdown] = useState(false);
+  const [showAddOption, setShowAddOption] = useState(false);
+  const [showImportCsv, setShowImportCsv] = useState(false);
+  const [editingOption, setEditingOption] = useState(null);
+
+  // Form states
+  const [newDropdown, setNewDropdown] = useState({ name: "", nameThai: "", code: "" });
+  const [newOption, setNewOption] = useState({ value: "", labelEn: "", labelTh: "" });
+  const [csvText, setCsvText] = useState("");
+
+  // Queries
+  const { data: dropdowns = [], isLoading: loadingDropdowns } = trpc.enterprise.listDropdowns.useQuery();
+  const { data: options = [], isLoading: loadingOptions } = trpc.enterprise.listDropdownOptions.useQuery(
+    { dropdownId: selectedDropdownId ?? 0 },
+    { enabled: !!selectedDropdownId }
+  );
+
+  // Mutations
+  const createDropdownMut = trpc.enterprise.createDropdown.useMutation({
+    onSuccess: () => {
+      utils.enterprise.listDropdowns.invalidate();
+      toast.push({ type: "success", msg: "Dropdown list created successfully" });
+      setShowAddDropdown(false);
+      setNewDropdown({ name: "", nameThai: "", code: "" });
+    }
+  });
+
+  const createOptionMut = trpc.enterprise.createDropdownOption.useMutation({
+    onSuccess: () => {
+      utils.enterprise.listDropdownOptions.invalidate({ dropdownId: selectedDropdownId });
+      toast.push({ type: "success", msg: "Dropdown option added successfully" });
+      setShowAddOption(false);
+      setNewOption({ value: "", labelEn: "", labelTh: "" });
+    }
+  });
+
+  const updateOptionMut = trpc.enterprise.updateDropdownOption.useMutation({
+    onSuccess: () => {
+      utils.enterprise.listDropdownOptions.invalidate({ dropdownId: selectedDropdownId });
+      toast.push({ type: "success", msg: "Dropdown option updated successfully" });
+      setEditingOption(null);
+    }
+  });
+
+  const archiveOptionMut = trpc.enterprise.archiveDropdownOption.useMutation({
+    onSuccess: () => {
+      utils.enterprise.listDropdownOptions.invalidate({ dropdownId: selectedDropdownId });
+      toast.push({ type: "success", msg: "Dropdown option archived successfully" });
+    }
+  });
+
+  const archiveDropdownMut = trpc.enterprise.archiveDropdown.useMutation({
+    onSuccess: () => {
+      utils.enterprise.listDropdowns.invalidate();
+      setSelectedDropdownId(null);
+      toast.push({ type: "success", msg: "Dropdown list archived successfully" });
+    }
+  });
+
+  const importCsvMut = trpc.enterprise.importDropdownOptionsCsv.useMutation({
+    onSuccess: () => {
+      utils.enterprise.listDropdownOptions.invalidate({ dropdownId: selectedDropdownId });
+      toast.push({ type: "success", msg: "CSV options imported successfully" });
+      setShowImportCsv(false);
+      setCsvText("");
+    }
+  });
+
+  // Selected dropdown data helper
+  const activeDropdown = dropdowns.find(d => d.id === selectedDropdownId);
+
+  // Handle CSV Import Submit
+  const handleImportCsvSubmit = () => {
+    if (!selectedDropdownId) return;
+    const lines = csvText.split("\n");
+    const parsedOptions = [];
+    
+    // Simple CSV parser
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      const parts = line.split(",").map(p => p.trim());
+      if (parts.length > 0) {
+        parsedOptions.push({
+          value: parts[0],
+          labelEn: parts[1] || parts[0],
+          labelTh: parts[2] || parts[1] || parts[0]
+        });
+      }
+    }
+
+    if (parsedOptions.length === 0) {
+      toast.push({ type: "error", msg: "No valid rows found in CSV text" });
+      return;
+    }
+
+    importCsvMut.mutate({
+      dropdownId: selectedDropdownId,
+      options: parsedOptions
+    });
+  };
+
+  // Handle Export CSV
+  const handleExportCsv = () => {
+    if (!activeDropdown || options.length === 0) return;
+    let csvContent = "data:text/csv;charset=utf-8,";
+    options.forEach(opt => {
+      const row = `${opt.value},${opt.labelEn || ""},${opt.labelTh || ""}`;
+      csvContent += row + "\r\n";
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `${activeDropdown.code}_options.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.push({ type: "success", msg: "CSV exported successfully" });
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-muted/10">
+      <TopActionBar 
+        title="Master Data Engine" 
+        actions={
+          <button className="btn btn-primary btn-sm" onClick={() => setShowAddDropdown(true)}>
+            <IconPlus size={16} /> New Dropdown
+          </button>
+        }
+      />
+
+      <div className="p-6 flex-1 overflow-y-auto max-w-7xl mx-auto w-full">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          
+          {/* Left Panel: List of Dropdowns */}
+          <div className="md:col-span-1 bg-card rounded-xl border p-4 space-y-2 shadow-sm">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-3">Dropdown Lists</h3>
+            {loadingDropdowns ? (
+              <div className="text-center py-6 text-sm text-muted-foreground">Loading...</div>
+            ) : dropdowns.length === 0 ? (
+              <div className="text-center py-6 text-sm text-muted-foreground">No dropdown lists created.</div>
+            ) : (
+              <div className="space-y-1">
+                {dropdowns.map((d) => (
+                  <div 
+                    key={d.id}
+                    onClick={() => setSelectedDropdownId(d.id)}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg text-left text-sm cursor-pointer transition-all duration-150 ${
+                      selectedDropdownId === d.id 
+                        ? "bg-primary/10 text-primary font-medium border border-primary/20" 
+                        : "hover:bg-muted/50 border border-transparent"
+                    }`}
+                  >
+                    <span>{d.nameThai || d.name} <span className="block text-xs text-muted-foreground font-mono">{d.code}</span></span>
+                    {selectedDropdownId === d.id && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm("Are you sure you want to archive this dropdown?")) {
+                            archiveDropdownMut.mutate({ id: d.id });
+                          }
+                        }}
+                        className="text-destructive hover:bg-destructive/10 p-1 rounded transition-colors"
+                        title="Archive Dropdown"
+                      >
+                        <IconTrash size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right Panel: Options inside the selected dropdown */}
+          <div className="md:col-span-3 bg-card rounded-xl border p-6 shadow-sm min-h-[400px] flex flex-col">
+            {selectedDropdownId ? (
+              <>
+                <div className="flex items-center justify-between border-b pb-4 mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-primary">{activeDropdown?.nameThai || activeDropdown?.name}</h2>
+                    <p className="text-xs text-muted-foreground mt-1 font-mono">Code: {activeDropdown?.code}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button className="btn btn-secondary btn-sm" onClick={handleExportCsv} disabled={options.length === 0}>
+                      <IconExport size={14} /> Export CSV
+                    </button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => setShowImportCsv(true)}>
+                      <IconImport size={14} /> Import CSV
+                    </button>
+                    <button className="btn btn-primary btn-sm" onClick={() => setShowAddOption(true)}>
+                      <IconPlus size={14} /> Add Option
+                    </button>
+                  </div>
+                </div>
+
+                {loadingOptions ? (
+                  <div className="text-center py-12 text-sm text-muted-foreground">Loading options...</div>
+                ) : options.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground flex-1 flex flex-col justify-center items-center">
+                    <p className="text-base font-medium">No options defined</p>
+                    <p className="text-sm mt-1">Add your first dropdown value manually or import a CSV file.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left border-collapse">
+                      <thead>
+                        <tr className="border-b bg-muted/30">
+                          <th className="p-3 font-semibold text-muted-foreground">Value (DB Code)</th>
+                          <th className="p-3 font-semibold text-muted-foreground">English Label</th>
+                          <th className="p-3 font-semibold text-muted-foreground">Thai Label</th>
+                          <th className="p-3 font-semibold text-muted-foreground text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {options.map((opt) => (
+                          <tr key={opt.id} className="hover:bg-muted/15">
+                            <td className="p-3 font-mono">{opt.value}</td>
+                            <td className="p-3">{opt.labelEn || "—"}</td>
+                            <td className="p-3">{opt.labelTh || "—"}</td>
+                            <td className="p-3 text-right space-x-2">
+                              <button 
+                                onClick={() => setEditingOption(opt)} 
+                                className="text-primary hover:bg-primary/10 p-1.5 rounded transition-colors"
+                              >
+                                <IconEdit size={14} />
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  if (confirm("Are you sure you want to delete this option?")) {
+                                    archiveOptionMut.mutate({ id: opt.id });
+                                  }
+                                }} 
+                                className="text-destructive hover:bg-destructive/10 p-1.5 rounded transition-colors"
+                              >
+                                <IconTrash size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col justify-center items-center text-center p-12 text-muted-foreground">
+                <p className="text-lg font-bold">Select a Dropdown</p>
+                <p className="text-sm mt-2 max-w-md">
+                  Choose a dropdown list from the left panel to manage its options, import new records, or export metadata.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Modal: Add Dropdown */}
+      <Modal open={showAddDropdown} onClose={() => setShowAddDropdown(false)} title="New Dropdown List">
+        <div className="space-y-4 pt-2">
+          <Field label="System Code (Unique Identifier)" required hint="e.g. order_source, expense_category">
+            <input 
+              type="text" 
+              className="input" 
+              placeholder="e.g. order_source" 
+              value={newDropdown.code}
+              onChange={e => setNewDropdown(prev => ({...prev, code: e.target.value}))}
+            />
+          </Field>
+          <Field label="Dropdown Name (English)" required>
+            <input 
+              type="text" 
+              className="input" 
+              placeholder="e.g. Order Source" 
+              value={newDropdown.name}
+              onChange={e => setNewDropdown(prev => ({...prev, name: e.target.value}))}
+            />
+          </Field>
+          <Field label="Dropdown Name (Thai)">
+            <input 
+              type="text" 
+              className="input" 
+              placeholder="e.g. ช่องทางการสั่งซื้อ" 
+              value={newDropdown.nameThai}
+              onChange={e => setNewDropdown(prev => ({...prev, nameThai: e.target.value}))}
+            />
+          </Field>
+          <div className="flex justify-end gap-2 pt-2">
+            <button className="btn btn-secondary" onClick={() => setShowAddDropdown(false)}>Cancel</button>
+            <button 
+              className="btn btn-primary" 
+              disabled={!newDropdown.code || !newDropdown.name}
+              onClick={() => createDropdownMut.mutate(newDropdown)}
+            >
+              Create List
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal: Add Option */}
+      <Modal open={showAddOption} onClose={() => setShowAddOption(false)} title="Add Dropdown Option">
+        <div className="space-y-4 pt-2">
+          <Field label="Database Value (Key)" required hint="The value stored in database">
+            <input 
+              type="text" 
+              className="input" 
+              placeholder="e.g. line_man" 
+              value={newOption.value}
+              onChange={e => setNewOption(prev => ({...prev, value: e.target.value}))}
+            />
+          </Field>
+          <Field label="English Label" required>
+            <input 
+              type="text" 
+              className="input" 
+              placeholder="e.g. LINE MAN" 
+              value={newOption.labelEn}
+              onChange={e => setNewOption(prev => ({...prev, labelEn: e.target.value}))}
+            />
+          </Field>
+          <Field label="Thai Label">
+            <input 
+              type="text" 
+              className="input" 
+              placeholder="e.g. ไลน์แมน" 
+              value={newOption.labelTh}
+              onChange={e => setNewOption(prev => ({...prev, labelTh: e.target.value}))}
+            />
+          </Field>
+          <div className="flex justify-end gap-2 pt-2">
+            <button className="btn btn-secondary" onClick={() => setShowAddOption(false)}>Cancel</button>
+            <button 
+              className="btn btn-primary" 
+              disabled={!newOption.value || !newOption.labelEn}
+              onClick={() => createOptionMut.mutate({ dropdownId: selectedDropdownId, ...newOption })}
+            >
+              Add Option
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal: Edit Option */}
+      <Modal open={!!editingOption} onClose={() => setEditingOption(null)} title="Edit Dropdown Option">
+        <div className="space-y-4 pt-2">
+          <Field label="Database Value (Key)" required hint="Value stored in DB cannot be changed">
+            <input 
+              type="text" 
+              className="input bg-muted" 
+              disabled
+              value={editingOption?.value || ""}
+            />
+          </Field>
+          <Field label="English Label" required>
+            <input 
+              type="text" 
+              className="input" 
+              value={editingOption?.labelEn || ""}
+              onChange={e => setEditingOption(prev => ({...prev, labelEn: e.target.value}))}
+            />
+          </Field>
+          <Field label="Thai Label">
+            <input 
+              type="text" 
+              className="input" 
+              value={editingOption?.labelTh || ""}
+              onChange={e => setEditingOption(prev => ({...prev, labelTh: e.target.value}))}
+            />
+          </Field>
+          <div className="flex justify-end gap-2 pt-2">
+            <button className="btn btn-secondary" onClick={() => setEditingOption(null)}>Cancel</button>
+            <button 
+              className="btn btn-primary" 
+              disabled={!editingOption?.labelEn}
+              onClick={() => updateOptionMut.mutate({ id: editingOption.id, labelEn: editingOption.labelEn, labelTh: editingOption.labelTh })}
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal: Import CSV */}
+      <Modal open={showImportCsv} onClose={() => setShowImportCsv(false)} title="Import Dropdown Options via CSV">
+        <div className="space-y-4 pt-2">
+          <p className="text-xs text-muted-foreground">
+            Paste CSV formatted text below. Format: <code className="bg-muted px-1.5 py-0.5 rounded font-mono">value,labelEnglish,labelThai</code> per line.
+            <br />
+            <strong>Warning:</strong> Importing will archive all current options in this list.
+          </p>
+          <Field label="CSV Data Content" required>
+            <textarea 
+              rows={8}
+              className="input font-mono text-xs w-full" 
+              placeholder="e.g.&#13;grab_pay,GrabPay,แกร็บเพย์&#13;true_money,TrueMoney,ทรูมันนี่"
+              value={csvText}
+              onChange={e => setCsvText(e.target.value)}
+            />
+          </Field>
+          <div className="flex justify-end gap-2 pt-2">
+            <button className="btn btn-secondary" onClick={() => setShowImportCsv(false)}>Cancel</button>
+            <button 
+              className="btn btn-primary" 
+              disabled={!csvText.trim()}
+              onClick={handleImportCsvSubmit}
+            >
+              Import Options
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+};

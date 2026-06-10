@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import { and, asc, desc, eq, gte, isNotNull, lte, or, sql } from "drizzle-orm";
-import { t, protectedProcedure } from "./_base";
+import { router, staffProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { posInventoryLots, posInventoryItems } from "../../drizzle/schema";
 
@@ -31,10 +31,10 @@ function computeStatus(expiryDate: string | null | undefined, warnDays = 7): "ac
 
 // ─── Router ──────────────────────────────────────────────────────────────────
 
-export const inventoryLotsRouter = t.router({
+export const inventoryLotsRouter = router({
 
   // List lots for a branch (with optional filters)
-  list: protectedProcedure
+  list: staffProcedure
     .input(z.object({
       branchId: z.number(),
       inventoryItemId: z.number().optional(),
@@ -81,7 +81,7 @@ export const inventoryLotsRouter = t.router({
     }),
 
   // Get expiry alerts for POS banner — returns items expiring within warnDays
-  getExpiryAlerts: protectedProcedure
+  getExpiryAlerts: staffProcedure
     .input(z.object({
       branchId: z.number(),
       warnDays: z.number().optional().default(7),
@@ -110,7 +110,7 @@ export const inventoryLotsRouter = t.router({
             // remainingQty > 0 (not depleted)
             sql`${posInventoryLots.remainingQty} > 0`,
             // expiryDate <= warnDate (expiring within warnDays OR already expired)
-            lte(posInventoryLots.expiryDate, warnDate.toISOString().split("T")[0]),
+            lte(posInventoryLots.expiryDate, warnDate),
           )
         )
         .orderBy(asc(posInventoryLots.expiryDate));
@@ -141,7 +141,7 @@ export const inventoryLotsRouter = t.router({
     }),
 
   // Create a new lot (usually called when confirming expense receipt)
-  create: protectedProcedure
+  create: staffProcedure
     .input(z.object({
       branchId: z.number(),
       inventoryItemId: z.number(),
@@ -164,22 +164,22 @@ export const inventoryLotsRouter = t.router({
         inventoryItemId: input.inventoryItemId,
         expenseReceiptId: input.expenseReceiptId,
         lotNumber: input.lotNumber,
-        manufactureDate: input.manufactureDate,
-        expiryDate: input.expiryDate,
+        manufactureDate: input.manufactureDate ? new Date(input.manufactureDate) : null,
+        expiryDate: input.expiryDate ? new Date(input.expiryDate) : null,
         quantity: String(input.quantity),
         remainingQty: String(input.quantity),
         unitOfMeasure: input.unitOfMeasure,
         costPerUnit: input.costPerUnit ? String(input.costPerUnit) : undefined,
         status,
         notes: input.notes,
-        createdByStaffId: (ctx as any).staffId,
+        createdByStaffId: ctx.staff.staffId,
       });
 
       return { id: (result as any).insertId };
     }),
 
   // Update lot (mark as depleted, add notes, etc.)
-  update: protectedProcedure
+  update: staffProcedure
     .input(z.object({
       id: z.number(),
       remainingQty: z.number().optional(),
@@ -200,7 +200,7 @@ export const inventoryLotsRouter = t.router({
     }),
 
   // Delete a lot
-  delete: protectedProcedure
+  delete: staffProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();

@@ -68,6 +68,7 @@ const translations = {
   'nav.requisitions': { en: 'Requisitions', th: 'ใบเบิก' },
   'nav.distribute': { en: 'Distribute', th: 'กระจายสินค้า' },
   'nav.inventoryLots': { en: 'Expiry Lots', th: 'LOT / วันหมดอายุ' },
+  'nav.production': { en: 'Batch Production', th: 'การผลิตสินค้า (บัตช์)' },
 
   // ---- POS Terminal ----
   'pos.terminal': { en: 'Terminal', th: 'เทอร์มินัล' },
@@ -385,6 +386,26 @@ const translations = {
   'admin.editLinkedMenus': { en: 'Edit Linked Menus', th: 'แก้ไขเมนูที่ผูกไว้' },
   'admin.selectAll': { en: 'Select All', th: 'เลือกทั้งหมด' },
   'admin.deselectAll': { en: 'Deselect All', th: 'ยกเลิกทั้งหมด' },
+  
+  // ---- Enterprise Upgrade Translations ----
+  'nav.masterData': { en: 'Master Data', th: 'จัดการข้อมูลหลัก' },
+  'nav.auditCenter': { en: 'Audit Center', th: 'ศูนย์ประวัติความปลอดภัย' },
+  'nav.waste': { en: 'Waste Management', th: 'จัดการวัตถุดิบเสียหาย' },
+  'nav.crm': { en: 'CRM & Customers', th: 'ระบบลูกค้าสัมพันธ์' },
+  'nav.customers360': { en: 'Customer 360', th: 'ข้อมูลลูกค้า 360' },
+  'nav.segments': { en: 'Customer Segments', th: 'เซกเมนต์ลูกค้า' },
+  'nav.forecast': { en: 'Inventory Forecast', th: 'คาดการณ์วัตถุดิบหมด' },
+  'nav.countSession': { en: 'Physical Count Session', th: 'รอบนับสต็อกจริง' },
+  'nav.royalty': { en: 'Royalty Fees', th: 'ค่าลิขสิทธิ์รายเดือน' },
+  'nav.compliance': { en: 'Franchise Compliance', th: 'ดัชนีการควบคุมมาตรฐาน' },
+  'nav.accounting': { en: 'Accounting & Ledger', th: 'บัญชีและการเงิน' },
+  'nav.ap': { en: 'Accounts Payable (AP)', th: 'บัญชีเจ้าหนี้ (AP)' },
+  'nav.ar': { en: 'Accounts Receivable (AR)', th: 'บัญชีลูกหนี้ (AR)' },
+  'nav.cashflow': { en: 'Cash Flow Dashboard', th: 'แดชบอร์ดกระแสเงินสด' },
+  'nav.paymentPermissions': { en: 'Payment Permissions', th: 'สิทธิ์ช่องทางชำระ' },
+  'nav.settlementReconciliation': { en: 'Settlement Recon', th: 'กระทบยอดเงินโอน' },
+  'nav.documentNumbering': { en: 'Doc Numbering', th: 'เลขที่เอกสาร' },
+  'nav.hardwarePrinting': { en: 'Hardware/Printers', th: 'ฮาร์ดแวร์/เครื่องพิมพ์' },
 };
 
 /**
