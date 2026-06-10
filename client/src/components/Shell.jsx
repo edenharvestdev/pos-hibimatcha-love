@@ -56,6 +56,7 @@ const NAV = [
       { path: '/backoffice/suppliers', icon: 'IconSupplier', labelKey: 'nav.suppliers' },
       { path: '/backoffice/purchase-orders', icon: 'IconReceipt', labelKey: 'requisitions.title', badge: 4 },
       { path: '/backoffice/expense-receipts', icon: 'IconReceipt', labelKey: 'expenses.title' },
+      { path: '/backoffice/inventory-lots', icon: 'IconBox', labelKey: 'nav.inventoryLots' },
       { path: '/backoffice/documents', icon: 'IconExport', labelKey: 'export' },
     ]
   },

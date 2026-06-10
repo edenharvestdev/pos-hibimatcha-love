@@ -29,6 +29,7 @@ import { printingRouter } from "./routers/printing";
 import { requisitionsRouter } from "./routers/requisitions";
 import { exportDocumentsRouter } from "./routers/exportDocuments";
 import { expenseReceiptsRouter } from "./routers/expenseReceipts";
+import { inventoryLotsRouter } from "./routers/inventoryLots";
 import { membersRouter } from "./routers/members";
 import { customerOrdersRouter } from "./routers/customerOrders";
 import { supplierPaymentsRouter } from "./routers/supplierPayments";
@@ -71,6 +72,7 @@ export const appRouter = router({
   requisitions: requisitionsRouter,
   exportDocuments: exportDocumentsRouter,
   expenseReceipts: expenseReceiptsRouter,
+  inventoryLots: inventoryLotsRouter,
   members: membersRouter,
   customerOrders: customerOrdersRouter,
   supplierPayments: supplierPaymentsRouter,

@@ -67,6 +67,7 @@ const translations = {
   'nav.expenses': { en: 'Expenses', th: 'ค่าใช้จ่าย' },
   'nav.requisitions': { en: 'Requisitions', th: 'ใบเบิก' },
   'nav.distribute': { en: 'Distribute', th: 'กระจายสินค้า' },
+  'nav.inventoryLots': { en: 'Expiry Lots', th: 'LOT / วันหมดอายุ' },
 
   // ---- POS Terminal ----
   'pos.terminal': { en: 'Terminal', th: 'เทอร์มินัล' },

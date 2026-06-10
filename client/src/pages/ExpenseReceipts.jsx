@@ -403,6 +403,9 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
         setItems(r.items.map((i) => ({
           itemName: i.itemName, quantity: i.quantity, unit: i.unit || "",
           unitPrice: i.unitPrice, totalPrice: i.totalPrice, category: i.category || "", notes: i.notes || "",
+          inventoryItemId: i.inventoryItemId ? String(i.inventoryItemId) : "",
+          manufactureDate: i.manufactureDate ? new Date(i.manufactureDate).toISOString().split("T")[0] : "",
+          expiryDate: i.expiryDate ? new Date(i.expiryDate).toISOString().split("T")[0] : "",
         })));
       }
       setLoaded(true);
@@ -420,7 +423,7 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
   }
 
   function defaultItem() {
-    return { itemName: "", quantity: "1", unit: "", unitPrice: "0", totalPrice: "0", category: "", notes: "" };
+    return { itemName: "", quantity: "1", unit: "", unitPrice: "0", totalPrice: "0", category: "", notes: "", inventoryItemId: "", manufactureDate: "", expiryDate: "" };
   }
 
   function updateItem(idx, field, value) {
@@ -580,34 +583,71 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
             </button>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "4fr 2fr 1.5fr 2fr 2fr 0.5fr", gap: 6, padding: "0 4px", marginBottom: 6 }}>
-            {["สินค้า", "จำนวน", "หน่วย", "ราคา/หน่วย", "รวม", ""].map((h, i) => (
-              <div key={i} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)", textAlign: i > 0 ? "center" : "left" }}>{h}</div>
+          {/* Header row */}
+          <div style={{ display: "grid", gridTemplateColumns: "3fr 1.5fr 1.2fr 2fr 2fr 1.8fr 1.8fr 0.5fr", gap: 6, padding: "0 4px", marginBottom: 6 }}>
+            {["สินค้า", "จำนวน", "หน่วย", "ราคา/หน่วย", "รวม", "วันผลิต", "วันหมดอายุ", ""].map((h, i) => (
+              <div key={i} style={{ fontSize: 11, fontWeight: 600, color: i >= 5 ? "#d97706" : "var(--text-tertiary)", textAlign: i > 0 ? "center" : "left" }}>{h}</div>
             ))}
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {items.map((item, idx) => (
-              <div key={idx} style={{
-                display: "grid", gridTemplateColumns: "4fr 2fr 1.5fr 2fr 2fr 0.5fr",
-                gap: 6, alignItems: "center", padding: 10,
-                background: "var(--bg-muted)", borderRadius: "var(--r-default)",
-                border: "1px solid var(--border-default)",
-              }}>
-                <input type="text" value={item.itemName} onChange={(e) => updateItem(idx, "itemName", e.target.value)} placeholder="ชื่อสินค้า" style={inp} />
-                <input type="number" value={item.quantity} onChange={(e) => updateItem(idx, "quantity", e.target.value)} style={{ ...inp, textAlign: "center" }} />
-                <input type="text" value={item.unit} onChange={(e) => updateItem(idx, "unit", e.target.value)} placeholder="หน่วย" style={{ ...inp, textAlign: "center" }} />
-                <input type="number" value={item.unitPrice} onChange={(e) => updateItem(idx, "unitPrice", e.target.value)} style={{ ...inp, textAlign: "right" }} />
-                <div style={{ textAlign: "right", fontWeight: 600, fontFamily: "monospace", fontSize: 13 }}>฿{formatMoney(item.totalPrice)}</div>
-                <div style={{ textAlign: "center" }}>
-                  {items.length > 1 && (
-                    <button onClick={() => setItems((p) => p.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", padding: 4 }}>
-                      <IconX size={14} />
-                    </button>
-                  )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {items.map((item, idx) => {
+              // compute expiry status for color hint
+              const today = new Date(); today.setHours(0,0,0,0);
+              const expDate = item.expiryDate ? new Date(item.expiryDate) : null;
+              const daysLeft = expDate ? Math.ceil((expDate - today) / 86400000) : null;
+              const expiryBg = daysLeft !== null ? (daysLeft <= 0 ? "rgba(254,226,226,0.8)" : daysLeft <= 7 ? "rgba(255,237,213,0.8)" : "transparent") : "transparent";
+              const expiryBorder = daysLeft !== null ? (daysLeft <= 0 ? "#f87171" : daysLeft <= 7 ? "#fb923c" : "var(--border-default)") : "var(--border-default)";
+
+              return (
+                <div key={idx} style={{
+                  padding: 10, background: "var(--bg-muted)", borderRadius: "var(--r-default)",
+                  border: "1px solid var(--border-default)",
+                }}>
+                  {/* Row 1: name, qty, unit, price, total, delete */}
+                  <div style={{ display: "grid", gridTemplateColumns: "3fr 1.5fr 1.2fr 2fr 2fr 0.5fr", gap: 6, alignItems: "center", marginBottom: 8 }}>
+                    <input type="text" value={item.itemName} onChange={(e) => updateItem(idx, "itemName", e.target.value)} placeholder="ชื่อสินค้า" style={inp} />
+                    <input type="number" value={item.quantity} onChange={(e) => updateItem(idx, "quantity", e.target.value)} style={{ ...inp, textAlign: "center" }} />
+                    <input type="text" value={item.unit} onChange={(e) => updateItem(idx, "unit", e.target.value)} placeholder="หน่วย" style={{ ...inp, textAlign: "center" }} />
+                    <input type="number" value={item.unitPrice} onChange={(e) => updateItem(idx, "unitPrice", e.target.value)} style={{ ...inp, textAlign: "right" }} />
+                    <div style={{ textAlign: "right", fontWeight: 600, fontFamily: "monospace", fontSize: 13 }}>฿{formatMoney(item.totalPrice)}</div>
+                    <div style={{ textAlign: "center" }}>
+                      {items.length > 1 && (
+                        <button onClick={() => setItems((p) => p.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", padding: 4 }}>
+                          <IconX size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {/* Row 2: expiry dates */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#d97706", marginBottom: 4 }}>📅 วันที่ผลิต</div>
+                      <input
+                        type="date" value={item.manufactureDate}
+                        onChange={(e) => updateItem(idx, "manufactureDate", e.target.value)}
+                        style={{ ...inp, fontSize: 12 }}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: daysLeft !== null && daysLeft <= 0 ? "#ef4444" : daysLeft !== null && daysLeft <= 7 ? "#ea580c" : "#d97706", marginBottom: 4 }}>
+                        ⏰ วันหมดอายุ{form.category === "ingredients" ? " *" : ""}
+                        {daysLeft !== null && (
+                          <span style={{ marginLeft: 6, fontWeight: 400 }}>
+                            ({daysLeft <= 0 ? "หมดอายุแล้ว!" : `เหลือ ${daysLeft} วัน`})
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="date" value={item.expiryDate}
+                        onChange={(e) => updateItem(idx, "expiryDate", e.target.value)}
+                        style={{ ...inp, fontSize: 12, borderColor: expiryBorder, background: expiryBg }}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

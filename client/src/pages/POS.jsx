@@ -125,6 +125,15 @@ export const PagePOS = () => {
     { enabled: !!branchId, staleTime: 30000, refetchOnWindowFocus: true }
   );
   const [showLowStockAlert, setShowLowStockAlert] = useState(true);
+  // Expiry alerts
+  const { data: expiryAlerts } = trpc.inventoryLots.getExpiryAlerts.useQuery(
+    { branchId: branchId ?? 0, warnDays: 7 },
+    { enabled: !!branchId, staleTime: 60000, refetchOnWindowFocus: true }
+  );
+  const [showExpiryAlert, setShowExpiryAlert] = useState(true);
+  const expiredCount    = expiryAlerts?.expired?.length ?? 0;
+  const expiringSoonCount = expiryAlerts?.expiringSoon?.length ?? 0;
+  const hasExpiryAlert = showExpiryAlert && (expiredCount > 0 || expiringSoonCount > 0);
 
   const allCategories = [
     { id: 'all', name: 'All', iconName: 'IconGrid' },
@@ -252,6 +261,43 @@ export const PagePOS = () => {
       overflow: 'hidden', position: 'relative',
     }} className="pos-grid">
       <LiveMatchaBackground />
+
+      {/* ─── Expiry Alert Banner ─────────────────────────────────────── */}
+      {hasExpiryAlert && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100,
+          background: expiredCount > 0 ? 'linear-gradient(90deg, #dc2626, #ef4444)' : 'linear-gradient(90deg, #d97706, #f59e0b)',
+          color: 'white', padding: '10px 20px',
+          display: 'flex', alignItems: 'center', gap: 12, fontSize: 13,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        }}>
+          <span style={{ fontSize: 18 }}>{expiredCount > 0 ? '🚨' : '⚠️'}</span>
+          <div style={{ flex: 1 }}>
+            {expiredCount > 0 && (
+              <strong>หมดอายุแล้ว {expiredCount} รายการ: </strong>
+            )}
+            {expiredCount > 0 && expiryAlerts.expired.slice(0, 3).map((l, i) => (
+              <span key={i}>{l.itemNameThai || l.itemName}{i < Math.min(2, expiredCount - 1) ? ', ' : ''}</span>
+            ))}
+            {expiredCount > 0 && expiringSoonCount > 0 && ' · '}
+            {expiringSoonCount > 0 && (
+              <span>จะหมดอายุใน 7 วัน: <strong>{expiringSoonCount} รายการ</strong></span>
+            )}
+          </div>
+          <button
+            onClick={() => { /* navigate to lots page */ }}
+            style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: 'white', padding: '4px 10px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+          >
+            ดูรายละเอียด
+          </button>
+          <button
+            onClick={() => setShowExpiryAlert(false)}
+            style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: 16, padding: 4, opacity: 0.8 }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Menu side */}
       <div className="glass-premium" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: '1px solid var(--border-default)', zIndex: 1 }}>

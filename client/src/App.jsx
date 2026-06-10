@@ -82,6 +82,7 @@ import { PageDeliveryOrders } from "@/pages/DeliveryOrders";
 import { PageRequisitions } from "@/pages/Requisitions";
 import { PageExportDocuments } from "@/pages/ExportDocuments";
 import PageExpenseReceipts from "@/pages/ExpenseReceipts";
+import PageInventoryLots from "@/pages/InventoryLots";
 import { PageCustomerApp, PageCustomerProfile } from "@/pages/CustomerApp";
 import { PagePnLDashboard } from "@/pages/PnLDashboard";
 import { PageStaffKPI } from "@/pages/StaffKPI";
@@ -251,6 +252,7 @@ const ROUTES = {
   '/backoffice/requisitions': () => <PageRequisitions/>,
   '/backoffice/documents': () => <PageExportDocuments/>,
   '/backoffice/expense-receipts': () => <PageExpenseReceipts/>,
+  '/backoffice/inventory-lots': () => <PageInventoryLots/>,
   '/backoffice/suppliers': () => <PageSuppliers/>,
   '/backoffice/purchase-orders': () => <PagePurchaseOrders/>,
   '/backoffice/franchise': () => <PageFranchise/>,

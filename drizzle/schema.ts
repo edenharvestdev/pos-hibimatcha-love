@@ -897,9 +897,38 @@ export const posExpenseReceiptItems = mysqlTable("pos_expense_receipt_items", {
   totalPrice: decimal("totalPrice", { precision: 12, scale: 2 }).notNull(),
   category: varchar("category", { length: 100 }), // sub-category for the item
   notes: text("notes"),
+  // ─── Expiry tracking fields ───
+  inventoryItemId: int("inventoryItemId"),     // link to pos_inventory_items
+  manufactureDate: date("manufactureDate"),     // วันที่ผลิต
+  expiryDate: date("expiryDate"),               // วันหมดอายุ
 });
 export type PosExpenseReceiptItem = typeof posExpenseReceiptItems.$inferSelect;
 export type InsertPosExpenseReceiptItem = typeof posExpenseReceiptItems.$inferInsert;
+
+// ─── Inventory Lots (Batch/Expiry Tracking) ───────────────────────────────────
+// Each lot represents one batch of an ingredient received, with manufacture & expiry dates.
+export const posInventoryLots = mysqlTable("pos_inventory_lots", {
+  id: int("id").autoincrement().primaryKey(),
+  branchId: int("branchId").notNull(),
+  inventoryItemId: int("inventoryItemId").notNull(),   // → pos_inventory_items
+  expenseReceiptId: int("expenseReceiptId"),           // → pos_expense_receipts (if from receipt)
+  lotNumber: varchar("lotNumber", { length: 100 }),   // LOT-2025-001, batch code, etc.
+  manufactureDate: date("manufactureDate"),             // วันที่ผลิต
+  expiryDate: date("expiryDate"),                      // วันหมดอายุ (required for ingredients)
+  quantity: decimal("quantity", { precision: 10, scale: 3 }).notNull(),       // จำนวนที่รับเข้า
+  remainingQty: decimal("remainingQty", { precision: 10, scale: 3 }).notNull(), // จำนวนที่เหลือ
+  unitOfMeasure: varchar("unitOfMeasure", { length: 20 }),
+  costPerUnit: decimal("costPerUnit", { precision: 10, scale: 4 }),
+  // Status auto-updated by cron / on-read:
+  status: mysqlEnum("status", ["active", "expiring_soon", "expired", "depleted"]).default("active").notNull(),
+  alertSentAt: timestamp("alertSentAt"),               // last time alert was sent
+  notes: text("notes"),
+  createdByStaffId: int("createdByStaffId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type PosInventoryLot = typeof posInventoryLots.$inferSelect;
+export type InsertPosInventoryLot = typeof posInventoryLots.$inferInsert;
 
 // ─── Members (Customer App) ───────────────────────────────────────────────────
 export const members = mysqlTable("members", {
