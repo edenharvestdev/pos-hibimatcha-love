@@ -1,57 +1,49 @@
 // ============================================
 // ExpenseReceipts: Manage bills/receipts from external vendors (Makro, Shopee, etc.)
-// Redesigned with stat cards, beautiful table, receipt image upload, monthly breakdown
+// Redesigned with the same design system as Dashboard (page/card/btn CSS classes)
 // ============================================
 
 import React, { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useApp, useToast, Drawer, Modal } from "@/components";
 import { ImageUploader } from "@/components/ImageUploader";
-import { IconReceipt, IconPlus, IconX, IconCheck, IconSearch, IconFilter, IconExport, IconTrash, IconEdit, IconWallet, IconCoin, IconTag } from "@/icons";
+import { IconReceipt, IconPlus, IconX, IconCheck, IconSearch, IconFilter, IconTrash, IconEdit, IconWallet, IconCoin, IconTag } from "@/icons";
 
 const VENDOR_PRESETS = [
-  "Makro",
-  "Shopee",
-  "Lazada",
-  "LINE Shopping",
-  "Big C",
-  "Lotus's",
-  "7-Eleven",
-  "Tops",
-  "อื่นๆ",
+  "Makro", "Shopee", "Lazada", "LINE Shopping",
+  "Big C", "Lotus's", "7-Eleven", "Tops", "อื่นๆ",
 ];
 
 const CATEGORY_OPTIONS = [
-  { value: "ingredients", label: "วัตถุดิบ", labelEn: "Ingredients", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" },
-  { value: "packaging", label: "บรรจุภัณฑ์", labelEn: "Packaging", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
-  { value: "equipment", label: "อุปกรณ์", labelEn: "Equipment", color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" },
-  { value: "cleaning", label: "ทำความสะอาด", labelEn: "Cleaning", color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300" },
-  { value: "utilities", label: "สาธารณูปโภค", labelEn: "Utilities", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" },
-  { value: "marketing", label: "การตลาด", labelEn: "Marketing", color: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300" },
-  { value: "delivery_fee", label: "ค่าส่ง", labelEn: "Delivery", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" },
-  { value: "other", label: "อื่นๆ", labelEn: "Other", color: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300" },
+  { value: "ingredients",  label: "วัตถุดิบ",       labelEn: "Ingredients", color: "#059669", bg: "#d1fae5" },
+  { value: "packaging",    label: "บรรจุภัณฑ์",     labelEn: "Packaging",   color: "#2563eb", bg: "#dbeafe" },
+  { value: "equipment",    label: "อุปกรณ์",         labelEn: "Equipment",   color: "#7c3aed", bg: "#ede9fe" },
+  { value: "cleaning",     label: "ทำความสะอาด",   labelEn: "Cleaning",    color: "#0891b2", bg: "#cffafe" },
+  { value: "utilities",    label: "สาธารณูปโภค",   labelEn: "Utilities",   color: "#d97706", bg: "#fef3c7" },
+  { value: "marketing",    label: "การตลาด",        labelEn: "Marketing",   color: "#db2777", bg: "#fce7f3" },
+  { value: "delivery_fee", label: "ค่าส่ง",         labelEn: "Delivery",    color: "#ea580c", bg: "#ffedd5" },
+  { value: "other",        label: "อื่นๆ",           labelEn: "Other",       color: "#6b7280", bg: "#f3f4f6" },
 ];
 
 const PAYMENT_OPTIONS = [
-  { value: "cash", label: "เงินสด" },
-  { value: "transfer", label: "โอนเงิน" },
-  { value: "credit_card", label: "บัตรเครดิต" },
+  { value: "cash",           label: "เงินสด" },
+  { value: "transfer",       label: "โอนเงิน" },
+  { value: "credit_card",    label: "บัตรเครดิต" },
   { value: "corporate_card", label: "บัตรองค์กร" },
-  { value: "cod", label: "เก็บเงินปลายทาง" },
-  { value: "other", label: "อื่นๆ" },
+  { value: "cod",            label: "เก็บเงินปลายทาง" },
+  { value: "other",          label: "อื่นๆ" },
 ];
 
 const STATUS_OPTIONS = [
-  { value: "", label: "ทั้งหมด" },
-  { value: "draft", label: "แบบร่าง" },
+  { value: "",          label: "ทั้งหมด" },
+  { value: "draft",     label: "แบบร่าง" },
   { value: "confirmed", label: "ยืนยันแล้ว" },
-  { value: "voided", label: "ยกเลิก" },
+  { value: "voided",    label: "ยกเลิก" },
 ];
 
 function formatDate(d) {
   if (!d) return "—";
-  const date = new Date(d);
-  return date.toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" });
+  return new Date(d).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" });
 }
 
 function formatMoney(v) {
@@ -63,290 +55,287 @@ function getCategoryInfo(value) {
   return CATEGORY_OPTIONS.find((c) => c.value === value) || CATEGORY_OPTIONS[CATEGORY_OPTIONS.length - 1];
 }
 
+// ─── Status badge styles ─────────────────────────────────────────────────────
+const STATUS_STYLES = {
+  draft:     { bg: "#fef3c7", color: "#92400e", label: "แบบร่าง" },
+  confirmed: { bg: "#d1fae5", color: "#065f46", label: "ยืนยัน" },
+  voided:    { bg: "#fee2e2", color: "#991b1b", label: "ยกเลิก" },
+};
+
 export default function ExpenseReceipts() {
-  const { branch, lang, t } = useApp();
+  const { branch, lang } = useApp();
   const toast = useToast();
   const branchId = branch?.id;
 
-  const [filterVendor, setFilterVendor] = useState("");
+  const [filterVendor, setFilterVendor]     = useState("");
   const [filterCategory, setFilterCategory] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [searchText, setSearchText] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [showSummary, setShowSummary] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
+  const [filterStatus, setFilterStatus]     = useState("");
+  const [searchText, setSearchText]         = useState("");
+  const [showForm, setShowForm]             = useState(false);
+  const [editingId, setEditingId]           = useState(null);
+  const [showSummary, setShowSummary]       = useState(false);
+  const [showFilters, setShowFilters]       = useState(false);
 
-  // Queries
   const listQuery = trpc.expenseReceipts.list.useQuery({
     branchId: branchId || undefined,
-    vendor: filterVendor || undefined,
+    vendor:   filterVendor   || undefined,
     category: filterCategory || undefined,
-    status: filterStatus || undefined,
+    status:   filterStatus   || undefined,
   });
 
-  const summaryQuery = trpc.expenseReceipts.summary.useQuery({
-    branchId: branchId || undefined,
-  });
+  const summaryQuery = trpc.expenseReceipts.summary.useQuery({ branchId: branchId || undefined });
 
   const receipts = listQuery.data?.receipts || [];
-  const total = listQuery.data?.total || 0;
-  const summary = summaryQuery.data;
+  const total    = listQuery.data?.total    || 0;
+  const summary  = summaryQuery.data;
 
-  // Filter by search text
   const filteredReceipts = useMemo(() => {
     if (!searchText.trim()) return receipts;
     const q = searchText.toLowerCase();
-    return receipts.filter(
-      (r) =>
-        r.vendor?.toLowerCase().includes(q) ||
-        r.receiptNumber?.toLowerCase().includes(q) ||
-        r.notes?.toLowerCase().includes(q)
+    return receipts.filter((r) =>
+      r.vendor?.toLowerCase().includes(q) ||
+      r.receiptNumber?.toLowerCase().includes(q) ||
+      r.notes?.toLowerCase().includes(q)
     );
   }, [receipts, searchText]);
 
-  // Stats
-  const thisMonthTotal = parseFloat(summary?.total || "0");
-  const confirmedCount = receipts.filter((r) => r.status === "confirmed").length;
-  const draftCount = receipts.filter((r) => r.status === "draft").length;
+  const thisMonthTotal  = parseFloat(summary?.total || "0");
+  const confirmedCount  = receipts.filter((r) => r.status === "confirmed").length;
+  const draftCount      = receipts.filter((r) => r.status === "draft").length;
 
   return (
-    <div className="space-y-6">
+    <div className="page">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {lang === "en" ? "Expense Receipts" : "ใบเสร็จค่าใช้จ่าย"}
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {lang === "en"
-              ? `Record bills from external vendors (Makro, Shopee, etc.) — ${total} entries`
-              : `บันทึกบิล/ใบเสร็จจากร้านค้าภายนอก — ${total} รายการ`}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowSummary(true)}
-            className="px-4 py-2.5 border border-border rounded-xl text-sm font-medium hover:bg-accent transition-all duration-150 active:scale-[0.97] flex items-center gap-2"
-          >
-            <IconCoin className="w-4 h-4" />
-            {lang === "en" ? "Summary" : "สรุป"}
-          </button>
-          <button
-            onClick={() => { setEditingId(null); setShowForm(true); }}
-            className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-all duration-150 active:scale-[0.97] shadow-sm"
-          >
-            <IconPlus className="w-4 h-4" />
-            {lang === "en" ? "New Expense" : "เพิ่มบิล"}
-          </button>
+      <div className="page-header">
+        <div className="page-title-row">
+          <div>
+            <h1 className="page-title">🧾 ใบเสร็จค่าใช้จ่าย</h1>
+            <p className="page-desc">
+              {lang === "en"
+                ? `Record bills from external vendors (Makro, Shopee, etc.) — ${total} entries`
+                : `บันทึกบิล/ใบเสร็จจากร้านค้าภายนอก — ${total} รายการ`}
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-secondary" onClick={() => setShowSummary(true)}>
+              💰 {lang === "en" ? "Summary" : "สรุป"}
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => { setEditingId(null); setShowForm(true); }}
+            >
+              <IconPlus size={16} /> {lang === "en" ? "New Expense" : "เพิ่มบิล"}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard
-          icon={<IconWallet className="w-5 h-5" />}
-          iconBg="bg-primary/10 text-primary"
-          label={lang === "en" ? "Total Confirmed" : "ยอดรวม (ยืนยันแล้ว)"}
-          value={<><span className="font-sans">฿</span>{formatMoney(thisMonthTotal)}</>}
-          sub={`${confirmedCount} ${lang === "en" ? "receipts" : "รายการ"}`}
-        />
-        <StatCard
-          icon={<IconReceipt className="w-5 h-5" />}
-          iconBg="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300"
-          label={lang === "en" ? "Pending Draft" : "แบบร่าง (รอยืนยัน)"}
-          value={draftCount.toString()}
-          sub={lang === "en" ? "awaiting confirmation" : "รอตรวจสอบ"}
-        />
-        <StatCard
-          icon={<IconTag className="w-5 h-5" />}
-          iconBg="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300"
-          label={lang === "en" ? "Total Entries" : "จำนวนบิลทั้งหมด"}
-          value={total.toString()}
-          sub={lang === "en" ? "all time" : "ทั้งหมด"}
-        />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 20 }}>
+        <div className="card" style={{ padding: 20 }}>
+          <div className="t-caption" style={{ color: "var(--matcha-700)" }}>ยอดรวม (ยืนยันแล้ว)</div>
+          <div className="tabular" style={{ fontSize: 28, fontWeight: 600, marginTop: 6 }}>
+            ฿{formatMoney(thisMonthTotal)}
+          </div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{confirmedCount} รายการ</div>
+        </div>
+        <div className="card" style={{ padding: 20 }}>
+          <div className="t-caption">แบบร่าง (รอยืนยัน)</div>
+          <div className="tabular" style={{ fontSize: 28, fontWeight: 600, marginTop: 6, color: "var(--warning)" }}>
+            {draftCount}
+          </div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>รอตรวจสอบ</div>
+        </div>
+        <div className="card" style={{ padding: 20 }}>
+          <div className="t-caption">จำนวนบิลทั้งหมด</div>
+          <div className="tabular" style={{ fontSize: 28, fontWeight: 600, marginTop: 6 }}>{total}</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>ทั้งหมด</div>
+        </div>
       </div>
 
-      {/* Category Breakdown (mini) */}
+      {/* Category Breakdown */}
       {summary?.byCategory && summary.byCategory.length > 0 && (
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
-            {lang === "en" ? "By Category" : "แยกตามหมวดหมู่"}
-          </h3>
-          <div className="flex flex-wrap gap-2">
+        <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+          <div className="t-caption" style={{ marginBottom: 10 }}>แยกตามหมวดหมู่</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {summary.byCategory.map((c, i) => {
               const cat = getCategoryInfo(c.category);
               return (
-                <div key={i} className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${cat.color}`}>
-                  <span>{lang === "en" ? cat.labelEn : cat.label}</span>
-                  <span className="opacity-70"><span className="font-sans">฿</span>{formatMoney(c.total)}</span>
-                  <span className="opacity-50">({c.count})</span>
-                </div>
+                <span key={i} style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "4px 10px", borderRadius: 20, fontSize: 12, fontWeight: 500,
+                  background: cat.bg, color: cat.color,
+                }}>
+                  {lang === "en" ? cat.labelEn : cat.label}
+                  <span style={{ opacity: 0.7 }}>฿{formatMoney(c.total)}</span>
+                  <span style={{ opacity: 0.5 }}>({c.count})</span>
+                </span>
               );
             })}
           </div>
         </div>
       )}
 
-      {/* Search + Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      {/* Search + Filter Bar */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+          <IconSearch size={16} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-tertiary)" }} />
           <input
             type="text"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             placeholder={lang === "en" ? "Search vendor, receipt no..." : "ค้นหาร้านค้า, เลขบิล..."}
-            className="w-full pl-9 pr-4 py-2.5 border border-border rounded-xl text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            style={{
+              width: "100%", paddingLeft: 36, paddingRight: 12, paddingTop: 9, paddingBottom: 9,
+              border: "1px solid var(--border-default)", borderRadius: "var(--r-default)",
+              fontSize: 14, background: "var(--bg-surface)", color: "var(--text-primary)",
+              outline: "none",
+            }}
           />
         </div>
         <button
+          className={showFilters ? "btn btn-primary btn-sm" : "btn btn-secondary btn-sm"}
           onClick={() => setShowFilters(!showFilters)}
-          className={`px-3 py-2.5 border rounded-xl text-sm flex items-center gap-2 transition-all duration-150 active:scale-[0.97] ${showFilters ? "bg-primary/10 border-primary text-primary" : "border-border hover:bg-accent"}`}
+          style={{ display: "flex", alignItems: "center", gap: 6 }}
         >
-          <IconFilter className="w-4 h-4" />
+          <IconFilter size={15} />
           {lang === "en" ? "Filters" : "ตัวกรอง"}
           {(filterVendor || filterCategory || filterStatus) && (
-            <span className="w-2 h-2 rounded-full bg-primary" />
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--matcha-400)", display: "inline-block" }} />
           )}
         </button>
       </div>
 
-      {/* Filter Row */}
+      {/* Filter Dropdowns */}
       {showFilters && (
-        <div className="flex flex-wrap gap-3 p-4 bg-muted/30 rounded-xl border border-border animate-in slide-in-from-top-2 duration-200">
+        <div className="card" style={{ padding: 14, marginBottom: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <select
             value={filterVendor}
             onChange={(e) => setFilterVendor(e.target.value)}
-            className="px-3 py-2 border border-border rounded-lg text-sm bg-background min-w-[140px]"
+            style={{ padding: "7px 10px", border: "1px solid var(--border-default)", borderRadius: "var(--r-default)", fontSize: 13, background: "var(--bg-surface)" }}
           >
-            <option value="">{lang === "en" ? "All Vendors" : "ร้านค้าทั้งหมด"}</option>
-            {VENDOR_PRESETS.map((v) => (
-              <option key={v} value={v}>{v}</option>
-            ))}
+            <option value="">ร้านค้าทั้งหมด</option>
+            {VENDOR_PRESETS.map((v) => <option key={v} value={v}>{v}</option>)}
           </select>
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="px-3 py-2 border border-border rounded-lg text-sm bg-background min-w-[140px]"
+            style={{ padding: "7px 10px", border: "1px solid var(--border-default)", borderRadius: "var(--r-default)", fontSize: 13, background: "var(--bg-surface)" }}
           >
-            <option value="">{lang === "en" ? "All Categories" : "หมวดหมู่ทั้งหมด"}</option>
-            {CATEGORY_OPTIONS.map((c) => (
-              <option key={c.value} value={c.value}>{lang === "en" ? c.labelEn : c.label}</option>
-            ))}
+            <option value="">หมวดหมู่ทั้งหมด</option>
+            {CATEGORY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{lang === "en" ? c.labelEn : c.label}</option>)}
           </select>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 border border-border rounded-lg text-sm bg-background min-w-[120px]"
+            style={{ padding: "7px 10px", border: "1px solid var(--border-default)", borderRadius: "var(--r-default)", fontSize: 13, background: "var(--bg-surface)" }}
           >
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
+            {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
           {(filterVendor || filterCategory || filterStatus) && (
             <button
+              className="btn btn-ghost btn-sm"
               onClick={() => { setFilterVendor(""); setFilterCategory(""); setFilterStatus(""); }}
-              className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              {lang === "en" ? "Clear all" : "ล้างตัวกรอง"}
+              ล้างตัวกรอง
             </button>
           )}
         </div>
       )}
 
-      {/* Table */}
+      {/* Table / Empty State */}
       {filteredReceipts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
-            <IconReceipt className="w-8 h-8 text-muted-foreground/50" />
-          </div>
-          <h3 className="text-lg font-semibold mb-1">
-            {lang === "en" ? "No expense receipts" : "ยังไม่มีบิล/ใบเสร็จ"}
-          </h3>
-          <p className="text-sm text-muted-foreground mb-4">
+        <div className="card" style={{ padding: 60, textAlign: "center" }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🧾</div>
+          <div className="t-h4" style={{ marginBottom: 6 }}>ยังไม่มีบิล/ใบเสร็จ</div>
+          <div className="muted" style={{ marginBottom: 20, fontSize: 13 }}>
             {lang === "en"
               ? "Click 'New Expense' to record a receipt from an external vendor"
               : "กดปุ่ม 'เพิ่มบิล' เพื่อบันทึกใบเสร็จจากร้านค้าภายนอก"}
-          </p>
+          </div>
           <button
+            className="btn btn-primary"
             onClick={() => { setEditingId(null); setShowForm(true); }}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-all active:scale-[0.97]"
           >
-            <IconPlus className="w-4 h-4" />
-            {lang === "en" ? "New Expense" : "เพิ่มบิล"}
+            <IconPlus size={16} /> เพิ่มบิล
           </button>
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+        <div className="card" style={{ overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
               <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="text-left px-4 py-3.5 font-medium text-muted-foreground text-xs uppercase tracking-wider">
-                    {lang === "en" ? "Date" : "วันที่"}
-                  </th>
-                  <th className="text-left px-4 py-3.5 font-medium text-muted-foreground text-xs uppercase tracking-wider">
-                    {lang === "en" ? "Vendor" : "ร้านค้า"}
-                  </th>
-                  <th className="text-left px-4 py-3.5 font-medium text-muted-foreground text-xs uppercase tracking-wider">
-                    {lang === "en" ? "Receipt No." : "เลขที่บิล"}
-                  </th>
-                  <th className="text-left px-4 py-3.5 font-medium text-muted-foreground text-xs uppercase tracking-wider">
-                    {lang === "en" ? "Category" : "หมวดหมู่"}
-                  </th>
-                  <th className="text-left px-4 py-3.5 font-medium text-muted-foreground text-xs uppercase tracking-wider">
-                    {lang === "en" ? "Image" : "รูป"}
-                  </th>
-                  <th className="text-right px-4 py-3.5 font-medium text-muted-foreground text-xs uppercase tracking-wider">
-                    {lang === "en" ? "Amount" : "ยอดรวม"}
-                  </th>
-                  <th className="text-center px-4 py-3.5 font-medium text-muted-foreground text-xs uppercase tracking-wider">
-                    {lang === "en" ? "Status" : "สถานะ"}
-                  </th>
-                  <th className="text-center px-4 py-3.5 font-medium text-muted-foreground text-xs uppercase tracking-wider">
-                    {lang === "en" ? "Action" : "จัดการ"}
-                  </th>
+                <tr style={{ borderBottom: "1px solid var(--border-default)", background: "var(--bg-muted)" }}>
+                  {["วันที่", "ร้านค้า", "เลขที่บิล", "หมวดหมู่", "รูป", "ยอดรวม", "สถานะ", ""].map((h, i) => (
+                    <th key={i} style={{
+                      padding: "10px 14px", textAlign: i >= 5 ? (i === 5 ? "right" : "center") : "left",
+                      fontWeight: 600, fontSize: 11, color: "var(--text-tertiary)",
+                      textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap",
+                    }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
-                {filteredReceipts.map((r) => {
+              <tbody>
+                {filteredReceipts.map((r, idx) => {
                   const cat = getCategoryInfo(r.category);
+                  const st  = STATUS_STYLES[r.status] || { bg: "#f3f4f6", color: "#374151", label: r.status };
                   return (
-                    <tr key={r.id} className="hover:bg-muted/30 transition-colors duration-100 cursor-pointer" onClick={() => { setEditingId(r.id); setShowForm(true); }}>
-                      <td className="px-4 py-3.5 text-muted-foreground whitespace-nowrap">{formatDate(r.receiptDate)}</td>
-                      <td className="px-4 py-3.5">
-                        <div className="font-medium">{r.vendor}</div>
-                        {r.vendorBranch && <div className="text-xs text-muted-foreground">{r.vendorBranch}</div>}
+                    <tr
+                      key={r.id}
+                      onClick={() => { setEditingId(r.id); setShowForm(true); }}
+                      style={{
+                        borderBottom: "1px solid var(--border-default)",
+                        cursor: "pointer",
+                        transition: "background 0.1s",
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-muted)"}
+                      onMouseLeave={(e) => e.currentTarget.style.background = ""}
+                    >
+                      <td style={{ padding: "12px 14px", color: "var(--text-tertiary)", whiteSpace: "nowrap" }}>
+                        {formatDate(r.receiptDate)}
                       </td>
-                      <td className="px-4 py-3.5 text-muted-foreground font-mono text-xs">{r.receiptNumber || "—"}</td>
-                      <td className="px-4 py-3.5">
-                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-medium ${cat.color}`}>
+                      <td style={{ padding: "12px 14px" }}>
+                        <div style={{ fontWeight: 500 }}>{r.vendor}</div>
+                        {r.vendorBranch && <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{r.vendorBranch}</div>}
+                      </td>
+                      <td style={{ padding: "12px 14px", color: "var(--text-tertiary)", fontFamily: "monospace", fontSize: 12 }}>
+                        {r.receiptNumber || "—"}
+                      </td>
+                      <td style={{ padding: "12px 14px" }}>
+                        <span style={{
+                          display: "inline-block", padding: "3px 10px", borderRadius: 12,
+                          fontSize: 11, fontWeight: 600, background: cat.bg, color: cat.color,
+                        }}>
                           {lang === "en" ? cat.labelEn : cat.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td style={{ padding: "12px 14px" }}>
                         {r.receiptImageUrl ? (
-                          <div className="w-8 h-8 rounded-lg overflow-hidden border border-border">
-                            <img src={r.receiptImageUrl} alt="" className="w-full h-full object-cover" />
+                          <div style={{ width: 32, height: 32, borderRadius: 6, overflow: "hidden", border: "1px solid var(--border-default)" }}>
+                            <img src={r.receiptImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground/50">—</span>
+                          <span style={{ color: "var(--text-quaternary)", fontSize: 12 }}>—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 text-right font-mono font-medium whitespace-nowrap">
-                        <span className="font-sans">฿</span>{formatMoney(r.grandTotal)}
+                      <td style={{ padding: "12px 14px", textAlign: "right", fontWeight: 600, fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                        ฿{formatMoney(r.grandTotal)}
                       </td>
-                      <td className="px-4 py-3.5 text-center">
-                        <StatusBadge status={r.status} />
+                      <td style={{ padding: "12px 14px", textAlign: "center" }}>
+                        <span style={{
+                          display: "inline-block", padding: "3px 10px", borderRadius: 12,
+                          fontSize: 11, fontWeight: 600, background: st.bg, color: st.color,
+                        }}>
+                          {st.label}
+                        </span>
                       </td>
-                      <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td style={{ padding: "12px 14px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
                         <button
+                          className="btn btn-ghost btn-sm"
                           onClick={() => { setEditingId(r.id); setShowForm(true); }}
-                          className="p-1.5 rounded-lg hover:bg-muted transition-colors"
-                          title={lang === "en" ? "Edit" : "แก้ไข"}
+                          style={{ padding: "4px 8px" }}
                         >
-                          <IconEdit className="w-4 h-4 text-muted-foreground" />
+                          <IconEdit size={14} />
                         </button>
                       </td>
                     </tr>
@@ -381,115 +370,56 @@ export default function ExpenseReceipts() {
   );
 }
 
-// ─── Stat Card ──────────────────────────────────────────────────────────────────
-
-function StatCard({ icon, iconBg, label, value, sub }) {
-  return (
-    <div className="bg-card border border-border rounded-2xl p-5 flex items-start gap-4 hover:shadow-sm transition-shadow duration-200">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
-        <p className="text-xl font-bold mt-0.5 truncate">{value}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
-      </div>
-    </div>
-  );
-}
-
-// ─── Status Badge ───────────────────────────────────────────────────────────────
-
-function StatusBadge({ status }) {
-  const styles = {
-    draft: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-    confirmed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-    voided: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
-  };
-  const labels = { draft: "แบบร่าง", confirmed: "ยืนยัน", voided: "ยกเลิก" };
-  return (
-    <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-medium ${styles[status] || "bg-muted text-muted-foreground"}`}>
-      {labels[status] || status}
-    </span>
-  );
-}
-
-// ─── Expense Receipt Form (Drawer) ───────────────────────────────────────────
+// ─── Form Drawer ─────────────────────────────────────────────────────────────
 
 function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
-  const toast = useToast();
+  const toast  = useToast();
   const isEdit = !!receiptId;
 
-  // Fetch existing receipt if editing
-  const existingQuery = trpc.expenseReceipts.getById.useQuery(
-    { id: receiptId },
-    { enabled: isEdit }
-  );
+  const existingQuery = trpc.expenseReceipts.getById.useQuery({ id: receiptId }, { enabled: isEdit });
+  const createMut     = trpc.expenseReceipts.create.useMutation();
+  const updateMut     = trpc.expenseReceipts.update.useMutation();
+  const deleteMut     = trpc.expenseReceipts.delete.useMutation();
 
-  const createMut = trpc.expenseReceipts.create.useMutation();
-  const updateMut = trpc.expenseReceipts.update.useMutation();
-  const deleteMut = trpc.expenseReceipts.delete.useMutation();
-
-  const [form, setForm] = useState(() => getDefaultForm());
-  const [items, setItems] = useState([getDefaultItem()]);
+  const [form, setForm]     = useState(() => defaultForm());
+  const [items, setItems]   = useState([defaultItem()]);
   const [loaded, setLoaded] = useState(false);
-  const [imageError, setImageError] = useState("");
+  const [imgErr, setImgErr] = useState("");
 
-  // Load existing data
   React.useEffect(() => {
     if (isEdit && existingQuery.data && !loaded) {
       const r = existingQuery.data;
       setForm({
-        vendor: r.vendor || "",
-        vendorBranch: r.vendorBranch || "",
+        vendor: r.vendor || "", vendorBranch: r.vendorBranch || "",
         receiptNumber: r.receiptNumber || "",
         receiptDate: r.receiptDate ? new Date(r.receiptDate).toISOString().split("T")[0] : "",
-        category: r.category || "ingredients",
-        paymentMethod: r.paymentMethod || "transfer",
-        subtotal: r.subtotal || "0",
-        vatAmount: r.vatAmount || "0",
-        discountAmount: r.discountAmount || "0",
-        deliveryFee: r.deliveryFee || "0",
-        grandTotal: r.grandTotal || "0",
-        receiptImageUrl: r.receiptImageUrl || "",
-        notes: r.notes || "",
-        status: r.status || "draft",
+        category: r.category || "ingredients", paymentMethod: r.paymentMethod || "transfer",
+        subtotal: r.subtotal || "0", vatAmount: r.vatAmount || "0",
+        discountAmount: r.discountAmount || "0", deliveryFee: r.deliveryFee || "0",
+        grandTotal: r.grandTotal || "0", receiptImageUrl: r.receiptImageUrl || "",
+        notes: r.notes || "", status: r.status || "draft",
       });
-      if (r.items && r.items.length > 0) {
+      if (r.items?.length > 0) {
         setItems(r.items.map((i) => ({
-          itemName: i.itemName,
-          quantity: i.quantity,
-          unit: i.unit || "",
-          unitPrice: i.unitPrice,
-          totalPrice: i.totalPrice,
-          category: i.category || "",
-          notes: i.notes || "",
+          itemName: i.itemName, quantity: i.quantity, unit: i.unit || "",
+          unitPrice: i.unitPrice, totalPrice: i.totalPrice, category: i.category || "", notes: i.notes || "",
         })));
       }
       setLoaded(true);
     }
   }, [existingQuery.data, isEdit, loaded]);
 
-  function getDefaultForm() {
+  function defaultForm() {
     return {
-      vendor: "",
-      vendorBranch: "",
-      receiptNumber: "",
+      vendor: "", vendorBranch: "", receiptNumber: "",
       receiptDate: new Date().toISOString().split("T")[0],
-      category: "ingredients",
-      paymentMethod: "transfer",
-      subtotal: "0",
-      vatAmount: "0",
-      discountAmount: "0",
-      deliveryFee: "0",
-      grandTotal: "0",
-      receiptImageUrl: "",
-      notes: "",
-      status: "draft",
+      category: "ingredients", paymentMethod: "transfer",
+      subtotal: "0", vatAmount: "0", discountAmount: "0", deliveryFee: "0",
+      grandTotal: "0", receiptImageUrl: "", notes: "", status: "draft",
     };
   }
 
-  function getDefaultItem() {
+  function defaultItem() {
     return { itemName: "", quantity: "1", unit: "", unitPrice: "0", totalPrice: "0", category: "", notes: "" };
   }
 
@@ -498,311 +428,181 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
       const next = [...prev];
       next[idx] = { ...next[idx], [field]: value };
       if (field === "quantity" || field === "unitPrice") {
-        const qty = parseFloat(next[idx].quantity) || 0;
-        const price = parseFloat(next[idx].unitPrice) || 0;
-        next[idx].totalPrice = (qty * price).toFixed(2);
+        const q = parseFloat(next[idx].quantity) || 0;
+        const p = parseFloat(next[idx].unitPrice)  || 0;
+        next[idx].totalPrice = (q * p).toFixed(2);
       }
       return next;
     });
   }
 
-  function addItem() {
-    setItems((prev) => [...prev, getDefaultItem()]);
-  }
-
-  function removeItem(idx) {
-    setItems((prev) => prev.filter((_, i) => i !== idx));
-  }
-
-  // Recalculate totals
   React.useEffect(() => {
-    const subtotal = items.reduce((sum, i) => sum + (parseFloat(i.totalPrice) || 0), 0);
-    const vat = parseFloat(form.vatAmount) || 0;
-    const discount = parseFloat(form.discountAmount) || 0;
-    const delivery = parseFloat(form.deliveryFee) || 0;
-    const grand = subtotal + vat - discount + delivery;
-    setForm((prev) => ({
-      ...prev,
-      subtotal: subtotal.toFixed(2),
-      grandTotal: grand.toFixed(2),
-    }));
+    const subtotal  = items.reduce((s, i) => s + (parseFloat(i.totalPrice) || 0), 0);
+    const vat       = parseFloat(form.vatAmount)       || 0;
+    const discount  = parseFloat(form.discountAmount)  || 0;
+    const delivery  = parseFloat(form.deliveryFee)     || 0;
+    setForm((p) => ({ ...p, subtotal: subtotal.toFixed(2), grandTotal: (subtotal + vat - discount + delivery).toFixed(2) }));
   }, [items, form.vatAmount, form.discountAmount, form.deliveryFee]);
 
   async function handleSave() {
-    if (!form.vendor) {
-      toast.error(lang === "en" ? "Please select a vendor" : "กรุณาเลือกร้านค้า");
-      return;
-    }
-    if (items.length === 0 || !items[0].itemName) {
-      toast.error(lang === "en" ? "Please add at least 1 item" : "กรุณาเพิ่มรายการอย่างน้อย 1 รายการ");
-      return;
-    }
-    // Mandatory receipt image
-    if (!form.receiptImageUrl) {
-      setImageError(lang === "en" ? "Receipt image is required" : "กรุณาแนบรูปใบเสร็จ");
-      toast.error(lang === "en" ? "Please attach a receipt image" : "กรุณาแนบรูปใบเสร็จ (บังคับ)");
-      return;
-    }
-    setImageError("");
-
+    if (!form.vendor) { toast.error("กรุณาเลือกร้านค้า"); return; }
+    if (!items[0]?.itemName) { toast.error("กรุณาเพิ่มรายการอย่างน้อย 1 รายการ"); return; }
+    if (!form.receiptImageUrl) { setImgErr("กรุณาแนบรูปใบเสร็จ"); toast.error("กรุณาแนบรูปใบเสร็จ (บังคับ)"); return; }
+    setImgErr("");
     try {
       if (isEdit) {
-        await updateMut.mutateAsync({
-          id: receiptId,
-          data: { ...form, branchId: branchId || 1, items },
-        });
-        toast.success(lang === "en" ? "Expense updated" : "อัพเดทบิลเรียบร้อย");
+        await updateMut.mutateAsync({ id: receiptId, data: { ...form, branchId: branchId || 1, items } });
+        toast.success("อัพเดทบิลเรียบร้อย");
       } else {
-        await createMut.mutateAsync({
-          ...form,
-          branchId: branchId || 1,
-          items,
-        });
-        toast.success(lang === "en" ? "Expense saved" : "บันทึกบิลเรียบร้อย");
+        await createMut.mutateAsync({ ...form, branchId: branchId || 1, items });
+        toast.success("บันทึกบิลเรียบร้อย");
       }
-      onSaved();
-      onClose();
-    } catch (err) {
-      toast.error((lang === "en" ? "Error: " : "เกิดข้อผิดพลาด: ") + (err?.message || "Unknown error"));
-    }
+      onSaved(); onClose();
+    } catch (err) { toast.error("เกิดข้อผิดพลาด: " + (err?.message || "Unknown")); }
   }
 
   async function handleDelete() {
-    if (!confirm(lang === "en" ? "Delete this expense?" : "ต้องการลบบิลนี้?")) return;
+    if (!confirm("ต้องการลบบิลนี้?")) return;
     try {
       await deleteMut.mutateAsync({ id: receiptId });
-      toast.success(lang === "en" ? "Deleted" : "ลบบิลเรียบร้อย");
-      onSaved();
-      onClose();
-    } catch (err) {
-      toast.error(lang === "en" ? "Delete failed" : "ลบไม่สำเร็จ");
-    }
+      toast.success("ลบบิลเรียบร้อย"); onSaved(); onClose();
+    } catch { toast.error("ลบไม่สำเร็จ"); }
   }
 
   async function handleConfirm() {
-    if (!form.receiptImageUrl) {
-      setImageError(lang === "en" ? "Receipt image is required before confirming" : "กรุณาแนบรูปใบเสร็จก่อนยืนยัน");
-      toast.error(lang === "en" ? "Please attach receipt image first" : "กรุณาแนบรูปใบเสร็จก่อนยืนยัน");
-      return;
-    }
+    if (!form.receiptImageUrl) { setImgErr("กรุณาแนบรูปใบเสร็จก่อนยืนยัน"); return; }
     try {
-      await updateMut.mutateAsync({
-        id: receiptId,
-        data: { status: "confirmed" },
-      });
-      toast.success(lang === "en" ? "Confirmed" : "ยืนยันบิลเรียบร้อย");
-      onSaved();
-      onClose();
-    } catch (err) {
-      toast.error(lang === "en" ? "Confirm failed" : "ยืนยันไม่สำเร็จ");
-    }
+      await updateMut.mutateAsync({ id: receiptId, data: { status: "confirmed" } });
+      toast.success("ยืนยันบิลเรียบร้อย"); onSaved(); onClose();
+    } catch { toast.error("ยืนยันไม่สำเร็จ"); }
   }
+
+  // Input / label style shortcuts
+  const inp = {
+    width: "100%", padding: "8px 10px",
+    border: "1px solid var(--border-default)", borderRadius: "var(--r-default)",
+    fontSize: 13, background: "var(--bg-surface)", color: "var(--text-primary)", outline: "none",
+  };
 
   if (isEdit && existingQuery.isLoading) {
     return (
-      <Drawer open onClose={onClose} title={lang === "en" ? "Loading..." : "กำลังโหลด..."}>
-        <div className="p-8 text-center text-muted-foreground">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          {lang === "en" ? "Loading data..." : "กำลังโหลดข้อมูล..."}
+      <Drawer open onClose={onClose} title="กำลังโหลด..." width={820}>
+        <div style={{ padding: 60, textAlign: "center", color: "var(--text-tertiary)" }}>
+          กำลังโหลดข้อมูล...
         </div>
       </Drawer>
     );
   }
 
   return (
-    <Drawer open onClose={onClose} title={isEdit ? (lang === "en" ? "Edit Expense" : "แก้ไขบิล") : (lang === "en" ? "New Expense" : "เพิ่มบิลใหม่")} width={800}>
-      <div className="space-y-6 p-1">
-        {/* Receipt Image Upload (Mandatory) */}
-        <div className={`p-4 rounded-xl border-2 border-dashed transition-colors ${imageError ? "border-red-400 bg-red-50 dark:bg-red-900/10" : "border-border bg-muted/20"}`}>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm font-semibold">
-              {lang === "en" ? "Receipt Image" : "รูปใบเสร็จ"} <span className="text-red-500">*</span>
-            </span>
-            <span className="text-xs text-muted-foreground">
-              ({lang === "en" ? "Required" : "บังคับ"})
-            </span>
+    <Drawer
+      open onClose={onClose}
+      title={isEdit ? "แก้ไขบิล" : "เพิ่มบิลใหม่"}
+      width={820}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+        {/* Receipt Image */}
+        <div style={{
+          padding: 16, borderRadius: "var(--r-default)",
+          border: `2px dashed ${imgErr ? "#f87171" : "var(--border-default)"}`,
+          background: imgErr ? "rgba(254,226,226,0.3)" : "var(--bg-muted)",
+        }}>
+          <div style={{ marginBottom: 10, fontWeight: 600, fontSize: 13 }}>
+            รูปใบเสร็จ <span style={{ color: "#ef4444" }}>*</span>
+            <span style={{ fontWeight: 400, color: "var(--text-tertiary)", marginLeft: 6 }}>(บังคับ)</span>
           </div>
           <ImageUploader
             value={form.receiptImageUrl}
-            onChange={(url) => { setForm((f) => ({ ...f, receiptImageUrl: url })); setImageError(""); }}
+            onChange={(url) => { setForm((f) => ({ ...f, receiptImageUrl: url })); setImgErr(""); }}
             label=""
           />
-          {imageError && (
-            <p className="text-xs text-red-500 mt-2 font-medium">{imageError}</p>
-          )}
+          {imgErr && <div style={{ color: "#ef4444", fontSize: 12, marginTop: 6, fontWeight: 500 }}>{imgErr}</div>}
         </div>
 
-        {/* Vendor Selection */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {/* Vendor + Branch */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <div>
-            <label className="text-sm font-medium mb-1.5 block text-foreground">
-              {lang === "en" ? "Vendor" : "ร้านค้า"} <span className="text-red-500">*</span>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--text-secondary)" }}>
+              ร้านค้า <span style={{ color: "#ef4444" }}>*</span>
             </label>
-            <select
-              value={form.vendor}
-              onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))}
-              className="w-full px-3 py-2.5 border border-border rounded-xl text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-            >
-              <option value="">{lang === "en" ? "Select vendor..." : "เลือกร้านค้า..."}</option>
-              {VENDOR_PRESETS.map((v) => (
-                <option key={v} value={v}>{v}</option>
-              ))}
+            <select value={form.vendor} onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))} style={inp}>
+              <option value="">เลือกร้านค้า...</option>
+              {VENDOR_PRESETS.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-sm font-medium mb-1.5 block text-foreground">
-              {lang === "en" ? "Branch" : "สาขา"}
-            </label>
-            <input
-              type="text"
-              value={form.vendorBranch}
-              onChange={(e) => setForm((f) => ({ ...f, vendorBranch: e.target.value }))}
-              placeholder={lang === "en" ? "e.g. Ladprao branch" : "เช่น สาขาลาดพร้าว"}
-              className="w-full px-3 py-2.5 border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-            />
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--text-secondary)" }}>สาขา</label>
+            <input type="text" value={form.vendorBranch} onChange={(e) => setForm((f) => ({ ...f, vendorBranch: e.target.value }))} placeholder="เช่น สาขาลาดพร้าว" style={inp} />
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+        {/* Receipt No + Date + Category */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
           <div>
-            <label className="text-sm font-medium mb-1.5 block text-foreground">
-              {lang === "en" ? "Receipt No." : "เลขที่บิล"}
-            </label>
-            <input
-              type="text"
-              value={form.receiptNumber}
-              onChange={(e) => setForm((f) => ({ ...f, receiptNumber: e.target.value }))}
-              placeholder={lang === "en" ? "Receipt number" : "เลขที่ใบเสร็จ"}
-              className="w-full px-3 py-2.5 border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-            />
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--text-secondary)" }}>เลขที่บิล</label>
+            <input type="text" value={form.receiptNumber} onChange={(e) => setForm((f) => ({ ...f, receiptNumber: e.target.value }))} placeholder="เลขที่ใบเสร็จ" style={inp} />
           </div>
           <div>
-            <label className="text-sm font-medium mb-1.5 block text-foreground">
-              {lang === "en" ? "Date" : "วันที่"} <span className="text-red-500">*</span>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--text-secondary)" }}>
+              วันที่ <span style={{ color: "#ef4444" }}>*</span>
             </label>
-            <input
-              type="date"
-              value={form.receiptDate}
-              onChange={(e) => setForm((f) => ({ ...f, receiptDate: e.target.value }))}
-              className="w-full px-3 py-2.5 border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-            />
+            <input type="date" value={form.receiptDate} onChange={(e) => setForm((f) => ({ ...f, receiptDate: e.target.value }))} style={inp} />
           </div>
           <div>
-            <label className="text-sm font-medium mb-1.5 block text-foreground">
-              {lang === "en" ? "Category" : "หมวดหมู่"}
-            </label>
-            <select
-              value={form.category}
-              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-              className="w-full px-3 py-2.5 border border-border rounded-xl text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-            >
-              {CATEGORY_OPTIONS.map((c) => (
-                <option key={c.value} value={c.value}>{lang === "en" ? c.labelEn : c.label}</option>
-              ))}
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--text-secondary)" }}>หมวดหมู่</label>
+            <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} style={inp}>
+              {CATEGORY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{lang === "en" ? c.labelEn : c.label}</option>)}
             </select>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {/* Payment + Notes */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <div>
-            <label className="text-sm font-medium mb-1.5 block text-foreground">
-              {lang === "en" ? "Payment Method" : "วิธีชำระเงิน"}
-            </label>
-            <select
-              value={form.paymentMethod}
-              onChange={(e) => setForm((f) => ({ ...f, paymentMethod: e.target.value }))}
-              className="w-full px-3 py-2.5 border border-border rounded-xl text-sm bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-            >
-              {PAYMENT_OPTIONS.map((p) => (
-                <option key={p.value} value={p.value}>{p.label}</option>
-              ))}
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--text-secondary)" }}>วิธีชำระเงิน</label>
+            <select value={form.paymentMethod} onChange={(e) => setForm((f) => ({ ...f, paymentMethod: e.target.value }))} style={inp}>
+              {PAYMENT_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-sm font-medium mb-1.5 block text-foreground">
-              {lang === "en" ? "Notes" : "หมายเหตุ"}
-            </label>
-            <input
-              type="text"
-              value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              placeholder={lang === "en" ? "Additional notes" : "หมายเหตุเพิ่มเติม"}
-              className="w-full px-3 py-2.5 border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-            />
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--text-secondary)" }}>หมายเหตุ</label>
+            <input type="text" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="หมายเหตุเพิ่มเติม" style={inp} />
           </div>
         </div>
 
         {/* Line Items */}
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-sm">
-              {lang === "en" ? "Line Items" : "รายการสินค้า"}
-            </h3>
-            <button
-              onClick={addItem}
-              className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
-            >
-              <IconPlus className="w-3.5 h-3.5" /> {lang === "en" ? "Add item" : "เพิ่มรายการ"}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>รายการสินค้า</div>
+            <button className="btn btn-ghost btn-sm" onClick={() => setItems((p) => [...p, defaultItem()])} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <IconPlus size={14} /> เพิ่มรายการ
             </button>
           </div>
-          <div className="space-y-2">
-            {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '4fr 2fr 1.5fr 2fr 2fr 0.5fr', gap: 8 }} className="px-2 text-xs text-muted-foreground font-medium">
-              <div>{lang === "en" ? "Item" : "สินค้า"}</div>
-              <div className="text-center">{lang === "en" ? "Qty" : "จำนวน"}</div>
-              <div className="text-center">{lang === "en" ? "Unit" : "หน่วย"}</div>
-              <div className="text-center">{lang === "en" ? "Price" : "ราคา"}</div>
-              <div className="text-right">{lang === "en" ? "Total" : "รวม"}</div>
-              <div />
-            </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "4fr 2fr 1.5fr 2fr 2fr 0.5fr", gap: 6, padding: "0 4px", marginBottom: 6 }}>
+            {["สินค้า", "จำนวน", "หน่วย", "ราคา/หน่วย", "รวม", ""].map((h, i) => (
+              <div key={i} style={{ fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)", textAlign: i > 0 ? "center" : "left" }}>{h}</div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {items.map((item, idx) => (
-              <div key={idx} style={{ display: 'grid', gridTemplateColumns: '4fr 2fr 1.5fr 2fr 2fr 0.5fr', gap: 8, alignItems: 'center' }} className="bg-muted/20 rounded-xl p-2.5 border border-border/50">
-                <div>
-                  <input
-                    type="text"
-                    value={item.itemName}
-                    onChange={(e) => updateItem(idx, "itemName", e.target.value)}
-                    placeholder={lang === "en" ? "Item name" : "ชื่อสินค้า"}
-                    className="w-full px-2.5 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  />
-                </div>
-                <div>
-                  <input
-                    type="number"
-                    value={item.quantity}
-                    onChange={(e) => updateItem(idx, "quantity", e.target.value)}
-                    placeholder="1"
-                    className="w-full px-2.5 py-2 border border-border rounded-lg text-sm text-center focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  />
-                </div>
-                <div>
-                  <input
-                    type="text"
-                    value={item.unit}
-                    onChange={(e) => updateItem(idx, "unit", e.target.value)}
-                    placeholder={lang === "en" ? "unit" : "หน่วย"}
-                    className="w-full px-1.5 py-2 border border-border rounded-lg text-sm text-center focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  />
-                </div>
-                <div>
-                  <input
-                    type="number"
-                    value={item.unitPrice}
-                    onChange={(e) => updateItem(idx, "unitPrice", e.target.value)}
-                    placeholder="0"
-                    className="w-full px-2.5 py-2 border border-border rounded-lg text-sm text-right focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  />
-                </div>
-                <div className="text-right font-mono text-sm font-medium pr-1">
-                  <span className="font-sans">฿</span>{formatMoney(item.totalPrice)}
-                </div>
-                <div className="text-center">
+              <div key={idx} style={{
+                display: "grid", gridTemplateColumns: "4fr 2fr 1.5fr 2fr 2fr 0.5fr",
+                gap: 6, alignItems: "center", padding: 10,
+                background: "var(--bg-muted)", borderRadius: "var(--r-default)",
+                border: "1px solid var(--border-default)",
+              }}>
+                <input type="text" value={item.itemName} onChange={(e) => updateItem(idx, "itemName", e.target.value)} placeholder="ชื่อสินค้า" style={inp} />
+                <input type="number" value={item.quantity} onChange={(e) => updateItem(idx, "quantity", e.target.value)} style={{ ...inp, textAlign: "center" }} />
+                <input type="text" value={item.unit} onChange={(e) => updateItem(idx, "unit", e.target.value)} placeholder="หน่วย" style={{ ...inp, textAlign: "center" }} />
+                <input type="number" value={item.unitPrice} onChange={(e) => updateItem(idx, "unitPrice", e.target.value)} style={{ ...inp, textAlign: "right" }} />
+                <div style={{ textAlign: "right", fontWeight: 600, fontFamily: "monospace", fontSize: 13 }}>฿{formatMoney(item.totalPrice)}</div>
+                <div style={{ textAlign: "center" }}>
                   {items.length > 1 && (
-                    <button
-                      onClick={() => removeItem(idx)}
-                      className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                    >
-                      <IconX className="w-4 h-4" />
+                    <button onClick={() => setItems((p) => p.filter((_, i) => i !== idx))} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", padding: 4 }}>
+                      <IconX size={14} />
                     </button>
                   )}
                 </div>
@@ -812,73 +612,52 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
         </div>
 
         {/* Totals */}
-        <div className="bg-muted/20 border border-border rounded-2xl p-5 space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{lang === "en" ? "Subtotal" : "ยอดรวมสินค้า"}</span>
-            <span className="font-mono font-medium"><span className="font-sans">฿</span>{formatMoney(form.subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm items-center">
-            <span className="text-muted-foreground">{lang === "en" ? "VAT" : "VAT (ถ้ามี)"}</span>
-            <input
-              type="number"
-              value={form.vatAmount}
-              onChange={(e) => setForm((f) => ({ ...f, vatAmount: e.target.value }))}
-              className="w-28 px-2.5 py-1.5 border border-border rounded-lg text-sm text-right focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-            />
-          </div>
-          <div className="flex justify-between text-sm items-center">
-            <span className="text-muted-foreground">{lang === "en" ? "Discount" : "ส่วนลด"}</span>
-            <input
-              type="number"
-              value={form.discountAmount}
-              onChange={(e) => setForm((f) => ({ ...f, discountAmount: e.target.value }))}
-              className="w-28 px-2.5 py-1.5 border border-border rounded-lg text-sm text-right focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-            />
-          </div>
-          <div className="flex justify-between text-sm items-center">
-            <span className="text-muted-foreground">{lang === "en" ? "Delivery Fee" : "ค่าจัดส่ง"}</span>
-            <input
-              type="number"
-              value={form.deliveryFee}
-              onChange={(e) => setForm((f) => ({ ...f, deliveryFee: e.target.value }))}
-              className="w-28 px-2.5 py-1.5 border border-border rounded-lg text-sm text-right focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-            />
-          </div>
-          <hr className="border-border" />
-          <div className="flex justify-between items-center">
-            <span className="font-bold text-base">{lang === "en" ? "Grand Total" : "ยอดรวมทั้งหมด"}</span>
-            <span className="font-mono font-bold text-xl text-primary"><span className="font-sans">฿</span>{formatMoney(form.grandTotal)}</span>
+        <div className="card" style={{ padding: 16 }}>
+          {[
+            ["ยอดรวมสินค้า", <span className="tabular" style={{ fontWeight: 600 }}>฿{formatMoney(form.subtotal)}</span>],
+          ].map(([label, val], i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, fontSize: 13 }}>
+              <span style={{ color: "var(--text-secondary)" }}>{label}</span>{val}
+            </div>
+          ))}
+          {[
+            ["VAT (ถ้ามี)", "vatAmount"],
+            ["ส่วนลด",       "discountAmount"],
+            ["ค่าจัดส่ง",    "deliveryFee"],
+          ].map(([label, key]) => (
+            <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, fontSize: 13 }}>
+              <span style={{ color: "var(--text-secondary)" }}>{label}</span>
+              <input
+                type="number" value={form[key]}
+                onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                style={{ ...inp, width: 110, textAlign: "right" }}
+              />
+            </div>
+          ))}
+          <div style={{ borderTop: "1px solid var(--border-default)", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontWeight: 700, fontSize: 15 }}>ยอดรวมทั้งหมด</span>
+            <span className="tabular" style={{ fontWeight: 700, fontSize: 22, color: "var(--matcha-600)" }}>฿{formatMoney(form.grandTotal)}</span>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-2">
+        {/* Action Buttons */}
+        <div style={{ display: "flex", gap: 10 }}>
           <button
+            className="btn btn-primary"
+            style={{ flex: 1 }}
             onClick={handleSave}
             disabled={createMut.isPending || updateMut.isPending}
-            className="flex-1 px-4 py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:opacity-90 transition-all duration-150 active:scale-[0.97] disabled:opacity-50 shadow-sm"
           >
-            {createMut.isPending || updateMut.isPending
-              ? (lang === "en" ? "Saving..." : "กำลังบันทึก...")
-              : isEdit
-                ? (lang === "en" ? "Update" : "อัพเดท")
-                : (lang === "en" ? "Save" : "บันทึก")}
+            {createMut.isPending || updateMut.isPending ? "กำลังบันทึก..." : isEdit ? "อัพเดท" : "บันทึก"}
           </button>
           {isEdit && form.status === "draft" && (
-            <button
-              onClick={handleConfirm}
-              className="px-4 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:opacity-90 transition-all duration-150 active:scale-[0.97] flex items-center gap-2 shadow-sm"
-            >
-              <IconCheck className="w-4 h-4" /> {lang === "en" ? "Confirm" : "ยืนยัน"}
+            <button className="btn btn-secondary" onClick={handleConfirm} style={{ display: "flex", alignItems: "center", gap: 6, background: "#059669", color: "#fff", border: "none" }}>
+              <IconCheck size={15} /> ยืนยัน
             </button>
           )}
           {isEdit && (
-            <button
-              onClick={handleDelete}
-              disabled={deleteMut.isPending}
-              className="px-4 py-3 border border-red-200 text-red-600 rounded-xl font-medium hover:bg-red-50 dark:hover:bg-red-900/10 transition-all duration-150 active:scale-[0.97] flex items-center gap-2"
-            >
-              <IconTrash className="w-4 h-4" /> {lang === "en" ? "Delete" : "ลบ"}
+            <button className="btn btn-ghost" onClick={handleDelete} disabled={deleteMut.isPending} style={{ color: "#ef4444", display: "flex", alignItems: "center", gap: 6 }}>
+              <IconTrash size={15} /> ลบ
             </button>
           )}
         </div>
@@ -887,80 +666,72 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
   );
 }
 
-// ─── Expense Summary Modal ───────────────────────────────────────────────────
+// ─── Summary Modal ────────────────────────────────────────────────────────────
 
 function ExpenseSummaryModal({ data, lang, onClose }) {
   if (!data) return null;
-
   return (
-    <Modal open onClose={onClose} title={lang === "en" ? "Expense Summary (Confirmed)" : "สรุปค่าใช้จ่าย (ยืนยันแล้ว)"} width={560}>
-      <div className="space-y-6 p-1">
-        {/* Total */}
-        <div className="text-center bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl p-8 border border-primary/10">
-          <p className="text-sm text-muted-foreground font-medium">
-            {lang === "en" ? "Total Confirmed Expenses" : "ค่าใช้จ่ายรวมทั้งหมด"}
-          </p>
-          <p className="text-4xl font-bold text-primary mt-2"><span className="font-sans">฿</span>{formatMoney(data.total)}</p>
+    <Modal open onClose={onClose} title="สรุปค่าใช้จ่าย (ยืนยันแล้ว)" width={520}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{
+          textAlign: "center", background: "var(--matcha-50,#f0fdf4)",
+          borderRadius: "var(--r-default)", padding: "32px 24px",
+          border: "1px solid var(--matcha-100,#dcfce7)",
+        }}>
+          <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>ค่าใช้จ่ายรวมทั้งหมด</div>
+          <div className="tabular" style={{ fontSize: 40, fontWeight: 700, color: "var(--matcha-600)" }}>
+            ฿{formatMoney(data.total)}
+          </div>
         </div>
 
-        {/* By Vendor */}
-        {data.byVendor.length > 0 && (
+        {data.byVendor?.length > 0 && (
           <div>
-            <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide text-muted-foreground">
-              {lang === "en" ? "By Vendor" : "แยกตามร้านค้า"}
-            </h3>
-            <div className="space-y-1">
-              {data.byVendor.map((v, i) => (
-                <div key={i} className="flex justify-between items-center py-2.5 px-3 rounded-xl hover:bg-muted/30 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
-                      {v.vendor?.charAt(0)}
-                    </div>
-                    <div>
-                      <span className="font-medium text-sm">{v.vendor}</span>
-                      <span className="text-xs text-muted-foreground ml-2">({v.count} {lang === "en" ? "receipts" : "บิล"})</span>
-                    </div>
+            <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+              แยกตามร้านค้า
+            </div>
+            {data.byVendor.map((v, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderRadius: "var(--r-default)", marginBottom: 4, background: "var(--bg-muted)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--bg-subtle)", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 13, color: "var(--text-secondary)" }}>
+                    {v.vendor?.charAt(0)}
                   </div>
-                  <span className="font-mono font-medium text-sm"><span className="font-sans">฿</span>{formatMoney(v.total)}</span>
+                  <div>
+                    <div style={{ fontWeight: 500, fontSize: 13 }}>{v.vendor}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{v.count} บิล</div>
+                  </div>
                 </div>
-              ))}
-            </div>
+                <div className="tabular" style={{ fontWeight: 600, fontSize: 13 }}>฿{formatMoney(v.total)}</div>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* By Category */}
-        {data.byCategory.length > 0 && (
+        {data.byCategory?.length > 0 && (
           <div>
-            <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide text-muted-foreground">
-              {lang === "en" ? "By Category" : "แยกตามหมวดหมู่"}
-            </h3>
-            <div className="space-y-1">
-              {data.byCategory.map((c, i) => {
-                const cat = getCategoryInfo(c.category);
-                return (
-                  <div key={i} className="flex justify-between items-center py-2.5 px-3 rounded-xl hover:bg-muted/30 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-medium ${cat.color}`}>
-                        {lang === "en" ? cat.labelEn : cat.label}
-                      </span>
-                      <span className="text-xs text-muted-foreground">({c.count} {lang === "en" ? "receipts" : "บิล"})</span>
-                    </div>
-                    <span className="font-mono font-medium text-sm"><span className="font-sans">฿</span>{formatMoney(c.total)}</span>
-                  </div>
-                );
-              })}
+            <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+              แยกตามหมวดหมู่
             </div>
+            {data.byCategory.map((c, i) => {
+              const cat = getCategoryInfo(c.category);
+              return (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", borderRadius: "var(--r-default)", marginBottom: 4 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ padding: "3px 10px", borderRadius: 12, fontSize: 11, fontWeight: 600, background: cat.bg, color: cat.color }}>
+                      {lang === "en" ? cat.labelEn : cat.label}
+                    </span>
+                    <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{c.count} บิล</span>
+                  </div>
+                  <div className="tabular" style={{ fontWeight: 600, fontSize: 13 }}>฿{formatMoney(c.total)}</div>
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {data.byVendor.length === 0 && data.byCategory.length === 0 && (
-          <div className="text-center py-8">
-            <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
-              <IconReceipt className="w-6 h-6 text-muted-foreground/50" />
-            </div>
-            <p className="text-muted-foreground text-sm">
-              {lang === "en" ? "No confirmed receipts yet" : "ยังไม่มีบิลที่ยืนยันแล้ว"}
-            </p>
+        {!data.byVendor?.length && !data.byCategory?.length && (
+          <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-tertiary)" }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>🧾</div>
+            <div style={{ fontSize: 13 }}>ยังไม่มีบิลที่ยืนยันแล้ว</div>
           </div>
         )}
       </div>
