@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getDb } from "../db";
 import { posKitchenTickets, posOrders, posOrderItems } from "../../drizzle/schema";
 import { router, staffProcedure } from "../_core/trpc";
+import { broadcastToBranch, RealtimeEvents } from "../lib/realtime";
 
 export const kitchenRouter = router({
   listTickets: staffProcedure
@@ -83,6 +84,15 @@ export const kitchenRouter = router({
       if (ticket?.orderId) {
         await db.update(posOrders).set({ status: "preparing", preparingAt: new Date() })
           .where(eq(posOrders.id, ticket.orderId));
+
+        const [ord] = await db.select().from(posOrders).where(eq(posOrders.id, ticket.orderId)).limit(1);
+        if (ord && ord.branchId) {
+          await broadcastToBranch(ord.branchId, RealtimeEvents.ORDER_UPDATED, {
+            id: ord.id,
+            orderNumber: ord.orderNumber,
+            status: "preparing",
+          });
+        }
       }
       return ticket;
     }),
@@ -104,6 +114,15 @@ export const kitchenRouter = router({
           .where(eq(posOrders.id, ticket.orderId));
         await db.update(posOrderItems).set({ kitchenStatus: "ready" })
           .where(eq(posOrderItems.orderId, ticket.orderId));
+
+        const [ord] = await db.select().from(posOrders).where(eq(posOrders.id, ticket.orderId)).limit(1);
+        if (ord && ord.branchId) {
+          await broadcastToBranch(ord.branchId, RealtimeEvents.ORDER_UPDATED, {
+            id: ord.id,
+            orderNumber: ord.orderNumber,
+            status: "ready",
+          });
+        }
       }
       return ticket;
     }),
@@ -123,6 +142,15 @@ export const kitchenRouter = router({
       if (ticket?.orderId) {
         await db.update(posOrders).set({ status: "served", servedAt: new Date() })
           .where(eq(posOrders.id, ticket.orderId));
+
+        const [ord] = await db.select().from(posOrders).where(eq(posOrders.id, ticket.orderId)).limit(1);
+        if (ord && ord.branchId) {
+          await broadcastToBranch(ord.branchId, RealtimeEvents.ORDER_UPDATED, {
+            id: ord.id,
+            orderNumber: ord.orderNumber,
+            status: "served",
+          });
+        }
       }
       return ticket;
     }),

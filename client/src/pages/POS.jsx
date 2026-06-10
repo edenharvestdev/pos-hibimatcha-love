@@ -3,13 +3,15 @@
 // ============================================
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { EmptyCart,IconBookmark,IconBowl,IconBox,IconBrand,IconCake,IconCards,IconCheck,IconChevLeft,IconChevRight,IconClock,IconCoin,IconCupHot,IconCupIced,IconDiscount,IconEdit,IconExport,IconEye,IconGrid,IconHeart,IconImport,IconLeaf,IconList,IconMore,IconPlus,IconPrint,IconQR,IconReceipt,IconRefresh,IconSettings,IconShare,IconTrash,IconWallet,IconWhisk } from "@/icons";
+import { motion, AnimatePresence } from "framer-motion";
+import QRCode from "qrcode";
+import { EmptyCart,IconBookmark,IconBowl,IconBox,IconBrand,IconCake,IconCards,IconCheck,IconChevLeft,IconChevRight,IconClock,IconCoin,IconCupHot,IconCupIced,IconDiscount,IconEdit,IconExport,IconEye,IconGrid,IconHeart,IconImport,IconLeaf,IconList,IconMore,IconMoreV,IconLogout,IconPlus,IconPrint,IconQR,IconReceipt,IconRefresh,IconSettings,IconShare,IconTrash,IconWallet,IconWhisk } from "@/icons";
 import { useApp,Drawer,Field,Select,Toggle,Checkbox,SearchInput,TopActionBar,BulkActionBar,Placeholder,CountUp } from "@/components";
 import { Numpad } from "@/components/Numpad";
 import { Logo } from "@/components/Shell";
 import { trpc } from "@/lib/trpc";
 import { useQueryClient } from "@tanstack/react-query";
-import { getSession } from "@/lib/authStore";
+import { getSession, clearSession } from "@/lib/authStore";
 // USB hardware imports removed — all printing now via network tRPC
 // import { printReceipt, openCashDrawer } from "@/lib/hardware";
 import { downloadCSV, downloadXLSX, downloadPDF, tableHTMLFromRows } from "@/lib/export";
@@ -20,16 +22,83 @@ import { getAutomation } from "@/lib/automationSettings";
 // Icon map for category icons
 const CATEGORY_ICON_MAP = { IconWhisk, IconCupHot, IconCupIced, IconLeaf, IconCake, IconBowl, IconBox, IconGrid };
 
+// Motion animation variants for category shifts and list displays
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.02,
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 15, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      type: "spring",
+      stiffness: 260,
+      damping: 22
+    }
+  }
+};
+
+const LiveMatchaBackground = () => {
+  return (
+    <div style={{
+      position: 'absolute',
+      inset: 0,
+      overflow: 'hidden',
+      zIndex: 0,
+      pointerEvents: 'none',
+      background: 'radial-gradient(circle at 50% 50%, var(--background), var(--bg-muted))',
+    }}>
+      <div className="ambient-blob" style={{
+        top: '10%',
+        left: '15%',
+        width: '350px',
+        height: '350px',
+        background: 'radial-gradient(circle, rgba(143,188,143,0.25) 0%, rgba(143,188,143,0) 70%)',
+        animationDelay: '0s',
+        animationDuration: '30s',
+      }}/>
+      <div className="ambient-blob" style={{
+        bottom: '15%',
+        right: '10%',
+        width: '450px',
+        height: '450px',
+        background: 'radial-gradient(circle, rgba(107,142,35,0.2) 0%, rgba(107,142,35,0) 70%)',
+        animationDelay: '-5s',
+        animationDuration: '35s',
+      }}/>
+      <div className="ambient-blob" style={{
+        top: '50%',
+        left: '60%',
+        width: '300px',
+        height: '300px',
+        background: 'radial-gradient(circle, rgba(244,228,193,0.3) 0%, rgba(244,228,193,0) 70%)',
+        animationDelay: '-10s',
+        animationDuration: '25s',
+      }}/>
+    </div>
+  );
+};
+
 export const PagePOS = () => {
   const { navigate, branch, t, lang } = useApp();
   const session = getSession();
   const branchId = branch?.id || session?.currentBranchId;
+  const utils = trpc.useUtils();
 
   const [activeCat, setActiveCat] = useState('all');
   const [search, setSearch] = useState('');
   const [view, setView] = useState('grid');
   const [cart, setCart] = useState([]);
   const [optionFor, setOptionFor] = useState(null);
+  const [editingCartIdx, setEditingCartIdx] = useState(null);
   const [orderType, setOrderType] = useState('Dine-in');
   const [discount, setDiscount] = useState(null); // { type: 'percent'|'fixed', value: number, label: string }
   const [discountOpen, setDiscountOpen] = useState(false);
@@ -119,9 +188,54 @@ export const PagePOS = () => {
     }
   };
 
-  const confirmAddItem = (item, opts = []) => {
+  const handleSync = async () => {
+    try {
+      await utils.invalidate();
+      alert("ซิงค์ข้อมูลเมนูสำเร็จ (Menu synced successfully)");
+    } catch (e) {
+      alert("ซิงค์ข้อมูลล้มเหลว: " + e.message);
+    }
+  };
+
+  const handleLogout = () => {
+    if (window.confirm("คุณต้องการออกจากระบบ / ปิดกะ หรือไม่? (Are you sure you want to logout / end shift?)")) {
+      clearSession();
+      navigate('/pos/login');
+    }
+  };
+
+  const confirmAddItem = (item, opts = [], qty = 1, note = '') => {
     const optPrice = opts.reduce((s, o) => s + Number(o.priceAdjustment ?? 0), 0);
-    setCart((c) => [...c, { id: item.id, name: item.name, price: Number(item.displayPrice ?? item.basePrice) + optPrice, qty: 1, opts: opts.map((o) => o.optionName ?? o.name), rawOpts: opts }]);
+    const price = Number(item.displayPrice ?? item.basePrice) + optPrice;
+    const itemNames = opts.map((o) => o.optionName ?? o.name);
+    
+    if (editingCartIdx !== null) {
+      setCart((c) => c.map((it, i) => i === editingCartIdx ? {
+        ...it,
+        price,
+        qty,
+        opts: itemNames,
+        rawOpts: opts,
+        note,
+      } : it));
+      setEditingCartIdx(null);
+    } else {
+      const existingIdx = cart.findIndex((it) => it.id === item.id && JSON.stringify(it.rawOpts) === JSON.stringify(opts) && it.note === note);
+      if (existingIdx !== -1) {
+        setCart((c) => c.map((it, i) => i === existingIdx ? { ...it, qty: it.qty + qty } : it));
+      } else {
+        setCart((c) => [...c, {
+          id: item.id,
+          imageUrl: item.imageUrl,
+          name: item.name,
+          price,
+          qty,
+          opts: itemNames,
+          rawOpts: opts,
+          note,
+        }]);
+      }
+    }
     setOptionFor(null);
   };
 
@@ -137,8 +251,10 @@ export const PagePOS = () => {
       display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 420px',
       overflow: 'hidden', position: 'relative',
     }} className="pos-grid">
+      <LiveMatchaBackground />
+
       {/* Menu side */}
-      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: '1px solid var(--border-default)' }}>
+      <div className="glass-premium" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: '1px solid var(--border-default)', zIndex: 1 }}>
         {/* Top toolbar */}
         <div style={{ padding: '16px 24px 8px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--border-default)' }}>
           <SearchInput value={search} onChange={setSearch} placeholder={t('pos.searchMenu')} shortcut="⌘F" style={{ flex: 1, maxWidth: 360 }}/>
@@ -153,15 +269,17 @@ export const PagePOS = () => {
               }}><I size={16}/></button>
             ))}
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={handleManualScan} title={t('pos.scan')}><IconQR size={16}/> {t('pos.scan')}</button>
-          <button className="btn btn-ghost btn-sm hide-on-sunmi" onClick={() => navigate('/pos/kitchen')} title={t('pos.kitchen')}><IconClock size={16}/> {t('pos.kitchen')}</button>
-          <button className="btn btn-ghost btn-sm hide-on-sunmi" onClick={() => navigate('/pos/orders')} title={t('pos.orders')}><IconReceipt size={16}/> {t('pos.orders')}</button>
-          <button className="btn btn-ghost btn-sm hide-on-sunmi" onClick={() => navigate('/pos/delivery')} title={t('pos.delivery')}><IconBox size={16}/> {t('pos.delivery')}</button>
-          <button className="btn btn-ghost btn-sm hide-on-sunmi" onClick={() => navigate('/sop')} title={t('pos.sop')}><IconBookmark size={16}/> {t('pos.sop')}</button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost btn-sm" onClick={handleManualScan} title={t('pos.scan')}><IconQR size={16}/> {t('pos.scan')}</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost btn-sm hide-on-sunmi" onClick={() => navigate('/pos/kitchen')} title={t('pos.kitchen')}><IconClock size={16}/> {t('pos.kitchen')}</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost btn-sm hide-on-sunmi" onClick={() => navigate('/pos/orders')} title={t('pos.orders')}><IconReceipt size={16}/> {t('pos.orders')}</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost btn-sm hide-on-sunmi" onClick={() => navigate('/pos/delivery')} title={t('pos.delivery')}><IconBox size={16}/> {t('pos.delivery')}</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost btn-sm hide-on-sunmi" onClick={() => navigate('/sop')} title={t('pos.sop')}><IconBookmark size={16}/> {t('pos.sop')}</motion.button>
           {(session?.role === 'super_admin' || session?.role === 'staff_admin') && (
-            <button className="btn btn-secondary btn-sm hide-on-sunmi" onClick={() => navigate('/backoffice/menu')} title={t('nav.menu')}><IconPlus size={16}/> {t('nav.menu')}</button>
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-secondary btn-sm hide-on-sunmi" onClick={() => navigate('/backoffice/menu')} title={t('nav.menu')}><IconPlus size={16}/> {t('nav.menu')}</motion.button>
           )}
-          <button className="btn btn-ghost btn-icon hide-on-sunmi" onClick={() => navigate('/settings')} title="Settings"><IconSettings size={18}/></button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost btn-sm hide-on-sunmi" onClick={handleSync} title="ซิงค์ข้อมูล (Sync)"><IconRefresh size={16}/> ซิงค์ (Sync)</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost btn-sm hide-on-sunmi" onClick={handleLogout} title="ออกจากระบบ / ปิดกะ (Logout / End Shift)" style={{ color: 'var(--danger)' }}><IconLogout size={16}/> ออกจากระบบ (Logout)</motion.button>
+          <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="btn btn-ghost btn-icon hide-on-sunmi" onClick={() => navigate('/settings')} title="Settings"><IconSettings size={18}/></motion.button>
         </div>
 
         {/* Low-stock alert banner */}
@@ -188,17 +306,24 @@ export const PagePOS = () => {
               const I = CATEGORY_ICON_MAP[iconName] || IconGrid;
               const active = activeCat === c.id || (activeCat === 'all' && c.id === 'all');
               return (
-                <button key={c.id} onClick={() => setActiveCat(c.id)} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '8px 14px', borderRadius: 999,
-                  fontSize: 13, fontWeight: 500,
-                  background: active ? 'var(--matcha-600)' : 'var(--bg-surface)',
-                  color: active ? 'white' : 'var(--text-secondary)',
-                  border: '1px solid ' + (active ? 'var(--matcha-600)' : 'var(--border-default)'),
-                  transition: 'all 200ms var(--ease-out-expo)',
-                }}>
+                <motion.button
+                  key={c.id}
+                  onClick={() => setActiveCat(c.id)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '8px 14.5px', borderRadius: 999,
+                    fontSize: 13, fontWeight: 500,
+                    background: active ? 'var(--matcha-600)' : 'var(--bg-surface)',
+                    color: active ? 'white' : 'var(--text-secondary)',
+                    border: '1px solid ' + (active ? 'var(--matcha-600)' : 'var(--border-default)'),
+                    boxShadow: active ? '0 4px 12px rgba(104,133,100,0.15)' : 'none',
+                    transition: 'all 200ms var(--ease-out-expo)',
+                  }}
+                >
                   <I size={15}/> {c.name}
-                </button>
+                </motion.button>
               );
             })}
           </div>
@@ -221,31 +346,51 @@ export const PagePOS = () => {
             </div>
           )}
           {!isLoading && view === 'grid' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
-              {filtered.map((it, i) => <POSItemCard key={it.id} item={it} idx={i} onAdd={addToCart} lang={lang}/>)}
-            </div>
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              key={`grid-${activeCat}`}
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}
+            >
+              {filtered.map((it, i) => <POSItemCard key={it.id} item={it} idx={i} onAdd={addToCart} lang={lang} branchId={branchId} onStatusChange={() => utils.menu.invalidate()}/>)}
+            </motion.div>
           )}
           {!isLoading && view === 'list' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {filtered.map((it) => <POSItemRow key={it.id} item={it} onAdd={addToCart} lang={lang}/>)}
-            </div>
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              key={`list-${activeCat}`}
+              style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+            >
+              {filtered.map((it) => <POSItemRow key={it.id} item={it} onAdd={addToCart} lang={lang} branchId={branchId} onStatusChange={() => utils.menu.invalidate()}/>)}
+            </motion.div>
           )}
           {!isLoading && view === 'cards' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-              {filtered.map((it, i) => <POSItemCard key={it.id} item={it} idx={i} onAdd={addToCart} large lang={lang}/>)}
-            </div>
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              key={`cards-${activeCat}`}
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}
+            >
+              {filtered.map((it, i) => <POSItemCard key={it.id} item={it} idx={i} onAdd={addToCart} large lang={lang} branchId={branchId} onStatusChange={() => utils.menu.invalidate()}/>)}
+            </motion.div>
           )}
         </div>
       </div>
 
       {/* Cart */}
       <CartPanel
-        cart={cart} orderType={orderType} setOrderType={setOrderType}
+        cart={cart} setCart={setCart} orderType={orderType} setOrderType={setOrderType}
         updateQty={updateQty} sub={sub} discountAmt={discountAmt} vat={vat} total={total}
         discount={discount} onDiscountOpen={() => setDiscountOpen(true)} onClearDiscount={() => setDiscount(null)}
         branchId={branchId}
         member={member} setMember={setMember}
         pointsRedeemed={pointsRedeemed} setPointsRedeemed={setPointsRedeemed}
+        onEditItem={(idx) => { setEditingCartIdx(idx); setOptionFor(cart[idx]); }}
+        onRemoveItem={(idx) => updateQty(idx, -999)}
         onOrderCreated={(orderId) => {
           setCart([]);
           setDiscount(null);
@@ -265,7 +410,12 @@ export const PagePOS = () => {
       />
 
       {/* Option picker */}
-      <OptionSheet item={optionFor} onClose={() => setOptionFor(null)} onAdd={confirmAddItem}/>
+      <OptionSheet 
+        item={optionFor} 
+        onClose={() => { setOptionFor(null); setEditingCartIdx(null); }} 
+        onAdd={confirmAddItem}
+        editingItem={editingCartIdx !== null ? cart[editingCartIdx] : null}
+      />
 
       {/* Connection status */}
       <div style={{ position: 'absolute', bottom: 16, left: 24, display: 'flex', gap: 8 }}>
@@ -292,92 +442,378 @@ export const PagePOS = () => {
   );
 };
 
-const POSItemCard = ({ item, idx, onAdd, large, lang }) => {
+const POSItemCard = ({ item, idx, onAdd, large, lang, branchId, onStatusChange }) => {
   const isOutOfStock = item.stockLevel === 0;
   const displayPrice = item.displayPrice ?? item.basePrice;
   const tags = Array.isArray(item.tags) ? item.tags : [];
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+
+  const setStatusMut = trpc.menu.setBranchItemStatus.useMutation({
+    onSuccess: () => {
+      onStatusChange?.();
+    }
+  });
+
+  const handleStatusChange = async (status) => {
+    try {
+      await setStatusMut.mutateAsync({ menuItemId: item.id, branchId, status });
+    } catch (e) {
+      alert("Error: " + e.message);
+    }
+    setShowStatusMenu(false);
+  };
+
   return (
-    <button
-      onClick={() => onAdd(item)}
-      disabled={isOutOfStock}
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: isOutOfStock ? 1 : 1.03, y: isOutOfStock ? 0 : -4, boxShadow: '0 12px 30px rgba(104,133,100,0.12)', borderColor: 'var(--matcha-400)' }}
+      whileTap={{ scale: isOutOfStock ? 1 : 0.97 }}
       style={{
         background: 'var(--bg-surface)',
         border: '1px solid var(--border-default)',
         borderRadius: 'var(--r-md)',
-        overflow: 'hidden',
+        overflow: 'visible',
         textAlign: 'left',
-        opacity: isOutOfStock ? 0.5 : 1,
-        cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+        opacity: isOutOfStock ? 0.8 : 1,
+        cursor: 'default',
         position: 'relative',
-        transition: 'transform 240ms var(--ease-out-expo), box-shadow 240ms, border-color 240ms',
+        display: 'flex',
+        flexDirection: 'column',
       }}
-      onMouseEnter={(e) => { if (!isOutOfStock) { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; e.currentTarget.style.borderColor = 'var(--matcha-200)'; } }}
-      onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border-default)'; }}
+      className="pos-item-card-wrapper"
     >
-      <div style={{ position: 'relative', aspectRatio: large ? '4/3' : '1/1' }}>
-        {item.imageUrl ? (
-          <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
-        ) : (
-          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, var(--matcha-50), var(--matcha-100))', display: 'grid', placeItems: 'center', color: 'var(--matcha-700)' }}>
-            <IconWhisk size={48}/>
+      <div 
+        onClick={() => {
+          if (!isOutOfStock) onAdd(item);
+        }}
+        style={{
+          cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div style={{ position: 'relative', aspectRatio: large ? '4/3' : '1/1', width: '100%', overflow: 'hidden', borderTopLeftRadius: 'var(--r-md)', borderTopRightRadius: 'var(--r-md)' }}>
+          {item.imageUrl ? (
+            <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+          ) : (
+            <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, var(--matcha-50), var(--matcha-100))', display: 'grid', placeItems: 'center', color: 'var(--matcha-700)' }}>
+              <IconWhisk size={48}/>
+            </div>
+          )}
+          {tags[0] && (
+            <span className={'pill ' + (tags[0] === 'new' ? 'pill-gold' : 'pill-matcha')} style={{ position: 'absolute', top: 8, left: 8, height: 20, fontSize: 10 }}>
+              {tags[0]}
+            </span>
+          )}
+          {isOutOfStock && (
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(240,240,240,0.7)', display: 'grid', placeItems: 'center' }}>
+              <span className="pill pill-danger" style={{ fontWeight: 600 }}>ของหมด / Out of Stock</span>
+            </div>
+          )}
+        </div>
+        <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 2, color: isOutOfStock ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{displayName(item, lang)}</div>
+            {lang !== 'th' && item.nameThai && <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{item.nameThai}</div>}
+            {lang === 'th' && item.name !== item.nameThai && <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{item.name}</div>}
           </div>
-        )}
-        {tags[0] && (
-          <span className={'pill ' + (tags[0] === 'new' ? 'pill-gold' : 'pill-matcha')} style={{ position: 'absolute', top: 8, left: 8, height: 20, fontSize: 10 }}>
-            {tags[0]}
-          </span>
-        )}
-        {isOutOfStock && (
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.6)', display: 'grid', placeItems: 'center' }}>
-            <span className="pill pill-danger">Out of stock</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+            <span className="tabular" style={{ fontSize: 15, fontWeight: 600, color: isOutOfStock ? 'var(--text-secondary)' : 'var(--text-primary)' }}>฿{Number(displayPrice).toFixed(0)}</span>
+            {!isOutOfStock && (
+              <span style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--matcha-600)', color: 'white', display: 'grid', placeItems: 'center' }}>
+                <IconPlus size={14} stroke={2.5}/>
+              </span>
+            )}
           </div>
-        )}
-      </div>
-      <div style={{ padding: '12px 14px' }}>
-        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 2 }}>{displayName(item, lang)}</div>
-        {lang !== 'th' && item.nameThai && <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{item.nameThai}</div>}
-        {lang === 'th' && item.name !== item.nameThai && <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{item.name}</div>}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-          <span className="tabular" style={{ fontSize: 15, fontWeight: 600 }}>฿{Number(displayPrice).toFixed(0)}</span>
-          <span style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--matcha-600)', color: 'white', display: 'grid', placeItems: 'center' }}>
-            <IconPlus size={14} stroke={2.5}/>
-          </span>
         </div>
       </div>
-    </button>
+
+      <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowStatusMenu(!showStatusMenu);
+          }}
+          className="btn btn-secondary btn-icon"
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.9)',
+            border: '1px solid var(--border-default)',
+            boxShadow: 'var(--shadow-sm)',
+            padding: 0,
+            display: 'grid',
+            placeItems: 'center',
+          }}
+          title="จัดการสถานะ / Branch Control"
+        >
+          <IconMoreV size={16}/>
+        </button>
+
+        {showStatusMenu && (
+          <>
+            <div 
+              style={{ position: 'fixed', inset: 0, zIndex: 9 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowStatusMenu(false);
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                top: 32,
+                right: 0,
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--r-default)',
+                boxShadow: 'var(--shadow-lg)',
+                padding: 4,
+                zIndex: 10,
+                minWidth: 140,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+              }}
+            >
+              <button
+                onClick={(e) => { e.stopPropagation(); handleStatusChange('open'); }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: 'transparent',
+                  textAlign: 'left',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  color: 'var(--text-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }}/> เปิดขาย (Open)
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleStatusChange('out_of_stock'); }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: 'transparent',
+                  textAlign: 'left',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  color: 'var(--text-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }}/> ของหมด (Out of Stock)
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleStatusChange('hidden'); }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: 'transparent',
+                  textAlign: 'left',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  color: 'var(--text-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#9ca3af' }}/> ซ่อนเมนู (Hide)
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </motion.div>
   );
 };
 
-const POSItemRow = ({ item, onAdd, lang }) => {
+const POSItemRow = ({ item, onAdd, lang, branchId, onStatusChange }) => {
   const isOutOfStock = item.stockLevel === 0;
   const displayPrice = item.displayPrice ?? item.basePrice;
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+
+  const setStatusMut = trpc.menu.setBranchItemStatus.useMutation({
+    onSuccess: () => {
+      onStatusChange?.();
+    }
+  });
+
+  const handleStatusChange = async (status) => {
+    try {
+      await setStatusMut.mutateAsync({ menuItemId: item.id, branchId, status });
+    } catch (e) {
+      alert("Error: " + e.message);
+    }
+    setShowStatusMenu(false);
+  };
+
   return (
-    <button onClick={() => onAdd(item)} disabled={isOutOfStock} style={{
-      display: 'flex', alignItems: 'center', gap: 16,
-      padding: 12, background: 'var(--bg-surface)',
-      border: '1px solid var(--border-default)',
-      borderRadius: 'var(--r-md)',
-      opacity: isOutOfStock ? 0.5 : 1,
-      textAlign: 'left',
-      transition: 'background 200ms',
-    }}
-      onMouseEnter={(e) => { if (!isOutOfStock) e.currentTarget.style.background = 'var(--bg-muted)'; }}
-      onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-surface)'}
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: isOutOfStock ? 1 : 1.015, boxShadow: '0 6px 18px rgba(104,133,100,0.08)', borderColor: 'var(--matcha-400)' }}
+      whileTap={{ scale: isOutOfStock ? 1 : 0.99 }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 16,
+        padding: 12, background: 'var(--bg-surface)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--r-md)',
+        opacity: isOutOfStock ? 0.8 : 1,
+        position: 'relative',
+        overflow: 'visible',
+      }}
     >
-      <div style={{ width: 52, height: 52, borderRadius: 10, background: 'var(--matcha-50)', color: 'var(--matcha-700)', display: 'grid', placeItems: 'center', flex: 'none' }}><IconWhisk size={24}/></div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 14, fontWeight: 500 }}>{displayName(item, lang)}</div>
-        <div className="muted" style={{ fontSize: 12 }}>{lang === 'th' ? (item.name || '') : (item.nameThai || item.description || '')}</div>
+      <div 
+        onClick={() => { if (!isOutOfStock) onAdd(item); }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 16, flex: 1, cursor: isOutOfStock ? 'not-allowed' : 'pointer'
+        }}
+      >
+        <div style={{ width: 52, height: 52, borderRadius: 10, background: 'var(--matcha-50)', color: 'var(--matcha-700)', display: 'grid', placeItems: 'center', flex: 'none', position: 'relative', overflow: 'hidden' }}>
+          {item.imageUrl ? <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/> : <IconWhisk size={24}/>}
+          {isOutOfStock && <div style={{ position: 'absolute', inset: 0, background: 'rgba(239,68,68,0.2)', display: 'grid', placeItems: 'center', color: 'var(--danger)', fontWeight: 'bold', fontSize: 10 }}>หมด</div>}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: isOutOfStock ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{displayName(item, lang)}</div>
+          <div className="muted" style={{ fontSize: 12 }}>{lang === 'th' ? (item.name || '') : (item.nameThai || item.description || '')}</div>
+        </div>
+        {item.tag && <span className={'pill ' + (item.tag === 'New' ? 'pill-gold' : 'pill-matcha')}>{item.tag}</span>}
+        <div className="tabular" style={{ fontSize: 15, fontWeight: 600, minWidth: 64, textAlign: 'right', marginRight: 40, color: isOutOfStock ? 'var(--text-secondary)' : 'var(--text-primary)' }}>฿{Number(displayPrice).toFixed(0)}</div>
       </div>
-      {item.tag && <span className={'pill ' + (item.tag === 'New' ? 'pill-gold' : 'pill-matcha')}>{item.tag}</span>}
-      <div className="tabular" style={{ fontSize: 15, fontWeight: 600, minWidth: 64, textAlign: 'right' }}>฿{item.price}</div>
-    </button>
+
+      <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowStatusMenu(!showStatusMenu);
+          }}
+          className="btn btn-ghost btn-icon"
+          style={{ width: 28, height: 28 }}
+        >
+          <IconMoreV size={16}/>
+        </button>
+
+        {showStatusMenu && (
+          <>
+            <div 
+              style={{ position: 'fixed', inset: 0, zIndex: 9 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowStatusMenu(false);
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                top: 28,
+                right: 0,
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--r-default)',
+                boxShadow: 'var(--shadow-lg)',
+                padding: 4,
+                zIndex: 10,
+                minWidth: 140,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+              }}
+            >
+              <button
+                onClick={(e) => { e.stopPropagation(); handleStatusChange('open'); }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: 'transparent',
+                  textAlign: 'left',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  color: 'var(--text-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }}/> เปิดขาย (Open)
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleStatusChange('out_of_stock'); }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: 'transparent',
+                  textAlign: 'left',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  color: 'var(--text-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }}/> ของหมด (Out of Stock)
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleStatusChange('hidden'); }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: 'transparent',
+                  textAlign: 'left',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  color: 'var(--text-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#9ca3af' }}/> ซ่อนเมนู (Hide)
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </motion.div>
   );
 };
 
 const CartPanel = ({
-  cart, orderType, setOrderType, updateQty, sub, discountAmt, vat, total, branchId, onOrderCreated, discount, onDiscountOpen, onClearDiscount,
-  member, setMember, pointsRedeemed, setPointsRedeemed
+  cart, setCart, orderType, setOrderType, updateQty, sub, discountAmt, vat, total, branchId, onOrderCreated, discount, onDiscountOpen, onClearDiscount,
+  member, setMember, pointsRedeemed, setPointsRedeemed, onEditItem, onRemoveItem
 }) => {
   const { navigate, t } = useApp();
   const [tableNo, setTableNo] = useState('');
@@ -550,9 +986,9 @@ const CartPanel = ({
   ];
 
   return (
-    <aside style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-surface)', height: '100%', borderLeft: '1px solid var(--border-default)' }}>
+    <aside className="glass-premium" style={{ display: 'flex', flexDirection: 'column', height: '100%', borderLeft: '1px solid var(--border-default)', zIndex: 1 }}>
       {/* Header */}
-      <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+      <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--border-default)', background: 'transparent' }}>
         {/* Order type */}
         <div style={{ display: 'flex', background: 'var(--bg-muted)', borderRadius: 'var(--r-default)', padding: 3, gap: 2, marginBottom: 10 }}>
           {ORDER_TYPES.map(({ k, label }) => (
@@ -734,69 +1170,101 @@ const CartPanel = ({
             <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{t('pos.addItems')}</div>
           </div>
         ) : (
-          cart.map((it, idx) => (
-            <div key={idx} style={{
-              padding: '10px 12px', marginBottom: 4,
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--r-default)',
-              transition: 'box-shadow 180ms',
-            }}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <div style={{ width: 34, height: 34, borderRadius: 8, background: 'linear-gradient(135deg, var(--matcha-50), var(--matcha-100))', color: 'var(--matcha-700)', display: 'grid', placeItems: 'center', flex: 'none', fontSize: 10, fontWeight: 700 }}>
-                  {it.imageUrl ? <img src={it.imageUrl} alt={it.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}/> : <IconWhisk size={16}/>}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.3 }}>{it.name}</div>
-                    <div className="tabular" style={{ fontSize: 13, fontWeight: 600, flex: 'none' }}>฿{(it.price * it.qty).toLocaleString()}</div>
+          <AnimatePresence initial={false}>
+            {cart.map((it, idx) => (
+              <motion.div
+                key={`${it.id}-${JSON.stringify(it.rawOpts)}-${it.note}`}
+                layout
+                initial={{ opacity: 0, x: 20, scale: 0.95 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -20, scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                style={{
+                  padding: '10px 12px', marginBottom: 6,
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--r-default)',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+              >
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 8, background: 'linear-gradient(135deg, var(--matcha-50), var(--matcha-100))', color: 'var(--matcha-700)', display: 'grid', placeItems: 'center', flex: 'none', fontSize: 10, fontWeight: 700 }}>
+                    {it.imageUrl ? <img src={it.imageUrl} alt={it.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}/> : <IconWhisk size={16}/>}
                   </div>
-                  {it.opts?.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                      {it.opts.map((o, i) => (
-                        <span key={i} style={{ fontSize: 10, padding: '1px 6px', background: 'var(--matcha-50)', color: 'var(--matcha-700)', borderRadius: 999, border: '1px solid var(--matcha-100)' }}>{o}</span>
-                      ))}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.3 }}>{it.name}</div>
+                      <div className="tabular" style={{ fontSize: 13, fontWeight: 600, flex: 'none' }}>฿{(it.price * it.qty).toLocaleString()}</div>
                     </div>
-                  )}
-                  {noteFor === idx ? (
-                    <div style={{ marginTop: 6, display: 'flex', gap: 4 }}>
-                      <input
-                        className="input"
-                        autoFocus
-                        placeholder="Special note…"
-                        value={it.note || ''}
-                        onChange={(e) => {
-                          const updated = [...cart];
-                          updated[idx] = { ...updated[idx], note: e.target.value };
-                          // Hack: re-use updateQty with 0 delta to preserve item while setting note
-                        }}
-                        onBlur={() => setNoteFor(null)}
-                        style={{ height: 28, fontSize: 12 }}
-                      />
+                    {it.opts?.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                        {it.opts.map((o, i) => (
+                          <span key={i} style={{ fontSize: 10, padding: '1px 6px', background: 'var(--matcha-50)', color: 'var(--matcha-700)', borderRadius: 999, border: '1px solid var(--matcha-100)' }}>{o}</span>
+                        ))}
+                      </div>
+                    )}
+                    {noteFor === idx ? (
+                      <div style={{ marginTop: 6, display: 'flex', gap: 4 }}>
+                        <input
+                          className="input"
+                          autoFocus
+                          placeholder="Special note…"
+                          value={it.note || ''}
+                          onChange={(e) => {
+                            const updated = [...cart];
+                            updated[idx] = { ...updated[idx], note: e.target.value };
+                            setCart(updated);
+                          }}
+                          onBlur={() => setNoteFor(null)}
+                          style={{ height: 28, fontSize: 12 }}
+                        />
+                      </div>
+                    ) : null}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7, justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 1, background: 'var(--bg-muted)', borderRadius: 'var(--r-full)', padding: '2px 2px' }}>
+                        <motion.button
+                          whileTap={{ scale: 0.8 }}
+                          onClick={() => updateQty(idx, -1)}
+                          style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--bg-surface)', display: 'grid', placeItems: 'center', fontSize: 14, boxShadow: 'var(--shadow-xs)', border: '1px solid var(--border-default)', cursor: 'pointer' }}
+                        >−</motion.button>
+                        <span style={{ minWidth: 24, textAlign: 'center', fontSize: 13, fontWeight: 600 }} className="tabular">{it.qty}</span>
+                        <motion.button
+                          whileTap={{ scale: 0.8 }}
+                          onClick={() => updateQty(idx, 1)}
+                          style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--matcha-600)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 14, cursor: 'pointer', border: 'none' }}
+                        >+</motion.button>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <button
+                          onClick={() => setNoteFor(noteFor === idx ? null : idx)}
+                          className="btn btn-ghost btn-xs"
+                          style={{ height: 24, fontSize: 11, color: it.note ? 'var(--matcha-700)' : 'var(--text-quaternary)' }}
+                        >{it.note ? '📝 Note' : '+ Note'}</button>
+                        
+                        <button
+                          onClick={() => onEditItem?.(idx)}
+                          className="btn btn-ghost btn-icon btn-xs"
+                          style={{ color: 'var(--matcha-700)', width: 24, height: 24, display: 'grid', placeItems: 'center', padding: 0 }}
+                          title="แก้ไขตัวเลือก (Edit Options)"
+                        >
+                          <IconEdit size={13}/>
+                        </button>
+                        
+                        <button
+                          onClick={() => onRemoveItem?.(idx)}
+                          className="btn btn-ghost btn-icon btn-xs text-danger"
+                          style={{ width: 24, height: 24, display: 'grid', placeItems: 'center', padding: 0 }}
+                          title="ลบรายการ (Remove)"
+                        >
+                          <IconTrash size={13}/>
+                        </button>
+                      </div>
                     </div>
-                  ) : null}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7, justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 1, background: 'var(--bg-muted)', borderRadius: 'var(--r-full)', padding: '2px 2px' }}>
-                      <button
-                        onClick={() => updateQty(idx, -1)}
-                        style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--bg-surface)', display: 'grid', placeItems: 'center', fontSize: 14, boxShadow: 'var(--shadow-xs)', border: '1px solid var(--border-default)' }}
-                      >−</button>
-                      <span style={{ minWidth: 24, textAlign: 'center', fontSize: 13, fontWeight: 600 }} className="tabular">{it.qty}</span>
-                      <button
-                        onClick={() => updateQty(idx, 1)}
-                        style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--matcha-600)', color: 'white', display: 'grid', placeItems: 'center', fontSize: 14 }}
-                      >+</button>
-                    </div>
-                    <button
-                      onClick={() => setNoteFor(noteFor === idx ? null : idx)}
-                      className="btn btn-ghost btn-xs"
-                      style={{ height: 22, fontSize: 11, color: it.note ? 'var(--matcha-700)' : 'var(--text-quaternary)' }}
-                    >{it.note ? '📝 Note' : '+ Note'}</button>
                   </div>
                 </div>
-              </div>
-            </div>
-          ))
+              </motion.div>
+            ))}
+          </AnimatePresence>
         )}
       </div>
 
@@ -1005,7 +1473,7 @@ const DiscountDrawer = ({ open, onClose, sub, onApply, branchId }) => {
   );
 };
 
-const OptionSheet = ({ item, onClose, onAdd }) => {
+const OptionSheet = ({ item, onClose, onAdd, editingItem = null }) => {
   // selections: { [groupId]: optionId (single) | Set<optionId> (multi) | { [optionId]: number } (quantity) }
   const [selections, setSelections] = useState({});
   const [qty, setQty] = useState(1);
@@ -1018,13 +1486,18 @@ const OptionSheet = ({ item, onClose, onAdd }) => {
 
   useEffect(() => {
     if (item) {
-      setQty(1);
-      setNote('');
-      setSelections({});
+      if (editingItem) {
+        setQty(editingItem.qty || 1);
+        setNote(editingItem.note || '');
+      } else {
+        setQty(1);
+        setNote('');
+        setSelections({});
+      }
     }
-  }, [item?.id]);
+  }, [item?.id, editingItem]);
 
-  // Pre-fill defaults when detail loads
+  // Pre-fill defaults or load editing selections when detail loads
   useEffect(() => {
     if (!detail?.optionGroups) return;
     const init = {};
@@ -1032,17 +1505,34 @@ const OptionSheet = ({ item, onClose, onAdd }) => {
       const g = ig.group;
       if (!g) continue;
       const opts = ig.options ?? [];
-      if (g.selectionType === 'single') {
-        const def = opts.find((o) => o.isDefault) ?? opts[0];
-        if (def) init[g.id] = def.id;
-      } else if (g.selectionType === 'multi') {
-        init[g.id] = new Set(opts.filter((o) => o.isDefault).map((o) => o.id));
-      } else if (g.selectionType === 'quantity') {
-        init[g.id] = {};
+      
+      if (editingItem) {
+        // Find rawOpts that belong to this group
+        const groupSelected = (editingItem.rawOpts || []).filter((o) => o.groupId === g.id);
+        if (g.selectionType === 'single') {
+          if (groupSelected.length > 0) init[g.id] = groupSelected[0].id;
+        } else if (g.selectionType === 'multi') {
+          init[g.id] = new Set(groupSelected.map((o) => o.id));
+        } else if (g.selectionType === 'quantity') {
+          const qMap = {};
+          groupSelected.forEach((o) => {
+            qMap[o.id] = o.qty || 1;
+          });
+          init[g.id] = qMap;
+        }
+      } else {
+        if (g.selectionType === 'single') {
+          const def = opts.find((o) => o.isDefault) ?? opts[0];
+          if (def) init[g.id] = def.id;
+        } else if (g.selectionType === 'multi') {
+          init[g.id] = new Set(opts.filter((o) => o.isDefault).map((o) => o.id));
+        } else if (g.selectionType === 'quantity') {
+          init[g.id] = {};
+        }
       }
     }
     setSelections(init);
-  }, [detail?.id]);
+  }, [detail?.id, editingItem]);
 
   if (!item) return null;
 
@@ -1106,25 +1596,31 @@ const OptionSheet = ({ item, onClose, onAdd }) => {
 
   const onSubmit = () => {
     const payload = selectedOpts.map((o) => ({ ...o, optionId: o.id, optionName: o.optionName }));
-    if (note.trim()) payload.push({ optionId: null, optionName: `Note: ${note.trim()}`, priceAdjustment: 0 });
-    for (let i = 0; i < qty; i++) {
-      onAdd({ ...item, ...detail, basePrice, displayPrice: basePrice }, payload);
-    }
+    onAdd({ ...item, ...detail, basePrice, displayPrice: basePrice }, payload, qty, note);
   };
 
   return (
-    <Drawer open={!!item} onClose={onClose} title={detail?.name || item.name} subtitle={detail?.nameThai || 'Customize your drink'} width={480}
-      footer={<>
-        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-        <button
-          className="btn btn-primary"
-          onClick={onSubmit}
-          disabled={missingRequired || isLoading}
-          style={{ minWidth: 200 }}
-        >
-          Add to Cart · ฿{lineTotal.toLocaleString()}
-        </button>
-      </>}
+    <Drawer 
+      open={!!item} 
+      onClose={onClose} 
+      title={detail?.nameThai || detail?.name || item.name} 
+      subtitle={detail?.nameThai && detail?.name ? detail.name : 'เลือกตัวเลือกเสริม / Customize your drink'} 
+      width={480}
+      footer={
+        <div style={{ display: 'flex', width: '100%', gap: 10 }}>
+          <button className="btn btn-secondary btn-lg" onClick={onClose} style={{ flex: 1 }}>
+            ยกเลิก (Cancel)
+          </button>
+          <button
+            className="btn btn-primary btn-lg"
+            onClick={onSubmit}
+            disabled={missingRequired || isLoading}
+            style={{ flex: 2, height: 48, fontSize: 15, fontWeight: 600 }}
+          >
+            {editingItem ? 'บันทึกการแก้ไข (Update)' : 'เพิ่มลงตะกร้า (Add to Cart)'} · ฿{lineTotal.toLocaleString()}
+          </button>
+        </div>
+      }
     >
       <div style={{
         aspectRatio: '16/9', borderRadius: 'var(--r-md)', marginBottom: 20,
@@ -1156,8 +1652,8 @@ const OptionSheet = ({ item, onClose, onAdd }) => {
         >
           <IconBookmark size={20} style={{ color: 'var(--matcha-700)', flex: 'none' }}/>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--matcha-800)' }}>How to prepare: {detail.sop.title}</div>
-            <div style={{ fontSize: 11, color: 'var(--matcha-700)', marginTop: 2 }}>Tap to read SOP →</div>
+            <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--matcha-800)' }}>วิธีการชง: {detail.sop.title}</div>
+            <div style={{ fontSize: 11, color: 'var(--matcha-700)', marginTop: 2 }}>แตะเพื่ออ่านคู่มือ SOP →</div>
           </div>
           <IconChevRight size={16} style={{ color: 'var(--matcha-700)' }}/>
         </button>
@@ -1166,7 +1662,7 @@ const OptionSheet = ({ item, onClose, onAdd }) => {
       {detail?.recipe && detail.recipe.length > 0 && (
         <details style={{ marginBottom: 16, padding: 12, background: 'var(--bg-muted)', borderRadius: 'var(--r-default)' }}>
           <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
-            🥄 Recipe ({detail.recipe.length} ingredient{detail.recipe.length !== 1 ? 's' : ''})
+            🥄 สูตรส่วนผสม (Recipe) ({detail.recipe.length} รายการ)
           </summary>
           <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-secondary)' }}>
             {detail.recipe.map((r) => (
@@ -1181,12 +1677,12 @@ const OptionSheet = ({ item, onClose, onAdd }) => {
       )}
 
       {isLoading && (
-        <div className="muted" style={{ fontSize: 13, marginBottom: 20, textAlign: 'center', padding: 20 }}>Loading options…</div>
+        <div className="muted" style={{ fontSize: 13, marginBottom: 20, textAlign: 'center', padding: 20 }}>กำลังโหลดตัวเลือก... (Loading options…)</div>
       )}
 
       {!isLoading && groups.length === 0 && (
         <div className="muted" style={{ fontSize: 13, marginBottom: 20, padding: '20px', background: 'var(--bg-muted)', borderRadius: 'var(--r-default)', textAlign: 'center' }}>
-          No options to customize. Just add to cart.
+          ไม่มีตัวเลือกเสริมสำหรับเมนูนี้ สามารถเพิ่มลงตะกร้าได้เลย
         </div>
       )}
 
@@ -1200,30 +1696,42 @@ const OptionSheet = ({ item, onClose, onAdd }) => {
           <div key={g.id} style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <div style={{ fontWeight: 500, fontSize: 14 }}>
-                {g.name}
-                {g.nameThai ? <span className="muted" style={{ fontWeight: 400, marginLeft: 6 }}>· {g.nameThai}</span> : null}
+                {g.nameThai || g.name}
+                {g.nameThai && g.name !== g.nameThai ? <span className="muted" style={{ fontWeight: 400, marginLeft: 6 }}>· {g.name}</span> : null}
               </div>
-              <span className="muted" style={{ fontSize: 12 }}>{g.isRequired ? 'Required' : 'Optional'}</span>
+              <span className="muted" style={{ fontSize: 12 }}>
+                {g.isRequired ? 'บังคับเลือก (Required)' : 'ไม่บังคับ (Optional)'}
+              </span>
             </div>
 
             {g.selectionType === 'single' && (
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(opts.length || 1, 4)}, 1fr)`, gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {opts.map((o) => {
                   const on = sel === o.id;
                   const p = Number(o.priceAdjustment ?? 0);
                   return (
                     <button key={o.id} onClick={() => setSingle(g.id, o.id)} style={{
-                      padding: '12px 8px', borderRadius: 'var(--r-default)',
+                      padding: '12px 16px', borderRadius: 'var(--r-default)',
                       background: on ? 'var(--matcha-50)' : 'var(--bg-surface)',
                       border: '1.5px solid ' + (on ? 'var(--matcha-600)' : 'var(--border-default)'),
-                      fontSize: 14, fontWeight: 600,
+                      fontSize: 14, fontWeight: 500,
                       color: on ? 'var(--matcha-700)' : 'var(--text-primary)',
-                      transition: 'all 200ms',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      cursor: 'pointer', transition: 'all 200ms',
                     }}>
-                      {o.name}
-                      <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                        {p === 0 ? 'base' : (p > 0 ? `+฿${p}` : `−฿${Math.abs(p)}`)}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{
+                          width: 18, height: 18, borderRadius: '50%',
+                          border: '2px solid ' + (on ? 'var(--matcha-600)' : 'var(--border-emphasis)'),
+                          display: 'grid', placeItems: 'center', background: 'transparent', flex: 'none'
+                        }}>
+                          {on && <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--matcha-600)' }}/>}
+                        </span>
+                        <span>{o.nameThai || o.name}</span>
                       </div>
+                      <span className="tabular" style={{ fontSize: 13, fontWeight: 600, color: on ? 'var(--matcha-700)' : 'var(--text-secondary)' }}>
+                        {p === 0 ? '฿0' : (p > 0 ? `+฿${p}` : `−฿${Math.abs(p)}`)}
+                      </span>
                     </button>
                   );
                 })}
@@ -1231,24 +1739,33 @@ const OptionSheet = ({ item, onClose, onAdd }) => {
             )}
 
             {g.selectionType === 'multi' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {opts.map((o) => {
                   const on = sel instanceof Set && sel.has(o.id);
                   const p = Number(o.priceAdjustment ?? 0);
                   return (
                     <button key={o.id} onClick={() => toggleMulti(g.id, o.id)} style={{
-                      padding: '10px 12px', borderRadius: 'var(--r-default)',
+                      padding: '12px 16px', borderRadius: 'var(--r-default)',
                       background: on ? 'var(--matcha-50)' : 'var(--bg-surface)',
                       border: '1.5px solid ' + (on ? 'var(--matcha-600)' : 'var(--border-default)'),
-                      fontSize: 13, textAlign: 'left',
-                      display: 'flex', alignItems: 'center', gap: 8,
+                      fontSize: 14, fontWeight: 500,
                       color: on ? 'var(--matcha-700)' : 'var(--text-primary)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      cursor: 'pointer', transition: 'all 200ms',
                     }}>
-                      <span style={{ width: 14, height: 14, borderRadius: 4, background: on ? 'var(--matcha-600)' : 'transparent', border: '1.5px solid ' + (on ? 'var(--matcha-600)' : 'var(--border-emphasis)'), display: 'grid', placeItems: 'center', flex: 'none' }}>
-                        {on && <IconCheck size={10} style={{ color: 'white' }} stroke={3}/>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{
+                          width: 18, height: 18, borderRadius: 4,
+                          border: '2px solid ' + (on ? 'var(--matcha-600)' : 'var(--border-emphasis)'),
+                          display: 'grid', placeItems: 'center', background: on ? 'var(--matcha-600)' : 'transparent', flex: 'none'
+                        }}>
+                          {on && <IconCheck size={12} style={{ color: 'white' }} stroke={3}/>}
+                        </span>
+                        <span>{o.nameThai || o.name}</span>
+                      </div>
+                      <span className="tabular" style={{ fontSize: 13, fontWeight: 600, color: on ? 'var(--matcha-700)' : 'var(--text-secondary)' }}>
+                        {p === 0 ? '' : (p > 0 ? `+฿${p}` : `−฿${Math.abs(p)}`)}
                       </span>
-                      <span style={{ flex: 1 }}>{o.name}</span>
-                      {p !== 0 && <span className="muted" style={{ fontSize: 11 }}>{p > 0 ? `+฿${p}` : `−฿${Math.abs(p)}`}</span>}
                     </button>
                   );
                 })}
@@ -1268,13 +1785,13 @@ const OptionSheet = ({ item, onClose, onAdd }) => {
                       background: n > 0 ? 'var(--matcha-50)' : 'var(--bg-surface)',
                     }}>
                       <div style={{ flex: 1, fontSize: 14 }}>
-                        <div style={{ fontWeight: 500 }}>{o.name}</div>
-                        {p !== 0 && <div className="muted" style={{ fontSize: 11 }}>{p > 0 ? `+฿${p}` : `−฿${Math.abs(p)}`} each</div>}
+                        <div style={{ fontWeight: 500 }}>{o.nameThai || o.name}</div>
+                        {p !== 0 && <div className="muted" style={{ fontSize: 11 }}>{p > 0 ? `+฿${p}` : `−฿${Math.abs(p)}`} / ชิ้น</div>}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <button onClick={() => adjustQty(g.id, o.id, -1)} disabled={n <= 0} style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>−</button>
+                        <button onClick={() => adjustQty(g.id, o.id, -1)} disabled={n <= 0} style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', cursor: 'pointer' }}>−</button>
                         <span className="tabular" style={{ minWidth: 18, textAlign: 'center', fontWeight: 600 }}>{n}</span>
-                        <button onClick={() => adjustQty(g.id, o.id, 1)} style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--matcha-600)', color: 'white' }}>+</button>
+                        <button onClick={() => adjustQty(g.id, o.id, 1)} style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--matcha-600)', color: 'white', border: 'none', cursor: 'pointer' }}>+</button>
                       </div>
                     </div>
                   );
@@ -1285,16 +1802,16 @@ const OptionSheet = ({ item, onClose, onAdd }) => {
         );
       })}
 
-      <Field label="Special instructions">
-        <textarea className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="No ice, extra hot, etc." rows={3}/>
+      <Field label="คำแนะนำพิเศษ (Special instructions)">
+        <textarea className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="เช่น หวานน้อย, ไม่ใส่น้ำแข็ง, ขอร้อนๆ" rows={3}/>
       </Field>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderTop: '1px solid var(--border-default)', marginTop: 16 }}>
-        <span style={{ fontWeight: 500 }}>Quantity</span>
+        <span style={{ fontWeight: 500 }}>จำนวนแก้ว / เมนู (Quantity)</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 8px', background: 'var(--bg-muted)', borderRadius: 999 }}>
-          <button onClick={() => setQty(Math.max(1, qty - 1))} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--bg-surface)' }}>−</button>
+          <button onClick={() => setQty(Math.max(1, qty - 1))} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', cursor: 'pointer' }}>−</button>
           <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600, fontSize: 17 }} className="tabular">{qty}</span>
-          <button onClick={() => setQty(qty + 1)} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--matcha-600)', color: 'white' }}>+</button>
+          <button onClick={() => setQty(qty + 1)} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--matcha-600)', color: 'white', border: 'none', cursor: 'pointer' }}>+</button>
         </div>
       </div>
     </Drawer>
@@ -1307,6 +1824,7 @@ export const PagePayment = () => {
   const queryClient = useQueryClient();
   const [method, setMethod] = useState(null);
   const [cash, setCash] = useState(0);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const hash = location.hash.replace(/^#/, '');
   const qs = hash.includes('?') ? hash.split('?')[1] : '';
@@ -1346,15 +1864,41 @@ export const PagePayment = () => {
 
   const total = Number(order?.totalAmount ?? 0);
 
+  useEffect(() => {
+    setPaymentSuccess(false);
+  }, [method]);
+
+  const isConfirmDisabled = (() => {
+    if (!method || !orderId || addPayment.isPending) return true;
+    const m = methods.find((x) => x.code === method);
+    if (!m) return true;
+    if (m.type === 'cash') {
+      return cash < total;
+    }
+    if (m.type === 'qr') {
+      return !paymentSuccess;
+    }
+    return false;
+  })();
+
   const confirmPayment = () => {
     if (!method) { alert('Select a payment method'); return; }
     if (!orderId) { alert('No order selected'); return; }
     const m = methods.find((x) => x.code === method);
     if (!m) { alert('Payment method not found'); return; }
+
+    if (m.type === 'qr') {
+      if (!paymentSuccess) {
+        alert('Please scan the QR code and complete the payment first.');
+        return;
+      }
+      navigate(`/pos/receipt?orderId=${orderId}`);
+      return;
+    }
+
     // Build the reference string for traceability across method types
     let ref;
     if (m.type === 'cash') ref = `Cash received: ฿${cash || total}`;
-    else if (m.type === 'qr') ref = `QR ref: ${Date.now()}`;
     else if (m.type === 'card') ref = `EDC approval: pending`;
     else if (m.type === 'transfer') ref = `Bank ref: pending`;
     else if (m.type === 'voucher') ref = `Voucher code: pending`;
@@ -1437,13 +1981,13 @@ export const PagePayment = () => {
         return <>
           {type === 'cash' && (
             <div className="card anim-fade" style={{ padding: 24 }}>
-              <div className="t-h4" style={{ fontWeight: 600, marginBottom: 14 }}>Cash received</div>
+              <div className="t-h4" style={{ fontWeight: 600, marginBottom: 14 }}>รับเงินสด (Cash Received)</div>
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 padding: '16px 20px', marginBottom: 16,
                 background: 'var(--bg-muted)', borderRadius: 'var(--r-default)',
               }}>
-                <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Amount received</span>
+                <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>จำนวนเงินที่รับ (Amount received)</span>
                 <span className="tabular" style={{ fontSize: 28, fontWeight: 600, color: 'var(--matcha-700)' }}>฿{Number(cash || 0).toLocaleString()}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="cash-layout">
@@ -1457,7 +2001,7 @@ export const PagePayment = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
                   <div style={{ padding: 16, background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--r-default)' }}>
-                    <div className="muted" style={{ fontSize: 12 }}>Order total</div>
+                    <div className="muted" style={{ fontSize: 12 }}>ยอดที่ต้องชำระ (Order total)</div>
                     <div className="tabular" style={{ fontSize: 22, fontWeight: 600 }}>฿{total.toLocaleString()}</div>
                   </div>
                   <div style={{
@@ -1466,7 +2010,7 @@ export const PagePayment = () => {
                     border: '1.5px solid ' + ((cash >= total) ? 'var(--matcha-500)' : 'rgba(239,68,68,0.2)'),
                   }}>
                     <div style={{ fontSize: 12, color: cash >= total ? 'var(--matcha-700)' : 'var(--danger)', fontWeight: 500 }}>
-                      {cash >= total ? 'Change due' : 'Still needed'}
+                      {cash >= total ? 'เงินทอน (Change due)' : 'ยังขาดอีก (Still needed)'}
                     </div>
                     <div className="tabular" style={{ fontSize: 32, fontWeight: 700, color: cash >= total ? 'var(--matcha-700)' : 'var(--danger)' }}>
                       ฿{Math.max(0, cash >= total ? cash - total : total - cash).toLocaleString()}
@@ -1478,7 +2022,13 @@ export const PagePayment = () => {
             </div>
           )}
           {type === 'qr' && (
-            <QRPaymentSection orderId={Number(orderId)} total={total} methodName={sel.name}/>
+            <QRPaymentSection
+              orderId={Number(orderId)}
+              total={total}
+              methodName={sel.name}
+              paymentSuccess={paymentSuccess}
+              setPaymentSuccess={setPaymentSuccess}
+            />
           )}
           {type === 'card' && (
             <div className="card anim-fade" style={{ padding: 24 }}>
@@ -1535,7 +2085,7 @@ export const PagePayment = () => {
         <button
           className="btn btn-primary btn-lg"
           onClick={confirmPayment}
-          disabled={!method || !orderId || addPayment.isPending}
+          disabled={isConfirmDisabled}
           style={{ flex: 2 }}
         >
           {addPayment.isPending ? `${t('loading')}` : <>{t('payment.pay')} · ฿{total.toLocaleString()} <IconCheck size={16}/></>}
@@ -1546,7 +2096,7 @@ export const PagePayment = () => {
 };
 
 // ----- QR Payment Section (real PromptPay QR) -----
-const QRPaymentSection = ({ orderId, total, methodName }) => {
+const QRPaymentSection = ({ orderId, total, methodName, paymentSuccess, setPaymentSuccess }) => {
   const { navigate, t } = useApp();
   const queryClient = useQueryClient();
   const generateQr = trpc.orders.generatePaymentQr.useMutation();
@@ -1555,7 +2105,6 @@ const QRPaymentSection = ({ orderId, total, methodName }) => {
 
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const [pollingActive, setPollingActive] = useState(true);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   useEffect(() => {
     if (orderId && total > 0) {
@@ -1619,12 +2168,12 @@ const QRPaymentSection = ({ orderId, total, methodName }) => {
             display: 'grid', placeItems: 'center', margin: '0 auto 16px',
             fontSize: 36, animation: 'pulse 1.5s ease-in-out infinite'
           }}>✓</div>
-          <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--matcha-700)' }}>Payment Verified!</div>
-          <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>Redirecting to receipt...</div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--matcha-700)' }}>ชำระเงินสำเร็จแล้ว! (Payment Verified!)</div>
+          <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>กำลังนำท่านไปยังหน้าใบเสร็จ... (Redirecting to receipt...)</div>
         </div>
       ) : (
         <>
-          <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>Scan to pay with {methodName}</div>
+          <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>สแกนเพื่อชำระเงินด้วย {methodName} (Scan to pay)</div>
           
           <div style={{ display: 'inline-block', position: 'relative', padding: 20, background: 'white', borderRadius: 'var(--r-md)', border: '1px solid var(--border-default)' }}>
             {qrDataUrl ? (
@@ -1633,11 +2182,11 @@ const QRPaymentSection = ({ orderId, total, methodName }) => {
               <div style={{ width: 220, height: 220, display: 'grid', placeItems: 'center' }}>
                 <div style={{ textAlign: 'center' }}>
                   <div className="spinner" style={{ margin: '0 auto 8px' }}/>
-                  <div className="muted" style={{ fontSize: 12 }}>Generating QR...</div>
+                  <div className="muted" style={{ fontSize: 12 }}>กำลังสร้าง QR Code... (Generating QR...)</div>
                 </div>
               </div>
             ) : (
-              <FakeQR size={220}/>
+              <RealQR value={`https://hibimatcha.com/pay?orderId=${orderId}&amount=${total}`} size={220}/>
             )}
             {qrDataUrl && (
               <div style={{ position: 'absolute', left: 20, right: 20, top: 20, height: 220, overflow: 'hidden', borderRadius: 8, pointerEvents: 'none' }}>
@@ -1648,10 +2197,10 @@ const QRPaymentSection = ({ orderId, total, methodName }) => {
           
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 14, color: 'var(--matcha-600)', fontSize: 13, fontWeight: 500 }}>
             <span className="spinner-xs"/>
-            <span>Auto verifying payment status...</span>
+            <span>กำลังตรวจสอบสถานะการชำระเงินอัตโนมัติ... (Auto-verifying payment status...)</span>
           </div>
           
-          <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>Show this to the customer · ฿{total.toLocaleString()} due</div>
+          <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>แสดงสิ่งนี้ให้ลูกค้าสแกน · ยอดชำระ ฿{total.toLocaleString()} (Show this to customer)</div>
 
           <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center', gap: 10 }}>
             <button
@@ -1660,14 +2209,14 @@ const QRPaymentSection = ({ orderId, total, methodName }) => {
               onClick={handleSimulatePayment}
               disabled={simulatePayment.isPending}
             >
-              ⚡ Simulate QR Scan (Web Pay)
+              ⚡ จำลองการสแกน QR (Simulate QR Scan)
             </button>
           </div>
 
           {generateQr.isError && (
             <div style={{ marginTop: 12, color: 'var(--danger)', fontSize: 12 }}>
-              QR generation failed. PromptPay not configured for this branch.
-              <br/>Please set up PromptPay in Backoffice → Settings → Payment.
+              สร้าง QR Code ไม่สำเร็จ กรุณาตั้งค่าพร้อมเพย์ในระบบหลังบ้านก่อน
+              <br/>(QR generation failed. Please configure PromptPay in Backoffice → Settings → Payment.)
             </div>
           )}
         </>
@@ -1676,40 +2225,31 @@ const QRPaymentSection = ({ orderId, total, methodName }) => {
   );
 };
 
-const FakeQR = ({ size = 200 }) => {
-  // Procedural QR-like pattern
-  const cells = 25;
-  const cs = size / cells;
-  const grid = [];
-  let seed = 7;
-  for (let r = 0; r < cells; r++) {
-    for (let c = 0; c < cells; c++) {
-      seed = (seed * 9301 + 49297) % 233280;
-      const on = (seed / 233280) > 0.5;
-      if (on) grid.push([c * cs, r * cs]);
-    }
+const RealQR = ({ value, size = 200, className = "" }) => {
+  const [qrUrl, setQrUrl] = useState("");
+
+  useEffect(() => {
+    if (!value) return;
+    QRCode.toDataURL(value, { margin: 1, width: size })
+      .then(setQrUrl)
+      .catch((err) => console.error("QR Code generation error:", err));
+  }, [value, size]);
+
+  if (!qrUrl) {
+    return (
+      <div style={{ width: size, height: size, display: 'grid', placeItems: 'center' }} className={className}>
+        <span className="spinner-xs"/>
+      </div>
+    );
   }
-  // finder squares (corners)
-  const finder = (x, y) => (
-    <g key={`f-${x}-${y}`}>
-      <rect x={x} y={y} width={cs * 7} height={cs * 7} fill="#1c1917"/>
-      <rect x={x + cs} y={y + cs} width={cs * 5} height={cs * 5} fill="white"/>
-      <rect x={x + cs * 2} y={y + cs * 2} width={cs * 3} height={cs * 3} fill="#1c1917"/>
-    </g>
-  );
+
   return (
-    <svg width={size} height={size} style={{ display: 'block' }}>
-      <rect width={size} height={size} fill="white"/>
-      {grid.map(([x, y], i) => <rect key={i} x={x} y={y} width={cs} height={cs} fill="#1c1917"/>)}
-      {finder(0, 0)}
-      {finder(size - cs * 7, 0)}
-      {finder(0, size - cs * 7)}
-      {/* matcha brand mark center */}
-      <rect x={size / 2 - 18} y={size / 2 - 18} width={36} height={36} rx={6} fill="white" stroke="#1c1917" strokeWidth="1.5"/>
-      <g transform={`translate(${size / 2 - 12}, ${size / 2 - 12})`}>
-        <IconBrand size={24}/>
-      </g>
-    </svg>
+    <img
+      src={qrUrl}
+      alt="QR Code"
+      style={{ width: size, height: size, display: 'block', borderRadius: 4 }}
+      className={className}
+    />
   );
 };
 
@@ -1872,7 +2412,7 @@ export const PageReceipt = () => {
 
               <div style={{ borderTop: '1px dashed var(--border-emphasis)', marginTop: 14, paddingTop: 14, textAlign: 'center' }}>
                 <div style={{ display: 'grid', placeItems: 'center', padding: 8 }}>
-                  <FakeQR size={96}/>
+                  <RealQR value={`https://hibimatcha.com/review?branchId=${order?.branchId ?? 1}&orderId=${order?.id ?? ''}`} size={96}/>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>Scan to leave a review</div>
                 <div className="jp" style={{ fontSize: 14, marginTop: 12, fontWeight: 500 }}>ありがとうございます</div>
@@ -2082,6 +2622,22 @@ export const PageOrders = () => {
   const orders = data?.orders ?? [];
   const totalOrders = data?.total ?? 0;
   const bulkSyncMut = trpc.orders.bulkSyncToSheet.useMutation();
+  const getPrintPayload = trpc.orders.getPrintPayload.useMutation();
+
+  const handlePrint = async (orderId, type = 'receipt') => {
+    try {
+      const payload = await getPrintPayload.mutateAsync({ orderId, type });
+      if (payload?.html) {
+        const w = window.open('', '_blank', 'width=380,height=600');
+        if (w) {
+          w.document.write(payload.html);
+          w.document.close();
+        }
+      }
+    } catch (e) {
+      alert('Print failed: ' + (e.message || 'Unknown'));
+    }
+  };
 
   const toggle = (id) => {
     const s = new Set(selected);
@@ -2226,7 +2782,7 @@ export const PageOrders = () => {
                     <td style={{ padding: '12px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'inline-flex', gap: 4 }} className="row-actions">
                         <button className="btn btn-ghost btn-icon" style={{ width: 28, height: 28 }} onClick={() => setOpenOrderId(o.id)}><IconEye size={14}/></button>
-                        <button className="btn btn-ghost btn-icon" style={{ width: 28, height: 28 }}><IconPrint size={14}/></button>
+                        <button className="btn btn-ghost btn-icon" style={{ width: 28, height: 28 }} onClick={() => handlePrint(o.id, 'receipt')} title="พิมพ์ใบเสร็จย้อนหลัง (Reprint Receipt)"><IconPrint size={14}/></button>
                         <button className="btn btn-ghost btn-icon" style={{ width: 28, height: 28 }}><IconMore size={14}/></button>
                       </div>
                     </td>
@@ -2245,7 +2801,30 @@ export const PageOrders = () => {
         </div>
       </div>
 
-      <Drawer open={!!openOrderId} onClose={() => setOpenOrderId(null)} title={openOrder ? openOrder.orderNumber : 'Order'} width={560}>
+      <Drawer
+        open={!!openOrderId}
+        onClose={() => setOpenOrderId(null)}
+        title={openOrder ? openOrder.orderNumber : 'Order'}
+        width={560}
+        footer={openOrder && (
+          <div style={{ display: 'flex', gap: 12, width: '100%' }}>
+            <button
+              className="btn btn-primary"
+              style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              onClick={() => handlePrint(openOrder.id, 'receipt')}
+              disabled={getPrintPayload.isPending}
+            >
+              <IconPrint size={16}/> {getPrintPayload.isPending ? 'กำลังพิมพ์...' : 'พิมพ์ใบเสร็จย้อนหลัง (Reprint Receipt)'}
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setOpenOrderId(null)}
+            >
+              ปิด (Close)
+            </button>
+          </div>
+        )}
+      >
         {openOrder && (
           <>
             <div className="card" style={{ padding: 16, marginBottom: 16 }}>

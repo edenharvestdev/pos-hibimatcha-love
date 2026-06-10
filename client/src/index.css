@@ -170,6 +170,7 @@
   }
 
   .flex {
+    display: flex;
     min-height: 0;
     min-width: 0;
   }
@@ -229,5 +230,53 @@ a, button, input, select, textarea, [role="button"] {
   }
   .shell-main {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Premium Glassmorphism and Live Wallpaper animations */
+.glass-premium {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(104, 133, 100, 0.08);
+}
+
+.dark .glass-premium {
+  background: rgba(24, 34, 24, 0.45);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.ambient-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  mix-blend-mode: multiply;
+  opacity: 0.35;
+  animation: blob-float 25s infinite alternate ease-in-out;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dark .ambient-blob {
+  mix-blend-mode: screen;
+  opacity: 0.15;
+}
+
+@keyframes blob-float {
+  0% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(40px, -60px) scale(1.2) rotate(120deg);
+  }
+  66% {
+    transform: translate(-30px, 30px) scale(0.8) rotate(240deg);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1) rotate(360deg);
   }
 }

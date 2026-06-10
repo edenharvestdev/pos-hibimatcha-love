@@ -278,6 +278,32 @@ export const menuRouter = router({
       return { success: true };
     }),
 
+  // Toggle single branch status (Open / Out of Stock / Hidden) from POS screen
+  setBranchItemStatus: staffProcedure
+    .input(z.object({
+      menuItemId: z.number().int(),
+      branchId: z.number().int(),
+      status: z.enum(["open", "out_of_stock", "hidden"]),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      
+      const isAvailable = input.status !== "hidden";
+      const stockLevel = input.status === "out_of_stock" ? 0 : null;
+
+      await db.insert(posBranchMenuItems).values({
+        branchId: input.branchId,
+        menuItemId: input.menuItemId,
+        isAvailable,
+        stockLevel,
+      }).onDuplicateKeyUpdate({ set: {
+        isAvailable,
+        stockLevel,
+      } });
+      return { success: true };
+    }),
+
   update: staffAdminProcedure
     .input(z.object({ id: z.number().int() }).merge(MenuItemInput.partial()))
     .mutation(async ({ ctx, input }) => {

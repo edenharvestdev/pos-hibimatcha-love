@@ -148,7 +148,7 @@ export default function ExpenseReceipts() {
           icon={<IconWallet className="w-5 h-5" />}
           iconBg="bg-primary/10 text-primary"
           label={lang === "en" ? "Total Confirmed" : "ยอดรวม (ยืนยันแล้ว)"}
-          value={`฿${formatMoney(thisMonthTotal)}`}
+          value={<><span className="font-sans">฿</span>{formatMoney(thisMonthTotal)}</>}
           sub={`${confirmedCount} ${lang === "en" ? "receipts" : "รายการ"}`}
         />
         <StatCard
@@ -179,7 +179,7 @@ export default function ExpenseReceipts() {
               return (
                 <div key={i} className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${cat.color}`}>
                   <span>{lang === "en" ? cat.labelEn : cat.label}</span>
-                  <span className="opacity-70">฿{formatMoney(c.total)}</span>
+                  <span className="opacity-70"><span className="font-sans">฿</span>{formatMoney(c.total)}</span>
                   <span className="opacity-50">({c.count})</span>
                 </div>
               );
@@ -335,7 +335,7 @@ export default function ExpenseReceipts() {
                         )}
                       </td>
                       <td className="px-4 py-3.5 text-right font-mono font-medium whitespace-nowrap">
-                        ฿{formatMoney(r.grandTotal)}
+                        <span className="font-sans">฿</span>{formatMoney(r.grandTotal)}
                       </td>
                       <td className="px-4 py-3.5 text-center">
                         <StatusBadge status={r.status} />
@@ -633,7 +633,7 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
         </div>
 
         {/* Vendor Selection */}
-        <div className="grid grid-cols-2 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div>
             <label className="text-sm font-medium mb-1.5 block text-foreground">
               {lang === "en" ? "Vendor" : "ร้านค้า"} <span className="text-red-500">*</span>
@@ -663,7 +663,7 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
           <div>
             <label className="text-sm font-medium mb-1.5 block text-foreground">
               {lang === "en" ? "Receipt No." : "เลขที่บิล"}
@@ -703,7 +703,7 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div>
             <label className="text-sm font-medium mb-1.5 block text-foreground">
               {lang === "en" ? "Payment Method" : "วิธีชำระเงิน"}
@@ -747,17 +747,17 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
           </div>
           <div className="space-y-2">
             {/* Header */}
-            <div className="grid grid-cols-12 gap-2 px-2 text-xs text-muted-foreground font-medium">
-              <div className="col-span-4">{lang === "en" ? "Item" : "สินค้า"}</div>
-              <div className="col-span-2 text-center">{lang === "en" ? "Qty" : "จำนวน"}</div>
-              <div className="col-span-1 text-center">{lang === "en" ? "Unit" : "หน่วย"}</div>
-              <div className="col-span-2 text-center">{lang === "en" ? "Price" : "ราคา"}</div>
-              <div className="col-span-2 text-right">{lang === "en" ? "Total" : "รวม"}</div>
-              <div className="col-span-1" />
+            <div style={{ display: 'grid', gridTemplateColumns: '4fr 2fr 1.5fr 2fr 2fr 0.5fr', gap: 8 }} className="px-2 text-xs text-muted-foreground font-medium">
+              <div>{lang === "en" ? "Item" : "สินค้า"}</div>
+              <div className="text-center">{lang === "en" ? "Qty" : "จำนวน"}</div>
+              <div className="text-center">{lang === "en" ? "Unit" : "หน่วย"}</div>
+              <div className="text-center">{lang === "en" ? "Price" : "ราคา"}</div>
+              <div className="text-right">{lang === "en" ? "Total" : "รวม"}</div>
+              <div />
             </div>
             {items.map((item, idx) => (
-              <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-muted/20 rounded-xl p-2.5 border border-border/50">
-                <div className="col-span-4">
+              <div key={idx} style={{ display: 'grid', gridTemplateColumns: '4fr 2fr 1.5fr 2fr 2fr 0.5fr', gap: 8, alignItems: 'center' }} className="bg-muted/20 rounded-xl p-2.5 border border-border/50">
+                <div>
                   <input
                     type="text"
                     value={item.itemName}
@@ -766,7 +766,7 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
                     className="w-full px-2.5 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                   />
                 </div>
-                <div className="col-span-2">
+                <div>
                   <input
                     type="number"
                     value={item.quantity}
@@ -775,7 +775,7 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
                     className="w-full px-2.5 py-2 border border-border rounded-lg text-sm text-center focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                   />
                 </div>
-                <div className="col-span-1">
+                <div>
                   <input
                     type="text"
                     value={item.unit}
@@ -784,7 +784,7 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
                     className="w-full px-1.5 py-2 border border-border rounded-lg text-sm text-center focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                   />
                 </div>
-                <div className="col-span-2">
+                <div>
                   <input
                     type="number"
                     value={item.unitPrice}
@@ -793,10 +793,10 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
                     className="w-full px-2.5 py-2 border border-border rounded-lg text-sm text-right focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                   />
                 </div>
-                <div className="col-span-2 text-right font-mono text-sm font-medium pr-1">
-                  ฿{formatMoney(item.totalPrice)}
+                <div className="text-right font-mono text-sm font-medium pr-1">
+                  <span className="font-sans">฿</span>{formatMoney(item.totalPrice)}
                 </div>
-                <div className="col-span-1 text-center">
+                <div className="text-center">
                   {items.length > 1 && (
                     <button
                       onClick={() => removeItem(idx)}
@@ -815,7 +815,7 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
         <div className="bg-muted/20 border border-border rounded-2xl p-5 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{lang === "en" ? "Subtotal" : "ยอดรวมสินค้า"}</span>
-            <span className="font-mono font-medium">฿{formatMoney(form.subtotal)}</span>
+            <span className="font-mono font-medium"><span className="font-sans">฿</span>{formatMoney(form.subtotal)}</span>
           </div>
           <div className="flex justify-between text-sm items-center">
             <span className="text-muted-foreground">{lang === "en" ? "VAT" : "VAT (ถ้ามี)"}</span>
@@ -847,7 +847,7 @@ function ExpenseReceiptForm({ receiptId, branchId, lang, onClose, onSaved }) {
           <hr className="border-border" />
           <div className="flex justify-between items-center">
             <span className="font-bold text-base">{lang === "en" ? "Grand Total" : "ยอดรวมทั้งหมด"}</span>
-            <span className="font-mono font-bold text-xl text-primary">฿{formatMoney(form.grandTotal)}</span>
+            <span className="font-mono font-bold text-xl text-primary"><span className="font-sans">฿</span>{formatMoney(form.grandTotal)}</span>
           </div>
         </div>
 
@@ -900,7 +900,7 @@ function ExpenseSummaryModal({ data, lang, onClose }) {
           <p className="text-sm text-muted-foreground font-medium">
             {lang === "en" ? "Total Confirmed Expenses" : "ค่าใช้จ่ายรวมทั้งหมด"}
           </p>
-          <p className="text-4xl font-bold text-primary mt-2">฿{formatMoney(data.total)}</p>
+          <p className="text-4xl font-bold text-primary mt-2"><span className="font-sans">฿</span>{formatMoney(data.total)}</p>
         </div>
 
         {/* By Vendor */}
@@ -921,7 +921,7 @@ function ExpenseSummaryModal({ data, lang, onClose }) {
                       <span className="text-xs text-muted-foreground ml-2">({v.count} {lang === "en" ? "receipts" : "บิล"})</span>
                     </div>
                   </div>
-                  <span className="font-mono font-medium text-sm">฿{formatMoney(v.total)}</span>
+                  <span className="font-mono font-medium text-sm"><span className="font-sans">฿</span>{formatMoney(v.total)}</span>
                 </div>
               ))}
             </div>
@@ -945,7 +945,7 @@ function ExpenseSummaryModal({ data, lang, onClose }) {
                       </span>
                       <span className="text-xs text-muted-foreground">({c.count} {lang === "en" ? "receipts" : "บิล"})</span>
                     </div>
-                    <span className="font-mono font-medium text-sm">฿{formatMoney(c.total)}</span>
+                    <span className="font-mono font-medium text-sm"><span className="font-sans">฿</span>{formatMoney(c.total)}</span>
                   </div>
                 );
               })}

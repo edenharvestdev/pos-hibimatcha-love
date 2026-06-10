@@ -40,6 +40,7 @@ import {
   posOptionGroups,
   posOptions,
   posPaymentMethods,
+  posBranchPaymentSettings,
 } from "../../drizzle/schema";
 import { hashPassword, hashPin } from "../lib/auth";
 
@@ -301,6 +302,24 @@ export async function seed() {
       newId = await getInsertedId(res);
     }
     branchIdMap[b.id] = newId;
+
+    // Ensure default payment settings exist for each branch
+    const [existingPaymentSettings] = await db.select().from(posBranchPaymentSettings)
+      .where(eq(posBranchPaymentSettings.branchId, newId)).limit(1);
+    if (!existingPaymentSettings) {
+      await db.insert(posBranchPaymentSettings).values({
+        branchId: newId,
+        promptpayId: "0951234567", // Default sandbox PromptPay ID
+        promptpayName: `Hibi Matcha (${b.name})`,
+        promptpayType: "phone",
+        taxId: "0105560000000",
+        companyName: "Hibi Matcha Co., Ltd.",
+        companyAddress: b.province ? `123 Matcha Road, ${b.province}, Thailand` : "123 Matcha Road, Bangkok, Thailand",
+        autoPrintOrderSlip: true,
+        autoPrintKitchenTicket: true,
+        autoPrintLabels: true,
+      });
+    }
   }
   const hibiHouseId = branchIdMap["150001"] ?? Object.values(branchIdMap)[0];
   console.log(`  ${Object.keys(branchIdMap).length} branches, Hibi House id=${hibiHouseId}`);

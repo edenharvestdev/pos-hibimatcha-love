@@ -477,6 +477,12 @@ const Topbar = ({ onToggleSidebar }) => {
   const [userOpen, setUserOpen] = useState(false);
   const [appsOpen, setAppsOpen] = useState(false);
 
+  const { data: notifications = [], refetch } = trpc.notifications.list.useQuery(undefined, {
+    staleTime: 10000,
+    refetchOnWindowFocus: true,
+  });
+  const hasUnread = notifications.some((n) => !n.isRead);
+
   return (
     <header
       className="glass"
@@ -557,10 +563,12 @@ const Topbar = ({ onToggleSidebar }) => {
         >
           <span style={{ position: 'relative' }}>
             <IconBell size={18}/>
-            <span style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', background: 'var(--matcha-500)', border: '2px solid var(--bg-surface)' }}/>
+            {hasUnread && (
+              <span style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', background: 'var(--matcha-500)', border: '2px solid var(--bg-surface)' }}/>
+            )}
           </span>
         </button>
-        {notifOpen && <NotifDropdown onClose={() => setNotifOpen(false)}/>}
+        {notifOpen && <NotifDropdown notifications={notifications} refetch={refetch} onClose={() => setNotifOpen(false)}/>}
       </div>
 
       <div style={{ position: 'relative' }}>
@@ -577,48 +585,122 @@ const Topbar = ({ onToggleSidebar }) => {
   );
 };
 
-const NotifDropdown = ({ onClose }) => (
-  <>
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 60 }}/>
-    <div className="anim-fade" style={{
-      position: 'absolute', top: '100%', right: 0,
-      marginTop: 8, width: 360, zIndex: 61,
-      background: 'var(--bg-elevated)',
-      border: '1px solid var(--border-default)',
-      borderRadius: 'var(--r-md)',
-      boxShadow: 'var(--shadow-lg)',
-      overflow: 'hidden',
-    }}>
-      <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontWeight: 600, fontSize: 14 }}>Notifications</div>
-        <button className="btn btn-ghost btn-xs">Mark all read</button>
-      </div>
-      <div style={{ maxHeight: 360, overflow: 'auto' }}>
-        {[
-          { icon: IconBox, color: 'var(--warning)', title: 'Low stock alert', body: 'Ceremonial-grade matcha below threshold', time: '8m ago' },
-          { icon: IconReceipt, color: 'var(--matcha-600)', title: 'PO approval pending', body: 'PO-0042 awaits your approval', time: '1h ago' },
-          { icon: IconCheckCircle, color: 'var(--info)', title: 'SOP acknowledgment', body: '4 staff acknowledged "Espresso prep"', time: '2h ago' },
-          { icon: IconStaff, color: 'var(--matcha-600)', title: 'New staff invite accepted', body: 'Aoi joined Ladprao 107', time: 'Yesterday' },
-        ].map((n, i) => {
-          const I = n.icon;
-          return (
-            <div key={i} style={{ padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'flex-start', borderTop: i === 0 ? 'none' : '1px solid var(--border-default)' }}>
-              <span style={{ color: n.color, marginTop: 2 }}><I size={18}/></span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{n.title}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{n.body}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4 }}>{n.time}</div>
-              </div>
+const NotifDropdown = ({ notifications, refetch, onClose }) => {
+  const markAllRead = trpc.notifications.markAllRead.useMutation({
+    onSuccess: () => refetch(),
+  });
+
+  const markRead = trpc.notifications.markRead.useMutation({
+    onSuccess: () => refetch(),
+  });
+
+  const handleMarkAllRead = () => {
+    markAllRead.mutate();
+  };
+
+  const handleNotificationClick = (n) => {
+    if (!n.isRead) {
+      markRead.mutate({ ids: [n.id] });
+    }
+  };
+
+  const getIconInfo = (title = '') => {
+    const t = title.toLowerCase();
+    if (t.includes('stock') || t.includes('คลัง')) {
+      return { Icon: IconBox, color: 'var(--warning)' };
+    }
+    if (t.includes('po') || t.includes('สั่งซื้อ') || t.includes('ใบเสร็จ')) {
+      return { Icon: IconReceipt, color: 'var(--matcha-600)' };
+    }
+    if (t.includes('sop') || t.includes('สูตร') || t.includes('ขั้นตอน')) {
+      return { Icon: IconCheckCircle, color: 'var(--info)' };
+    }
+    return { Icon: IconStaff, color: 'var(--matcha-600)' };
+  };
+
+  const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const diffMs = Date.now() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffSec < 60) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffHour < 24) return `${diffHour}h ago`;
+    if (diffDay === 1) return 'Yesterday';
+    return date.toLocaleDateString();
+  };
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 60 }}/>
+      <div className="anim-fade" style={{
+        position: 'absolute', top: '100%', right: 0,
+        marginTop: 8, width: 360, zIndex: 61,
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--r-md)',
+        boxShadow: 'var(--shadow-lg)',
+        overflow: 'hidden',
+      }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>Notifications</div>
+          {notifications.some(n => !n.isRead) && (
+            <button className="btn btn-ghost btn-xs" onClick={handleMarkAllRead} disabled={markAllRead.isPending}>
+              {markAllRead.isPending ? 'Marking...' : 'Mark all read'}
+            </button>
+          )}
+        </div>
+        <div style={{ maxHeight: 360, overflow: 'auto' }}>
+          {notifications.length === 0 ? (
+            <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+              No notifications yet
             </div>
-          );
-        })}
+          ) : (
+            notifications.map((n, i) => {
+              const { Icon, color } = getIconInfo(n.title);
+              return (
+                <div
+                  key={n.id}
+                  onClick={() => handleNotificationClick(n)}
+                  style={{
+                    padding: '12px 16px',
+                    display: 'flex',
+                    gap: 10,
+                    alignItems: 'flex-start',
+                    borderTop: i === 0 ? 'none' : '1px solid var(--border-default)',
+                    cursor: n.isRead ? 'default' : 'pointer',
+                    background: n.isRead ? 'transparent' : 'rgba(34, 197, 94, 0.05)',
+                    transition: 'background 150ms',
+                  }}
+                  className="notif-item"
+                >
+                  <span style={{ color: color, marginTop: 2 }}><Icon size={18}/></span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: n.isRead ? 500 : 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {n.title}
+                      {!n.isRead && (
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--matcha-500)' }}/>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{n.content}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-quaternary)', marginTop: 4 }}>{formatTime(n.createdAt)}</div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+        <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border-default)', textAlign: 'center' }}>
+          <button className="btn btn-ghost btn-sm" style={{ width: '100%' }} onClick={onClose}>View all activity</button>
+        </div>
       </div>
-      <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border-default)', textAlign: 'center' }}>
-        <button className="btn btn-ghost btn-sm" style={{ width: '100%' }}>View all activity</button>
-      </div>
-    </div>
-  </>
-);
+    </>
+  );
+};
 
 const UserDropdown = ({ onClose }) => {
   const { navigate, setStaff } = useApp();

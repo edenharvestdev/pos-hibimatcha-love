@@ -60,6 +60,23 @@ export const reportsRouter = router({
         ? Math.round(((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100)
         : 0;
 
+      // Calculate AOV history for the last 7 days (ending today)
+      const aovLast7Days: number[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const dStart = new Date(today);
+        dStart.setDate(today.getDate() - i);
+        const dEnd = new Date(dStart);
+        dEnd.setDate(dEnd.getDate() + 1);
+
+        const dayOrders = orders.filter((o) =>
+          o.createdAt && o.createdAt >= dStart && o.createdAt < dEnd &&
+          ["completed", "served"].includes(o.status ?? "")
+        );
+        const dayRevenue = dayOrders.reduce((sum, o) => sum + Number(o.totalAmount ?? 0), 0);
+        const dayAOV = dayOrders.length > 0 ? dayRevenue / dayOrders.length : 0;
+        aovLast7Days.push(Math.round(dayAOV));
+      }
+
       return {
         todayRevenue: Math.round(todayRevenue * 100) / 100,
         todayOrders: todayOrders.length,
@@ -68,6 +85,7 @@ export const reportsRouter = router({
         lowStockCount,
         revenueChange,
         yesterdayRevenue: Math.round(yesterdayRevenue * 100) / 100,
+        aovLast7Days,
       };
     }),
 

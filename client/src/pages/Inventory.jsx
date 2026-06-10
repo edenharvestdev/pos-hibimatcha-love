@@ -203,13 +203,22 @@ export const PageInvItems = () => {
   const createItemMut = trpc.inventory.createItem.useMutation();
   const updateItemMut = trpc.inventory.updateItem.useMutation();
   const deleteItemMut = trpc.inventory.deleteItem.useMutation({ onSuccess: () => utils.inventory.listItems.invalidate() });
+  const hardDeleteItemMut = trpc.inventory.hardDeleteItem.useMutation({
+    onSuccess: () => {
+      utils.inventory.listItems.invalidate();
+      utils.inventory.listCategories.invalidate();
+    },
+  });
   const addOptionMut = trpc.inventoryAttributes.addOption.useMutation();
   const createCategoryMut = trpc.inventory.createCategory.useMutation();
   const [savingItem, setSavingItem] = useState(false);
 
   const handleDeleteItem = (item) => {
-    if (window.confirm(`ลบ "${item.name}" ออกจากระบบ? ข้อมูลจะหายถาวร`)) {
-      deleteItemMut.mutate({ id: item.id });
+    const confirmed = window.confirm(
+      `ลบ "${item.name}" ออกจากระบบถาวร?\n\nข้อมูลสต็อกทุกสาขาของรายการนี้จะถูกลบออกด้วย และไม่สามารถกู้คืนได้`
+    );
+    if (confirmed) {
+      hardDeleteItemMut.mutate({ id: item.id });
     }
   };
 

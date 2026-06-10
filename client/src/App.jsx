@@ -3,6 +3,7 @@
 // ============================================
 
 import React, { useState, useEffect } from "react";
+import Pusher from "pusher-js";
 import {
   AppCtx,
   ToastProvider,
@@ -355,6 +356,111 @@ function landingPathForRole(role) {
   return '/';
 }
 
+const RealtimeSync = ({ branchId }) => {
+  const utils = trpc.useUtils();
+  const { data: config } = trpc.branchSettings.getPusherConfig.useQuery(
+    undefined,
+    { enabled: !!branchId, staleTime: Infinity }
+  );
+
+  useEffect(() => {
+    if (!branchId || !config?.key || config.key === "mock_key" || config.key.includes("your-pusher-key")) {
+      return;
+    }
+
+    try {
+      const pusher = new Pusher(config.key, {
+        cluster: config.cluster || "ap1",
+        forceTLS: true,
+      });
+
+      const channelName = `branch-${branchId}`;
+      const channel = pusher.subscribe(channelName);
+
+      channel.bind("new_order", (data) => {
+        console.log("[Realtime] Event: new_order", data);
+        utils.orders.list.invalidate();
+        utils.orders.listHeld.invalidate();
+        utils.kitchen.listTickets.invalidate();
+
+        const ev = new CustomEvent("hibi-toast", {
+          detail: {
+            label: `มีคำสั่งซื้อใหม่ #${data?.orderNumber || data?.id || ""} เข้ามา!`,
+            type: "success",
+          },
+        });
+        window.dispatchEvent(ev);
+
+        // Chime sound
+        try {
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const oscillator = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          oscillator.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          oscillator.type = "sine";
+          oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+          gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          oscillator.start();
+          oscillator.stop(audioCtx.currentTime + 0.15);
+          setTimeout(() => {
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            osc2.type = "sine";
+            osc2.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+            gain2.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            osc2.start();
+            osc2.stop(audioCtx.currentTime + 0.25);
+          }, 150);
+        } catch (soundErr) {
+          console.warn("Audio Context failed:", soundErr);
+        }
+      });
+
+      channel.bind("order_updated", (data) => {
+        console.log("[Realtime] Event: order_updated", data);
+        utils.orders.list.invalidate();
+        utils.orders.getById.invalidate({ id: data?.id });
+        utils.kitchen.listTickets.invalidate();
+
+        const ev = new CustomEvent("hibi-toast", {
+          detail: {
+            label: `ออเดอร์ #${data?.orderNumber || data?.id || ""} อัปเดตสถานะเป็น: ${data?.status || ""}`,
+            type: "info",
+          },
+        });
+        window.dispatchEvent(ev);
+      });
+
+      channel.bind("stock_low", (data) => {
+        console.log("[Realtime] Event: stock_low", data);
+        utils.inventory.listStock.invalidate();
+        utils.reports.getDashboardStats.invalidate();
+
+        const ev = new CustomEvent("hibi-toast", {
+          detail: {
+            label: `⚠️ วัตถุดิบใกล้หมด: ${data?.itemName || ""} (เหลือ ${data?.currentStock ?? 0} ${data?.unit || ""})`,
+            type: "warning",
+          },
+        });
+        window.dispatchEvent(ev);
+      });
+
+      return () => {
+        channel.unbind_all();
+        pusher.unsubscribe(channelName);
+        pusher.disconnect();
+      };
+    } catch (e) {
+      console.error("[RealtimeSync] connection error:", e);
+    }
+  }, [branchId, config, utils]);
+
+  return null;
+};
+
 const App = () => {
   const [route, setRoute] = useHashRoute();
   const [theme, setTheme] = useState(() => {
@@ -486,6 +592,7 @@ const App = () => {
   return (
     <AppCtx.Provider value={ctx}>
       <ToastProvider>
+        <RealtimeSync branchId={branch?.id}/>
         <AppLayout>
           <Router route={route}/>
         </AppLayout>

@@ -207,23 +207,11 @@ export const PageDashboard = () => {
                   </div>
                 </div>
               )) : (
-                [
-                  { name: 'Iced Matcha Latte', cat: 'Signature', qty: 38, rev: 7600 },
-                  { name: 'Hojicha Affogato', cat: 'Dessert', qty: 22, rev: 5060 },
-                  { name: 'Ceremonial Usucha', cat: 'Traditional', qty: 14, rev: 4900 },
-                ].map((it, i) => (
-                  <div key={it.name} style={{ display: 'flex', gap: 12, padding: '10px 12px', borderRadius: 'var(--r-default)', background: 'var(--bg-muted)', alignItems: 'center' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--matcha-100)', color: 'var(--matcha-800)', display: 'grid', placeItems: 'center', flex: 'none', fontSize: 14, fontWeight: 700 }}>{i + 1}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 500 }}>{it.name}</div>
-                      <div className="muted" style={{ fontSize: 11 }}>{it.cat}</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div className="tabular" style={{ fontSize: 14, fontWeight: 600 }}>฿{it.rev.toLocaleString()}</div>
-                      <div className="muted" style={{ fontSize: 11 }}>{it.qty} sold</div>
-                    </div>
-                  </div>
-                ))
+                <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>📊</div>
+                  <div style={{ fontSize: 13 }}>ยังไม่มีข้อมูลการขายวันนี้</div>
+                  <div style={{ fontSize: 11, marginTop: 4 }}>ข้อมูลจะแสดงเมื่อมีการขายเกิดขึ้น</div>
+                </div>
               )}
             </div>
           </div>
@@ -237,7 +225,7 @@ export const PageDashboard = () => {
               ฿{statsLoading ? '–' : Math.round(avgOrderValue).toLocaleString()}
             </div>
             <div style={{ color: 'var(--matcha-700)', fontSize: 13, marginTop: 4, fontWeight: 500 }}>Per order avg</div>
-            <div style={{ marginTop: 14 }}><Sparkline data={[280, 295, 310, 305, 320, 335, Math.round(avgOrderValue) || 343]} w={240} h={36}/></div>
+            <div style={{ marginTop: 14 }}><Sparkline data={stats?.aovLast7Days ?? [0, 0, 0, 0, 0, 0, 0]} w={240} h={36}/></div>
           </div>
         </div>
 

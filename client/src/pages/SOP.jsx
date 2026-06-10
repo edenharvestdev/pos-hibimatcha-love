@@ -3,7 +3,7 @@
 // ============================================
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { IconBell,IconBookmark,IconBox,IconCategories,IconCheck,IconCheckCircle,IconCheckList,IconChevRight,IconCommand,IconEdit,IconError,IconExport,IconImport,IconInfo,IconLeaf,IconList,IconMenu,IconPlus,IconSearch,IconWarning,IconWhisk } from "@/icons";
+import { IconBell,IconBookmark,IconBox,IconCategories,IconCheck,IconCheckCircle,IconCheckList,IconChevRight,IconCommand,IconEdit,IconError,IconExport,IconImport,IconInfo,IconLeaf,IconList,IconMenu,IconPlus,IconSearch,IconWarning,IconWhisk,IconTrash,IconX,IconChevUp,IconChevDown } from "@/icons";
 import { useApp,Drawer,Select,Toggle,Checkbox,Tabs,TopActionBar,Placeholder,SectionHeader,Avatar,Sparkline } from "@/components";
 import { trpc } from "@/lib/trpc";
 import { getSession } from "@/lib/authStore";
@@ -645,6 +645,184 @@ export const PageSOPDetail = () => {
   );
 };
 
+// ----- SOP Templates -----
+const templateMatchaLatte = [
+  {
+    "type": "heading",
+    "text": "อุปกรณ์ที่ต้องใช้ชงมัทฉะ"
+  },
+  {
+    "type": "list",
+    "items": [
+      "แปรงตีชา Chasen (ไม้ไผ่)",
+      "ถ้วยชงชา Chawan",
+      "ช้อนตักชา Chashaku",
+      "เครื่องชั่งดิจิทัล (ทศนิยม 1 ตำแหน่ง)",
+      "ที่ร่อนผงชา"
+    ]
+  },
+  {
+    "type": "heading",
+    "text": "ส่วนผสมและสัดส่วน"
+  },
+  {
+    "type": "list",
+    "items": [
+      "ผงมัทฉะ Hibi Premium Match 4 กรัม",
+      "น้ำร้อน (อุณหภูมิ 80 องศาเซลเซียส) 40 มิลลิลิตร",
+      "นมสดแช่เย็นจัด 120 มิลลิลิตร",
+      "น้ำเชื่อมปลอก 10 มิลลิลิตร (หากสั่งหวานปกติ)"
+    ]
+  },
+  {
+    "type": "heading",
+    "text": "ขั้นตอนการปรุงปฏิบัติงาน"
+  },
+  {
+    "type": "list",
+    "items": [
+      "ร่อนผงมัทฉะ 4 กรัมลงในถ้วย Chawan เพื่อไม่ให้ผงชาจับตัวเป็นก้อน",
+      "เทน้ำร้อน 80 องศาลงไป 40 มิลลิลิตร",
+      "ใช้แปรง Chasen ตีชาด้วยการขยับข้อมือเป็นรูปตัว W อย่างรวดเร็วประมาณ 15-20 วินาทีจนเกิดฟองเนียนละเอียด (Microfoam)",
+      "เติมนมสดเย็นและน้ำเชื่อมลงในแก้วเสิร์ฟ จากนั้นค่อยๆ เทน้ำมัทฉะที่ตีเสร็จแล้วราดด้านบนให้เกิดชั้นสีที่สวยงาม"
+    ]
+  },
+  {
+    "type": "callout",
+    "text": "ข้อควรระวัง: ห้ามใช้น้ำเดือดจัด 100 องศามาชงมัทฉะเด็ดขาด เพราะจะทำให้ชามีรสขมฝาดและสูญเสียกลิ่นหอมธรรมชาติ"
+  }
+];
+
+const templateOpening = [
+  {
+    "type": "heading",
+    "text": "เช็คลิสต์เตรียมความพร้อมก่อนเปิดร้าน (07:30 - 08:00 น.)"
+  },
+  {
+    "type": "heading",
+    "text": "1. การเตรียมระบบและเครื่อง POS"
+  },
+  {
+    "type": "list",
+    "items": [
+      "เปิดเครื่อง POS และลิ้นชักเก็บเงิน",
+      "ตรวจสอบระบบอินเทอร์เน็ตและเครื่องพิมพ์ใบเสร็จ (ทดสอบพิมพ์ Test Slip)",
+      "นับเงินทอนตั้งต้นเข้าระบบจำนวน 3,000 บาท ถ้วน"
+    ]
+  },
+  {
+    "type": "heading",
+    "text": "2. การเตรียมวัตถุดิบและอุปกรณ์บาร์"
+  },
+  {
+    "type": "list",
+    "items": [
+      "เช็คอุณหภูมิตู้เย็นเก็บนมสดและวัตถุดิบแช่เย็น (ต้องอยู่ระหว่าง 2 - 4 องศาเซลเซียส)",
+      "เติมนมสด ขนมเค้ก และไซรัปในชั้นวางบาร์ตามหลัก FIFO (มาก่อนใช้ก่อน)",
+      "เปิดเครื่องทำน้ำแข็งและทำความสะอาดที่ตักน้ำแข็ง"
+    ]
+  },
+  {
+    "type": "callout",
+    "text": "สำคัญ: หากพบวัตถุดิบหมดอายุหรือไม่ได้มาตรฐาน ให้รีบลงบันทึกในใบตัดจ่าย Inventory ทันทีและแจ้งผู้จัดการร้าน"
+  }
+];
+
+const templateClosing = [
+  {
+    "type": "heading",
+    "text": "เช็คลิสต์การเคลียร์ยอดและทำความสะอาดร้านหลังปิดบริการ"
+  },
+  {
+    "type": "heading",
+    "text": "1. การปิดยอดการเงิน (Reconcile Cash & Sales)"
+  },
+  {
+    "type": "list",
+    "items": [
+      "กดพิมพ์รายงานปิดกะ (Shift Report) จาก POS",
+      "นับยอดเงินสดในลิ้นชักและเปรียบเทียบกับยอดขายในระบบ",
+      "ส่งยอดสรุปการเงินทาง Google Sheet และ LINE Group ของร้าน"
+    ]
+  },
+  {
+    "type": "heading",
+    "text": "2. การดูแลความสะอาดบาร์ชงและร้าน"
+  },
+  {
+    "type": "list",
+    "items": [
+      "ล้างทำความสะอาดอุปกรณ์ทุกชิ้น (แปรงไม้ไผ่ ถ้วยชงชา เครื่องชง) และผึ่งลมให้แห้ง",
+      "เช็ดทำความสะอาดหน้าบาร์ เครื่อง POS และเคลียร์ขยะออกจากร้าน",
+      "ตรวจสอบปลั๊กไฟ ปิดแอร์ และระบบไฟแสงสว่างทั้งหมดก่อนล็อคร้าน"
+    ]
+  },
+  {
+    "type": "callout",
+    "text": "คำเตือน: ห้ามแช่แปรง Chasen ไว้ในน้ำข้ามคืนเด็ดขาด เพราะจะทำให้ไม้ไผ่ขึ้นราและชำรุดเสียหายได้ง่าย"
+  }
+];
+
+const smartParseTextToBlocks = (text) => {
+  const content = (text || '').trim();
+  if (!content) return [{ type: 'paragraph', text: '' }];
+
+  // Try to parse as JSON array first
+  try {
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed)) return parsed;
+  } catch (e) {}
+
+  // Plain text fallback parsing
+  const lines = content.split('\n');
+  const parsedBlocks = [];
+  let currentList = null;
+
+  for (let line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (currentList) {
+        parsedBlocks.push(currentList);
+        currentList = null;
+      }
+      continue;
+    }
+
+    // Check if list item
+    const listMatch = trimmed.match(/^[-*•]\s+(.*)$/) || trimmed.match(/^\d+[\s.)-]+\s*(.*)$/);
+    if (listMatch) {
+      const itemText = listMatch[1];
+      if (!currentList) {
+        currentList = { type: 'list', items: [] };
+      }
+      currentList.items.push(itemText);
+    } else {
+      if (currentList) {
+        parsedBlocks.push(currentList);
+        currentList = null;
+      }
+
+      if (trimmed.startsWith('#')) {
+        const headingText = trimmed.replace(/^#+\s*/, '');
+        parsedBlocks.push({ type: 'heading', text: headingText });
+      } else if (
+        trimmed.toLowerCase().startsWith('warning:') ||
+        trimmed.toLowerCase().startsWith('note:') ||
+        trimmed.toLowerCase().startsWith('สำคัญ:') ||
+        trimmed.startsWith('ระวัง:')
+      ) {
+        parsedBlocks.push({ type: 'callout', text: trimmed });
+      } else {
+        parsedBlocks.push({ type: 'paragraph', text: trimmed });
+      }
+    }
+  }
+  if (currentList) {
+    parsedBlocks.push(currentList);
+  }
+  return parsedBlocks.length > 0 ? parsedBlocks : [{ type: 'paragraph', text: '' }];
+};
+
 // ----- SOP Editor (Notion-style) -----
 export const PageSOPEditor = () => {
   const { navigate } = useApp();
@@ -685,6 +863,82 @@ export const PageSOPEditor = () => {
   const [savedAt, setSavedAt] = useState(null);
   const [statusLabel, setStatusLabel] = useState('Draft');
 
+  const [editorMode, setEditorMode] = useState('visual'); // visual | code
+  const [blocks, setBlocks] = useState([{ type: 'paragraph', text: '' }]);
+  const [templateDropdownOpen, setTemplateDropdownOpen] = useState(false);
+  const [hoveredIdx, setHoveredIdx] = useState(null);
+  const [activeDropdownIdx, setActiveDropdownIdx] = useState(null);
+  const codeTextareaRef = useRef(null);
+
+  const applyTemplate = (templateBlocks) => {
+    setBlocks(templateBlocks);
+    setForm((f) => ({ ...f, content: JSON.stringify(templateBlocks, null, 2) }));
+  };
+
+  const handleListKeyDown = (e, blockIdx, itemIdx) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const next = [...blocks];
+      const items = [...(next[blockIdx].items || [])];
+      items.splice(itemIdx + 1, 0, '');
+      next[blockIdx] = { ...next[blockIdx], items };
+      setBlocks(next);
+
+      setTimeout(() => {
+        const selector = `[data-block-idx="${blockIdx}"] input`;
+        const inputs = document.querySelectorAll(selector);
+        if (inputs[itemIdx + 1]) {
+          inputs[itemIdx + 1].focus();
+        }
+      }, 10);
+    } else if (e.key === 'Backspace' && e.target.value === '') {
+      e.preventDefault();
+      const next = [...blocks];
+      const items = [...(next[blockIdx].items || [])];
+      if (items.length > 1) {
+        items.splice(itemIdx, 1);
+        next[blockIdx] = { ...next[blockIdx], items };
+        setBlocks(next);
+
+        setTimeout(() => {
+          const selector = `[data-block-idx="${blockIdx}"] input`;
+          const inputs = document.querySelectorAll(selector);
+          const prevIdx = itemIdx - 1 >= 0 ? itemIdx - 1 : 0;
+          if (inputs[prevIdx]) {
+            inputs[prevIdx].focus();
+          }
+        }, 10);
+      } else {
+        next[blockIdx] = { type: 'paragraph', text: '' };
+        setBlocks(next);
+      }
+    }
+  };
+
+  const insertTextAtCursor = (textToInsert) => {
+    const textarea = codeTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    let currentContent = form.content.trim();
+
+    if (!currentContent) {
+      const formatted = `[\n  ${textToInsert.trim().replace(/^,|,$/g, '')}\n]`;
+      setForm((f) => ({ ...f, content: formatted }));
+      return;
+    }
+
+    const fullContent = form.content;
+    const newContent = fullContent.substring(0, start) + textToInsert + fullContent.substring(end);
+    setForm((f) => ({ ...f, content: newContent }));
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + textToInsert.length;
+    }, 10);
+  };
+
   // Hydrate form when loading existing SOP
   useEffect(() => {
     if (existing) {
@@ -704,26 +958,66 @@ export const PageSOPEditor = () => {
         videoUrl: existing.videoUrl || '',
       });
       setStatusLabel(existing.status === 'published' ? 'Published' : existing.status === 'archived' ? 'Archived' : 'Draft');
+
+      // Hydrate blocks if JSON content
+      let initialBlocks = [];
+      let mode = 'visual';
+      if (existing.content) {
+        if (typeof existing.content === 'string') {
+          try {
+            const parsed = JSON.parse(existing.content);
+            if (Array.isArray(parsed)) {
+              initialBlocks = parsed;
+            } else {
+              mode = 'code';
+            }
+          } catch (e) {
+            if (existing.content.trim()) {
+              mode = 'code';
+            }
+          }
+        } else if (Array.isArray(existing.content)) {
+          initialBlocks = existing.content;
+        }
+      }
+      setBlocks(initialBlocks.length > 0 ? initialBlocks : [{ type: 'paragraph', text: '' }]);
+      setEditorMode(mode);
     }
   }, [existing?.id]);
+
+  useEffect(() => {
+    if (editorMode === 'visual') {
+      setForm((f) => ({ ...f, content: JSON.stringify(blocks, null, 2) }));
+    }
+  }, [blocks, editorMode]);
 
   const createSop = trpc.sop.create.useMutation();
   const updateSop = trpc.sop.update.useMutation();
   const publishSop = trpc.sop.publish.useMutation();
 
-  const buildPayload = () => ({
-    title: form.title.trim(),
-    titleThai: form.titleThai.trim() || undefined,
-    subtitle: form.subtitle.trim() || undefined,
-    categoryId: form.categoryId || undefined,
-    content: form.content,
-    requiresAcknowledgment: form.requiresAcknowledgment,
-    allowBranchVariants: form.allowBranchVariants,
-    acknowledgmentDeadlineDays: Number(form.acknowledgmentDeadlineDays) || undefined,
-    tags: form.tags.length > 0 ? form.tags : undefined,
-    coverImageUrl: form.coverImageUrl.trim() || undefined,
-    videoUrl: form.videoUrl.trim() || undefined,
-  });
+  const buildPayload = () => {
+    let parsedContent = form.content;
+    if (typeof form.content === 'string') {
+      try {
+        parsedContent = JSON.parse(form.content);
+      } catch (e) {
+        // Keep as string
+      }
+    }
+    return {
+      title: form.title.trim(),
+      titleThai: form.titleThai.trim() || undefined,
+      subtitle: form.subtitle.trim() || undefined,
+      categoryId: form.categoryId || undefined,
+      content: parsedContent,
+      requiresAcknowledgment: form.requiresAcknowledgment,
+      allowBranchVariants: form.allowBranchVariants,
+      acknowledgmentDeadlineDays: Number(form.acknowledgmentDeadlineDays) || undefined,
+      tags: form.tags.length > 0 ? form.tags : undefined,
+      coverImageUrl: form.coverImageUrl.trim() || undefined,
+      videoUrl: form.videoUrl.trim() || undefined,
+    };
+  };
 
   const handleSaveDraft = async () => {
     if (!form.title.trim()) { alert('Please enter a title'); return; }
@@ -818,23 +1112,636 @@ export const PageSOPEditor = () => {
             style={{ fontSize: 20, lineHeight: 1.4, margin: '12px 0 32px', outline: 'none', border: 'none', background: 'transparent', width: '100%' }}
           />
 
-          <textarea
-            value={form.content}
-            onChange={(e) => setForm({ ...form, content: e.target.value })}
-            placeholder={`Start writing the SOP content here…\n\nYou can use plain text or JSON blocks like:\n\n[{ "type": "heading", "text": "Equipment" }, { "type": "list", "items": ["Chasen whisk", "Bowl"] }]`}
+          {/* Editor Mode Selector */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'inline-flex', background: 'var(--bg-muted)', borderRadius: 'var(--r-default)', padding: 3, gap: 2 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const parsed = smartParseTextToBlocks(form.content);
+                  setBlocks(parsed);
+                  setEditorMode('visual');
+                }}
+                className="btn btn-xs"
+                style={{
+                  background: editorMode === 'visual' ? 'var(--bg-surface)' : 'transparent',
+                  color: editorMode === 'visual' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  boxShadow: editorMode === 'visual' ? 'var(--shadow-xs)' : 'none',
+                  padding: '4px 12px',
+                  fontSize: 12,
+                }}
+              >
+                Visual Editor (ตัวสร้างบล็อก)
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditorMode('code')}
+                className="btn btn-xs"
+                style={{
+                  background: editorMode === 'code' ? 'var(--bg-surface)' : 'transparent',
+                  color: editorMode === 'code' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  boxShadow: editorMode === 'code' ? 'var(--shadow-xs)' : 'none',
+                  padding: '4px 12px',
+                  fontSize: 12,
+                }}
+              >
+                Raw Text / JSON (โค้ดดิบ)
+              </button>
+            </div>
+          </div>
+
+          {/* Unified SOP Toolbar */}
+          <div
+            className="glass"
             style={{
-              width: '100%',
-              minHeight: 400,
-              fontSize: 16, lineHeight: 1.8,
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-default)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              padding: '10px 16px',
               borderRadius: 'var(--r-md)',
-              padding: 16,
+              border: '1px solid var(--border-default)',
+              marginBottom: 20,
               background: 'var(--bg-surface)',
-              fontFamily: 'inherit',
-              resize: 'vertical',
             }}
-          />
+          >
+            {/* Left: Quick Actions */}
+            {editorMode === 'visual' ? (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>แทรกบล็อก:</span>
+                <button
+                  type="button"
+                  onClick={() => setBlocks([...blocks, { type: 'heading', text: '' }])}
+                  className="btn btn-secondary btn-xs"
+                  style={{ fontSize: 11, padding: '4px 8px' }}
+                >
+                  + Heading
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBlocks([...blocks, { type: 'paragraph', text: '' }])}
+                  className="btn btn-secondary btn-xs"
+                  style={{ fontSize: 11, padding: '4px 8px' }}
+                >
+                  + Paragraph
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBlocks([...blocks, { type: 'list', items: [''] }])}
+                  className="btn btn-secondary btn-xs"
+                  style={{ fontSize: 11, padding: '4px 8px' }}
+                >
+                  + List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBlocks([...blocks, { type: 'callout', text: '' }])}
+                  className="btn btn-secondary btn-xs"
+                  style={{ fontSize: 11, padding: '4px 8px' }}
+                >
+                  + Callout
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>แทรกโค้ดดิบ:</span>
+                <button
+                  type="button"
+                  onClick={() => insertTextAtCursor(JSON.stringify({ type: 'heading', text: 'กรอกหัวข้อตรงนี้' }, null, 2) + ',\n')}
+                  className="btn btn-secondary btn-xs"
+                  style={{ fontSize: 11, padding: '4px 8px' }}
+                >
+                  + Heading
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertTextAtCursor(JSON.stringify({ type: 'paragraph', text: 'กรอกเนื้อหาตรงนี้' }, null, 2) + ',\n')}
+                  className="btn btn-secondary btn-xs"
+                  style={{ fontSize: 11, padding: '4px 8px' }}
+                >
+                  + Paragraph
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertTextAtCursor(JSON.stringify({ type: 'list', items: ['รายการข้อที่ 1', 'รายการข้อที่ 2'] }, null, 2) + ',\n')}
+                  className="btn btn-secondary btn-xs"
+                  style={{ fontSize: 11, padding: '4px 8px' }}
+                >
+                  + List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertTextAtCursor(JSON.stringify({ type: 'callout', text: 'ข้อความเตือนหรือข้อเสนอแนะ' }, null, 2) + ',\n')}
+                  className="btn btn-secondary btn-xs"
+                  style={{ fontSize: 11, padding: '4px 8px' }}
+                >
+                  + Callout
+                </button>
+                <span style={{ borderLeft: '1px solid var(--border-default)', height: 16, margin: '0 4px' }} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const parsed = smartParseTextToBlocks(form.content);
+                    setForm((f) => ({ ...f, content: JSON.stringify(parsed, null, 2) }));
+                    setBlocks(parsed);
+                  }}
+                  className="btn btn-secondary btn-xs"
+                  style={{ fontSize: 11, padding: '4px 8px', color: 'var(--matcha-700)' }}
+                  title="แปลงข้อความดิบหรือบทความให้เป็นโครงสร้าง JSON บล็อกที่ถูกต้อง"
+                >
+                  ⚡ แปลงเป็น JSON บล็อก
+                </button>
+              </div>
+            )}
+
+            {/* Right: Templates Dropdown */}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setTemplateDropdownOpen(!templateDropdownOpen)}
+                className="btn btn-secondary btn-xs"
+                style={{ fontSize: 11, padding: '4px 10px', color: 'var(--matcha-700)', border: '1px solid var(--matcha-200)', display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                <IconBookmark size={12} />
+                เลือกเทมเพลตคู่มือ (SOP Templates)
+                <IconChevDown size={10} />
+              </button>
+
+              {templateDropdownOpen && (
+                <>
+                  <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+                    onClick={() => setTemplateDropdownOpen(false)}
+                  />
+                  <div
+                    className="glass"
+                    style={{
+                      position: 'absolute',
+                      top: '28px',
+                      right: 0,
+                      background: 'var(--bg-surface)',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--r-md)',
+                      boxShadow: 'var(--shadow-md)',
+                      padding: '4px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px',
+                      minWidth: '220px',
+                      zIndex: 100,
+                    }}
+                  >
+                    {[
+                      { label: 'สูตรชงชา Matcha Latte', blocks: templateMatchaLatte },
+                      { label: 'ขั้นตอนการเปิดร้าน (Opening)', blocks: templateOpening },
+                      { label: 'ขั้นตอนการปิดร้าน (Closing)', blocks: templateClosing },
+                    ].map((t) => (
+                      <button
+                        key={t.label}
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`ต้องการใช้เทมเพลต "${t.label}" ใช่หรือไม่? เนื้อหาเดิมที่เขียนอยู่จะถูกแทนที่ทั้งหมด`)) {
+                            applyTemplate(t.blocks);
+                            setTemplateDropdownOpen(false);
+                          }
+                        }}
+                        style={{
+                          padding: '8px 10px',
+                          fontSize: '12px',
+                          borderRadius: 'var(--r-subtle)',
+                          background: 'transparent',
+                          color: 'var(--text-primary)',
+                          border: 'none',
+                          width: '100%',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        📄 {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {editorMode === 'visual' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {blocks.map((block, idx) => {
+                const isHovered = hoveredIdx === idx;
+                const isDropdownOpen = activeDropdownIdx === idx;
+                const showControls = isHovered || isDropdownOpen;
+
+                return (
+                  <div
+                    key={idx}
+                    onMouseEnter={() => setHoveredIdx(idx)}
+                    onMouseLeave={() => {
+                      setHoveredIdx(null);
+                      setActiveDropdownIdx(null);
+                    }}
+                    style={{
+                      position: 'relative',
+                      padding: '12px 16px',
+                      borderRadius: 'var(--r-md)',
+                      background: isHovered ? 'var(--bg-muted)' : 'transparent',
+                      border: '1px solid ' + (isHovered ? 'var(--border-default)' : 'transparent'),
+                      transition: 'background 150ms ease, border-color 150ms ease',
+                      minHeight: '40px',
+                    }}
+                  >
+                    {/* Floating Controls on Left */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: '-62px',
+                        top: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                        opacity: showControls ? 1 : 0,
+                        pointerEvents: showControls ? 'auto' : 'none',
+                        transition: 'opacity 150ms ease',
+                        zIndex: 10,
+                      }}
+                    >
+                      {/* Block Type Dropdown */}
+                      <div style={{ position: 'relative' }}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveDropdownIdx(isDropdownOpen ? null : idx)}
+                          className="btn btn-secondary btn-icon"
+                          style={{ width: '26px', height: '26px', borderRadius: '50%', padding: 0 }}
+                          title="เปลี่ยนประเภทบล็อก"
+                        >
+                          {block.type === 'heading' && <span style={{ fontWeight: 'bold', fontSize: '10px' }}>H</span>}
+                          {block.type === 'paragraph' && <span style={{ fontSize: '12px' }}>¶</span>}
+                          {block.type === 'list' && <IconList size={12} />}
+                          {block.type === 'callout' && <IconInfo size={12} />}
+                        </button>
+
+                        {isDropdownOpen && (
+                          <>
+                            <div
+                              style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+                              onClick={() => setActiveDropdownIdx(null)}
+                            />
+                            <div
+                              className="glass"
+                              style={{
+                                position: 'absolute',
+                                top: '30px',
+                                left: 0,
+                                background: 'var(--bg-surface)',
+                                border: '1px solid var(--border-default)',
+                                borderRadius: 'var(--r-md)',
+                                boxShadow: 'var(--shadow-md)',
+                                padding: '4px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '2px',
+                                minWidth: '160px',
+                                zIndex: 100,
+                              }}
+                            >
+                              {[
+                                { value: 'paragraph', label: 'ย่อหน้า (Paragraph)', icon: '¶' },
+                                { value: 'heading', label: 'หัวข้อ (Heading)', icon: 'H' },
+                                { value: 'list', label: 'รายการข้อ (List)', icon: <IconList size={12} /> },
+                                { value: 'callout', label: 'กล่องเตือน (Callout)', icon: <IconInfo size={12} /> },
+                              ].map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={() => {
+                                    const next = [...blocks];
+                                    const nextType = opt.value;
+                                    let nextBlock = { type: nextType };
+                                    if (nextType === 'list') {
+                                      nextBlock.items = block.text ? block.text.split('\n') : [''];
+                                    } else {
+                                      nextBlock.text = block.text || (block.items ? block.items.join('\n') : '');
+                                    }
+                                    next[idx] = nextBlock;
+                                    setBlocks(next);
+                                    setActiveDropdownIdx(null);
+                                  }}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '6px 8px',
+                                    fontSize: '12px',
+                                    borderRadius: 'var(--r-subtle)',
+                                    background: block.type === opt.value ? 'var(--matcha-50)' : 'transparent',
+                                    color: block.type === opt.value ? 'var(--matcha-700)' : 'var(--text-primary)',
+                                    border: 'none',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (block.type !== opt.value) e.currentTarget.style.background = 'var(--bg-muted)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    if (block.type !== opt.value) e.currentTarget.style.background = 'transparent';
+                                  }}
+                                >
+                                  <span style={{ width: '16px', display: 'inline-flex', justifyContent: 'center' }}>{opt.icon}</span>
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Move Up */}
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => {
+                          const copy = [...blocks];
+                          const temp = copy[idx];
+                          copy[idx] = copy[idx - 1];
+                          copy[idx - 1] = temp;
+                          setBlocks(copy);
+                        }}
+                        className="btn btn-secondary btn-icon"
+                        style={{ width: '22px', height: '22px', borderRadius: '50%', padding: 0, opacity: idx === 0 ? 0.3 : 1 }}
+                        title="ย้ายขึ้น"
+                      >
+                        <IconChevUp size={10} />
+                      </button>
+
+                      {/* Move Down */}
+                      <button
+                        type="button"
+                        disabled={idx === blocks.length - 1}
+                        onClick={() => {
+                          const copy = [...blocks];
+                          const temp = copy[idx];
+                          copy[idx] = copy[idx + 1];
+                          copy[idx + 1] = temp;
+                          setBlocks(copy);
+                        }}
+                        className="btn btn-secondary btn-icon"
+                        style={{ width: '22px', height: '22px', borderRadius: '50%', padding: 0, opacity: idx === blocks.length - 1 ? 0.3 : 1 }}
+                        title="ย้ายลง"
+                      >
+                        <IconChevDown size={10} />
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('ต้องการลบบล็อกนี้ใช่หรือไม่?')) {
+                            setBlocks(blocks.filter((_, i) => i !== idx));
+                          }
+                        }}
+                        className="btn btn-secondary btn-icon"
+                        style={{ width: '22px', height: '22px', borderRadius: '50%', padding: 0, color: 'var(--danger)' }}
+                        title="ลบบล็อก"
+                      >
+                        <IconTrash size={10} />
+                      </button>
+                    </div>
+
+                    {/* Block Content Inputs */}
+                    <div style={{ paddingLeft: '4px' }}>
+                      {block.type === 'heading' && (
+                        <input
+                          type="text"
+                          value={block.text || ''}
+                          onChange={(e) => {
+                            const next = [...blocks];
+                            next[idx] = { ...next[idx], text: e.target.value };
+                            setBlocks(next);
+                          }}
+                          placeholder="หัวข้อ (Heading)..."
+                          style={{
+                            fontSize: '24px',
+                            fontWeight: '600',
+                            border: 'none',
+                            background: 'transparent',
+                            outline: 'none',
+                            width: '100%',
+                            color: 'var(--text-primary)',
+                            padding: '4px 0',
+                          }}
+                        />
+                      )}
+
+                      {block.type === 'paragraph' && (
+                        <textarea
+                          value={block.text || ''}
+                          onChange={(e) => {
+                            const next = [...blocks];
+                            next[idx] = { ...next[idx], text: e.target.value };
+                            setBlocks(next);
+                            e.target.style.height = 'auto';
+                            e.target.style.height = e.target.scrollHeight + 'px';
+                          }}
+                          onFocus={(e) => {
+                            e.target.style.height = 'auto';
+                            e.target.style.height = e.target.scrollHeight + 'px';
+                          }}
+                          placeholder="พิมพ์เนื้อหาย่อหน้าตรงนี้..."
+                          rows={1}
+                          style={{
+                            fontSize: '15px',
+                            lineHeight: '1.6',
+                            border: 'none',
+                            background: 'transparent',
+                            outline: 'none',
+                            width: '100%',
+                            color: 'var(--text-secondary)',
+                            padding: '4px 0',
+                            resize: 'none',
+                            overflow: 'hidden',
+                          }}
+                        />
+                      )}
+
+                      {block.type === 'callout' && (
+                        <div style={{
+                          background: 'var(--matcha-50)',
+                          borderLeft: '4px solid var(--matcha-500)',
+                          borderRadius: 'var(--r-md)',
+                          padding: '12px 16px',
+                          display: 'flex',
+                          gap: 12,
+                          alignItems: 'flex-start',
+                          width: '100%',
+                          marginTop: '4px',
+                        }}>
+                          <span style={{ color: 'var(--matcha-700)', marginTop: 2 }}><IconInfo size={18} /></span>
+                          <textarea
+                            value={block.text || ''}
+                            onChange={(e) => {
+                              const next = [...blocks];
+                              next[idx] = { ...next[idx], text: e.target.value };
+                              setBlocks(next);
+                              e.target.style.height = 'auto';
+                              e.target.style.height = e.target.scrollHeight + 'px';
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.height = 'auto';
+                              e.target.style.height = e.target.scrollHeight + 'px';
+                            }}
+                            placeholder="พิมพ์ข้อความแจ้งเตือนหรือข้อควรระวัง..."
+                            rows={1}
+                            style={{
+                              fontSize: '14px',
+                              lineHeight: '1.5',
+                              border: 'none',
+                              background: 'transparent',
+                              outline: 'none',
+                              width: '100%',
+                              color: 'var(--matcha-900)',
+                              padding: 0,
+                              resize: 'none',
+                              overflow: 'hidden',
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {block.type === 'list' && (
+                        <div data-block-idx={idx} style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: '4px' }}>
+                          {(block.items || []).map((itemVal, itemIdx) => (
+                            <div key={itemIdx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <span className="muted" style={{ fontSize: 13, minWidth: 20, textAlign: 'right', userSelect: 'none' }}>
+                                {itemIdx + 1}.
+                              </span>
+                              <input
+                                type="text"
+                                value={itemVal || ''}
+                                onChange={(e) => {
+                                  const next = [...blocks];
+                                  const nextItems = [...(next[idx].items || [])];
+                                  nextItems[itemIdx] = e.target.value;
+                                  next[idx] = { ...next[idx], items: nextItems };
+                                  setBlocks(next);
+                                }}
+                                onKeyDown={(e) => handleListKeyDown(e, idx, itemIdx)}
+                                placeholder="รายละเอียดรายการ..."
+                                style={{
+                                  border: 'none',
+                                  background: 'transparent',
+                                  outline: 'none',
+                                  padding: '4px 0',
+                                  fontSize: '14px',
+                                  color: 'var(--text-secondary)',
+                                  flex: 1,
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = [...blocks];
+                                  const items = (next[idx].items || []).filter((_, i) => i !== itemIdx);
+                                  next[idx] = { ...next[idx], items: items.length > 0 ? items : [''] };
+                                  setBlocks(next);
+                                }}
+                                className="btn btn-ghost"
+                                style={{
+                                  color: 'var(--danger)',
+                                  width: 20,
+                                  height: 20,
+                                  minWidth: 20,
+                                  padding: 0,
+                                  borderRadius: '50%',
+                                  opacity: isHovered ? 0.6 : 0,
+                                  transition: 'opacity 150ms',
+                                }}
+                                title="ลบข้อนี้"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = [...blocks];
+                              next[idx] = { ...next[idx], items: [...(next[idx].items || []), ''] };
+                              setBlocks(next);
+                              setTimeout(() => {
+                                const inputs = document.querySelectorAll(`[data-block-idx="${idx}"] input`);
+                                if (inputs.length > 0) {
+                                  inputs[inputs.length - 1].focus();
+                                }
+                              }, 10);
+                            }}
+                            className="btn btn-ghost btn-sm"
+                            style={{ alignSelf: 'flex-start', color: 'var(--matcha-600)', fontSize: 12, padding: '2px 8px', marginTop: 2 }}
+                          >
+                            + เพิ่มข้อใหม่
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Add Blocks Panel */}
+              <div style={{
+                display: 'flex',
+                gap: 12,
+                flexWrap: 'wrap',
+                marginTop: 24,
+                padding: '16px',
+                border: '1px dashed var(--border-default)',
+                borderRadius: 'var(--r-md)',
+                justifyContent: 'center',
+                background: 'rgba(0,0,0,0.02)',
+              }}>
+                <span style={{ fontSize: 13, color: 'var(--text-tertiary)', alignSelf: 'center', marginRight: 8 }}>+ เพิ่มบล็อกใหม่:</span>
+                {[
+                  { type: 'heading', label: 'หัวข้อ (Heading)', defaultVal: { type: 'heading', text: '' } },
+                  { type: 'paragraph', label: 'ย่อหน้า (Paragraph)', defaultVal: { type: 'paragraph', text: '' } },
+                  { type: 'list', label: 'รายการข้อ (List)', defaultVal: { type: 'list', items: [''] } },
+                  { type: 'callout', label: 'กล่องเตือน (Callout)', defaultVal: { type: 'callout', text: '' } },
+                ].map((b) => (
+                  <button
+                    key={b.type}
+                    type="button"
+                    onClick={() => setBlocks([...blocks, b.defaultVal])}
+                    className="btn btn-secondary btn-sm"
+                    style={{ background: 'var(--bg-surface)', fontSize: 12 }}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <textarea
+              ref={codeTextareaRef}
+              value={form.content}
+              onChange={(e) => setForm({ ...form, content: e.target.value })}
+              placeholder={`Start writing the SOP content here…\n\nYou can use plain text or JSON blocks like:\n\n[{ "type": "heading", "text": "Equipment" }, { "type": "list", "items": ["Chasen whisk", "Bowl"] }]`}
+              style={{
+                width: '100%',
+                minHeight: 400,
+                fontSize: 14,
+                lineHeight: 1.8,
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--r-md)',
+                padding: 16,
+                background: 'var(--bg-surface)',
+                fontFamily: 'var(--font-mono)',
+                resize: 'vertical',
+              }}
+            />
+          )}
         </div>
       </div>
 

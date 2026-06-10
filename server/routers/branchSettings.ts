@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getDb } from "../db";
 import { posBranchPaymentSettings, posPrinterConfigs, branches } from "../../drizzle/schema";
 import { logAudit } from "../lib/audit";
-import { router, staffAdminProcedure } from "../_core/trpc";
+import { router, staffProcedure, staffAdminProcedure } from "../_core/trpc";
 
 export const branchSettingsRouter = router({
   // ─── Payment Settings ─────────────────────────────────────────────────────────
@@ -124,5 +124,13 @@ export const branchSettingsRouter = router({
       await db.delete(posPrinterConfigs).where(eq(posPrinterConfigs.id, input.id));
       await logAudit({ staff: ctx.staff, action: "delete_printer", entity: "printer_config", entityId: input.id });
       return { success: true };
+    }),
+
+  getPusherConfig: staffProcedure
+    .query(async () => {
+      return {
+        key: process.env.PUSHER_KEY || "mock_key",
+        cluster: process.env.PUSHER_CLUSTER || "ap1",
+      };
     }),
 });

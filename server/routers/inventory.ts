@@ -567,9 +567,24 @@ export const inventoryRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Soft delete - set status = inactive
-      await db.update(posInventoryItems).set({ status: "inactive" } as any).where(eq(posInventoryItems.id, input.id));
-      await logAudit({ staff: ctx.staff, action: "inventory.deleteItem", entity: "inventoryItem", entityId: input.id });
+      // Archive (hide) the item — set isArchived = true so it no longer appears in listItems
+      await db.update(posInventoryItems).set({ isArchived: true, isActive: false } as any).where(eq(posInventoryItems.id, input.id));
+      await logAudit({ staff: ctx.staff, action: "inventory.archiveItem", entity: "inventoryItem", entityId: input.id });
+      return { success: true };
+    }),
+
+  hardDeleteItem: staffAdminProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Remove all branch stock rows first to avoid FK constraint
+      await db.delete(posBranchInventoryStock).where(eq(posBranchInventoryStock.inventoryItemId, input.id));
+      // Remove any recipe ingredient references
+      await db.delete(posRecipeIngredients).where(eq(posRecipeIngredients.inventoryItemId, input.id));
+      // Hard delete the item row itself
+      await db.delete(posInventoryItems).where(eq(posInventoryItems.id, input.id));
+      await logAudit({ staff: ctx.staff, action: "inventory.hardDeleteItem", entity: "inventoryItem", entityId: input.id });
       return { success: true };
     }),
 });

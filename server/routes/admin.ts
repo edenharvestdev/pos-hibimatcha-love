@@ -18,10 +18,13 @@ export const adminRouter = router({
   })).mutation(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new Error("DB unavailable");
-    const [created] = await db.insert(branches).values({
+    const [result] = await db.insert(branches).values({
       name: input.name,
       address: input.address,
-    }).returning();
+    });
+    const newId = (result as any).insertId as number;
+    const { eq } = await import("drizzle-orm");
+    const [created] = await db.select().from(branches).where(eq(branches.id, newId)).limit(1);
     return created;
   }),
 
@@ -45,7 +48,7 @@ export const adminRouter = router({
     const db = await getDb();
     if (!db) throw new Error("DB unavailable");
     const passwordHash = input.password ? await import("../lib/auth").then(m => m.hashPassword(input.password!)) : undefined;
-    const [created] = await db.insert(staff).values({
+    const [result] = await db.insert(staff).values({
       employeeCode: input.employeeCode,
       firstName: input.firstName,
       lastName: input.lastName,
@@ -53,7 +56,10 @@ export const adminRouter = router({
       role: input.role,
       primaryBranchId: input.primaryBranchId,
       passwordHash,
-    }).returning();
+    });
+    const newId = (result as any).insertId as number;
+    const { eq } = await import("drizzle-orm");
+    const [created] = await db.select().from(staff).where(eq(staff.id, newId)).limit(1);
     return created;
   }),
 });

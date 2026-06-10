@@ -95,6 +95,7 @@ export const IconBookmark = (p) => <Icon {...p}><path d="M6 3h12v18l-6-4-6 4z"/>
 export const IconEye = (p) => <Icon {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></Icon>;
 export const IconEyeOff = (p) => <Icon {...p}><path d="M3 3l18 18"/><path d="M10.5 6.3A10 10 0 0 1 22 12s-1.5 3-4 5"/><path d="M6 6.3C3.5 8 2 12 2 12s3.5 7 10 7c1.4 0 2.7-.3 3.9-.8"/><path d="M9 9.5a3 3 0 0 0 4 4"/></Icon>;
 export const IconLock = (p) => <Icon {...p}><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></Icon>;
+export const IconLogout = (p) => <Icon {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></Icon>;
 export const IconTag = (p) => <Icon {...p}><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="8" cy="8" r="1.5"/></Icon>;
 export const IconCart = (p) => <Icon {...p}><path d="M3 4h2l2 12h12l2-8H6"/><circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/></Icon>;
 export const IconReceipt = (p) => <Icon {...p}><path d="M5 3h14v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L5 21z"/><path d="M9 8h6M9 12h6M9 16h4"/></Icon>;
