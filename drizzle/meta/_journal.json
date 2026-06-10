@@ -120,6 +120,13 @@
       "when": 1781093291017,
       "tag": "0016_shocking_firelord",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1781100993686,
+      "tag": "0017_slimy_starjammers",
+      "breakpoints": true
     }
   ]
 }

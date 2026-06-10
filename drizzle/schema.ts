@@ -284,7 +284,7 @@ export type PosPaymentMethod = typeof posPaymentMethods.$inferSelect;
 // ─── Orders ───────────────────────────────────────────────────────────────────
 export const posOrders = mysqlTable("pos_orders", {
   id: int("id").autoincrement().primaryKey(),
-  orderNumber: varchar("orderNumber", { length: 20 }).unique(),
+  orderNumber: varchar("orderNumber", { length: 50 }).unique(),
   branchId: int("branchId"),
   staffId: int("staffId"),
 

@@ -68,6 +68,13 @@ async function setupTestEnvironment() {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
 
+  // Clean up any old orders for the test branch to prevent duplicate entry failures
+  const oldOrders = await db.select({ id: posOrders.id }).from(posOrders).where(eq(posOrders.branchId, TEST_BRANCH_ID));
+  const oldOids = oldOrders.map(o => o.id);
+  if (oldOids.length > 0) {
+    await cleanupTestOrders(oldOids);
+  }
+
   // Branch
   const [existingBranch] = await db.select().from(branches).where(eq(branches.id, TEST_BRANCH_ID)).limit(1);
   if (!existingBranch) {
@@ -235,6 +242,7 @@ describe("HIBIOS Phase 2 — Split Payment & Settlement", () => {
       orderType: "dine-in",
       items: [{ menuItemId: TEST_MENU_ITEM_ID, quantity: qty }],
     });
+    if (!result) throw new Error("Failed to create test order");
     createdOrderIds.push(result.id);
     return result.id;
   }

@@ -1,0 +1,1 @@
+ALTER TABLE `pos_orders` MODIFY COLUMN `orderNumber` varchar(50);
