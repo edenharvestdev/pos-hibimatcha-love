@@ -121,7 +121,7 @@ export const enterpriseRouter = router({
         rows = await db.select().from(masterPaymentMethods);
       }
       if (input?.activeOnly) rows = rows.filter((m) => m.isActive);
-      return rows.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      return rows.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
     }),
 
   createMasterPaymentMethod: staffAdminProcedure
@@ -566,8 +566,8 @@ export const enterpriseRouter = router({
       if (input.branchId) rows = rows.filter(r => r.branchId === input.branchId);
       if (input.action) rows = rows.filter(r => r.action === input.action);
       if (input.entity) rows = rows.filter(r => r.entity === input.entity);
-      if (input.dateFrom) rows = rows.filter(r => r.createdAt && r.createdAt >= new Date(input.dateFrom));
-      if (input.dateTo) rows = rows.filter(r => r.createdAt && r.createdAt <= new Date(input.dateTo));
+      if (input.dateFrom) { const d = input.dateFrom!; rows = rows.filter(r => r.createdAt && r.createdAt >= new Date(d)); }
+      if (input.dateTo) { const d = input.dateTo!; rows = rows.filter(r => r.createdAt && r.createdAt <= new Date(d)); }
 
       const total = rows.length;
       const paginated = rows.slice(input.offset, input.offset + input.limit);
@@ -938,8 +938,9 @@ export const enterpriseRouter = router({
                 referenceType: "count",
                 referenceId: input.sessionId,
                 notes: `Stock count variance adjustment`,
+                unit: undefined,
                 performedByStaffId: ctx.staff.staffId,
-              });
+              } as any);
             }
             await tx.update(posInventoryCountSessionItems).set({ status: "approved" }).where(eq(posInventoryCountSessionItems.id, s.id));
           }
@@ -1123,10 +1124,15 @@ export const enterpriseRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
       const [result] = await db.insert(accountsReceivable).values({
-        ...input,
+        branchId: input.branchId,
+        customerId: input.customerId,
+        customerType: input.customerType,
+        invoiceNumber: input.invoiceNumber,
+        amount: input.amount,
+        dueDate: new Date(input.dueDate),
         outstandingAmount: input.amount,
         status: "pending",
-      });
+      } as any);
 
       const id = (result as any).insertId as number;
       return { id };
