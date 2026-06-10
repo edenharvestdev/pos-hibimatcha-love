@@ -472,7 +472,27 @@ const SettingsLanguage = () => (
   </div>
 );
 
+// Integration configs — URLs for each service's real dashboard/settings
+const INTEGRATION_LINKS = {
+  'Omise':               { configUrl: 'https://dashboard.omise.co/settings',         connectUrl: 'https://dashboard.omise.co/register',           docs: 'https://docs.opn.ooo/getting-started' },
+  '2C2P':               { configUrl: 'https://developer.2c2p.com/dashboard',          connectUrl: 'https://developer.2c2p.com/register',            docs: 'https://developer.2c2p.com/docs' },
+  'PromptPay':          { configUrl: '/backoffice/settings?tab=payment',              connectUrl: '/backoffice/settings?tab=payment',               docs: 'https://www.bot.or.th/promptpay' },
+  'LINE Pay':           { configUrl: 'https://pay.line.me/portal/th/main',            connectUrl: 'https://pay.line.me/portal/th/auth/register/intro', docs: 'https://pay.line.me/developers/apis/onlineApis' },
+  'TrueMoney':          { configUrl: 'https://www.truemoneygateway.com/portal',       connectUrl: 'https://www.truemoneygateway.com/portal/register', docs: 'https://www.truemoneygateway.com/docs' },
+  'QuickBooks':         { configUrl: 'https://app.qbo.intuit.com',                   connectUrl: 'https://quickbooks.intuit.com/global/pricing/',   docs: 'https://developer.intuit.com/app/developer/qbo/docs' },
+  'Xero':               { configUrl: 'https://go.xero.com/Dashboard/',               connectUrl: 'https://www.xero.com/signup/',                    docs: 'https://developer.xero.com/documentation/' },
+  'FlowAccount':        { configUrl: 'https://app.flowaccount.com',                  connectUrl: 'https://flowaccount.com/signup',                  docs: 'https://open-api.flowaccount.com' },
+  'LINE Official Account': { configUrl: 'https://manager.line.biz',                  connectUrl: 'https://manager.line.biz/signup',                 docs: 'https://developers.line.biz/en/docs/messaging-api/' },
+  'Mailchimp':          { configUrl: 'https://login.mailchimp.com',                  connectUrl: 'https://login.mailchimp.com/signup/',             docs: 'https://mailchimp.com/developer/' },
+  'LINE MAN':           { configUrl: 'https://merchant.lineman.me',                  connectUrl: 'https://merchant.lineman.me/register',            docs: 'https://merchant.lineman.me/help' },
+  'Grab':               { configUrl: 'https://merchant.grab.com/portal',             connectUrl: 'https://merchant.grab.com/portal/register',       docs: 'https://developer.grab.com/docs/grabfood/' },
+  'Foodpanda':          { configUrl: 'https://partner.foodpanda.co.th',              connectUrl: 'https://www.foodpanda.co.th/restaurant/apply',    docs: 'https://partner.foodpanda.co.th/help' },
+  'Robinhood':          { configUrl: 'https://robinhood.in.th/merchant',             connectUrl: 'https://robinhood.in.th/merchant/register',       docs: 'https://robinhood.in.th/help' },
+};
+
 const SettingsIntegrations = () => {
+  const [selected, setSelected] = useState(null); // { name, on, sub }
+
   const groups = [
     { l: 'Payments', items: [
       { n: 'Omise', sub: 'Card processing · 2.95% fee', on: true },
@@ -497,6 +517,7 @@ const SettingsIntegrations = () => {
       { n: 'Robinhood', sub: '0% commission', on: false },
     ]},
   ];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {groups.map((g) => (
@@ -511,12 +532,97 @@ const SettingsIntegrations = () => {
                   <div className="muted" style={{ fontSize: 12 }}>{it.sub}</div>
                 </div>
                 {it.on && <span className="pill pill-matcha"><span className="dot"/> Connected</span>}
-                <button className="btn btn-ghost btn-sm">{it.on ? 'Configure' : 'Connect'}</button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setSelected(it)}
+                >
+                  {it.on ? 'Configure' : 'Connect'}
+                </button>
               </div>
             ))}
           </div>
         </div>
       ))}
+
+      {/* Integration Modal */}
+      {selected && (() => {
+        const links = INTEGRATION_LINKS[selected.n] || {};
+        const targetUrl = selected.on ? links.configUrl : links.connectUrl;
+        const isInternal = targetUrl?.startsWith('/');
+        return (
+          <Modal open onClose={() => setSelected(null)} title={selected.n} width={480}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Status badge */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 'var(--r-default)', background: selected.on ? 'var(--matcha-50,#f0fdf4)' : 'var(--bg-muted)', border: '1px solid ' + (selected.on ? 'var(--matcha-200,#bbf7d0)' : 'var(--border-default)') }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: selected.on ? 'var(--matcha-100,#dcfce7)' : 'var(--bg-subtle)', display: 'grid', placeItems: 'center', fontSize: 22 }}>
+                  {selected.on ? '✅' : '🔌'}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{selected.n}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{selected.sub}</div>
+                  <div style={{ fontSize: 12, marginTop: 2, color: selected.on ? 'var(--matcha-700)' : 'var(--text-tertiary)', fontWeight: 500 }}>
+                    {selected.on ? '● Connected' : '○ Not connected'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action description */}
+              <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                {selected.on
+                  ? `จัดการการตั้งค่าและการเชื่อมต่อของ ${selected.n} ได้ที่แดชบอร์ดของ ${selected.n} โดยตรง`
+                  : `เชื่อมต่อ ${selected.n} กับระบบ Hibi POS เพื่อเริ่มใช้งาน ${selected.sub}`
+                }
+              </div>
+
+              {/* Main action button */}
+              <a
+                href={targetUrl}
+                target={isInternal ? '_self' : '_blank'}
+                rel="noopener noreferrer"
+                className="btn btn-primary"
+                style={{ textAlign: 'center', textDecoration: 'none', display: 'block', padding: '12px 0', fontSize: 15, fontWeight: 600 }}
+              >
+                {selected.on ? `⚙️ เปิด ${selected.n} Dashboard` : `🔗 เชื่อมต่อ ${selected.n}`}
+              </a>
+
+              {/* PromptPay special case — goes to internal settings */}
+              {selected.n === 'PromptPay' && (
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>
+                  PromptPay ตั้งค่าได้ในแท็บ <b>Payment</b> ของ Settings นี้
+                </div>
+              )}
+
+              {/* Secondary: docs link */}
+              {links.docs && (
+                <a
+                  href={links.docs}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary"
+                  style={{ textAlign: 'center', textDecoration: 'none', display: 'block', padding: '10px 0' }}
+                >
+                  📖 ดู Documentation
+                </a>
+              )}
+
+              {/* Disconnect option if connected */}
+              {selected.on && (
+                <button
+                  className="btn btn-ghost"
+                  style={{ color: 'var(--danger)', fontSize: 13 }}
+                  onClick={() => {
+                    if (confirm(`ต้องการยกเลิกการเชื่อมต่อ ${selected.n}?`)) {
+                      setSelected(null);
+                    }
+                  }}
+                >
+                  ยกเลิกการเชื่อมต่อ
+                </button>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 };
