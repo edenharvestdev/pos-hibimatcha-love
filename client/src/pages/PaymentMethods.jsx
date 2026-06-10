@@ -9,7 +9,6 @@ import {
   IconTrash,
   IconPayment,
   IconSearch,
-  IconFileText,
   IconCalendar,
   IconInfo,
 } from "@/icons";

@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "../db";
-import { posPaymentMethods } from "../../drizzle/schema";
+import { posPaymentMethods, masterPaymentMethods } from "../../drizzle/schema";
 import { logAudit } from "../lib/audit";
 import { router, staffProcedure, staffAdminProcedure } from "../_core/trpc";
 
@@ -12,9 +12,30 @@ export const paymentsRouter = router({
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
-      let rows = await db.select().from(posPaymentMethods);
+      let rows = await db.select().from(masterPaymentMethods);
+      if (rows.length === 0) {
+        const legacy = await db.select().from(posPaymentMethods);
+        return legacy.map((m) => ({
+          ...m,
+          displayOrder: m.sortOrder,
+          sortOrder: m.sortOrder,
+          surchargePercentage: "0",
+          surchargeFixed: "0",
+          settlementDays: 0,
+          requiresSettlement: false,
+          roleAvailability: ["cashier", "manager", "branch_admin", "super_admin"],
+          requiresManagerPin: false,
+          requiresSlipUpload: false,
+          isDeliveryPlatform: false,
+          isCashEquivalent: m.type === "cash",
+          isCreditAccount: false,
+        }));
+      }
       if (input?.activeOnly) rows = rows.filter((m) => m.isActive);
-      return rows.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      return rows.map((r) => ({
+        ...r,
+        sortOrder: r.displayOrder ?? 0,
+      })).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     }),
 
   getMethodById: staffProcedure
@@ -22,9 +43,15 @@ export const paymentsRouter = router({
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [row] = await db.select().from(posPaymentMethods).where(eq(posPaymentMethods.id, input.id)).limit(1);
+      let [row] = await db.select().from(masterPaymentMethods).where(eq(masterPaymentMethods.id, input.id)).limit(1) as any[];
+      if (!row) {
+        [row] = await db.select().from(posPaymentMethods).where(eq(posPaymentMethods.id, input.id)).limit(1);
+      }
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
-      return row;
+      return {
+        ...row,
+        sortOrder: row.displayOrder ?? row.sortOrder ?? 0,
+      };
     }),
 
   createMethod: staffAdminProcedure

@@ -13,6 +13,7 @@ import {
   posOrderItems,
   posOrderItemOptions,
   posPaymentMethods,
+  masterPaymentMethods,
   posOrderPayments,
   branches,
   staff,
@@ -90,9 +91,13 @@ async function buildOrderDataFromDb(db: any, orderId: number): Promise<{
   let paymentMethodName = "เงินสด";
   let paidAmount = Number(order.totalAmount || 0);
   if (payments.length > 0) {
-    const [pm] = payments[0].paymentMethodId
-      ? await db.select().from(posPaymentMethods).where(eq(posPaymentMethods.id, payments[0].paymentMethodId)).limit(1)
-      : [null];
+    let [pm] = [null as any];
+    if (payments[0].paymentMethodId) {
+      [pm] = await db.select().from(masterPaymentMethods).where(eq(masterPaymentMethods.id, payments[0].paymentMethodId)).limit(1);
+      if (!pm) {
+        [pm] = await db.select().from(posPaymentMethods).where(eq(posPaymentMethods.id, payments[0].paymentMethodId)).limit(1);
+      }
+    }
     paymentMethodName = pm?.name || payments[0].method || "เงินสด";
     paidAmount = Number(payments[0].amount || order.totalAmount || 0);
   }
@@ -380,11 +385,13 @@ export const printingRouter = router({
         .where(eq(posOrderPayments.orderId, input.orderId));
       const lastPayment = payments[payments.length - 1];
       let paymentMethodName: string | undefined;
-      if (lastPayment?.paymentMethodId) {
-        const [pm] = await db.select().from(posPaymentMethods)
-          .where(eq(posPaymentMethods.id, lastPayment.paymentMethodId)).limit(1);
+        let [pm] = await db.select().from(masterPaymentMethods)
+          .where(eq(masterPaymentMethods.id, lastPayment.paymentMethodId)).limit(1) as any[];
+        if (!pm) {
+          [pm] = await db.select().from(posPaymentMethods)
+            .where(eq(posPaymentMethods.id, lastPayment.paymentMethodId)).limit(1);
+        }
         paymentMethodName = pm?.nameThai || pm?.name || undefined;
-      }
 
       const html = generateReceiptHTML(
         data.orderData,
@@ -518,11 +525,13 @@ export const printingRouter = router({
             .where(eq(posOrderPayments.orderId, input.orderId));
           const lastPayment = payments[payments.length - 1];
           let paymentMethodName: string | undefined;
-          if (lastPayment?.paymentMethodId) {
-          const [pm] = await db.select().from(posPaymentMethods)
-            .where(eq(posPaymentMethods.id, lastPayment.paymentMethodId)).limit(1);
-          paymentMethodName = pm?.nameThai || pm?.name || undefined;
+          let [pm] = await db.select().from(masterPaymentMethods)
+            .where(eq(masterPaymentMethods.id, lastPayment.paymentMethodId)).limit(1) as any[];
+          if (!pm) {
+            [pm] = await db.select().from(posPaymentMethods)
+              .where(eq(posPaymentMethods.id, lastPayment.paymentMethodId)).limit(1);
           }
+          paymentMethodName = pm?.nameThai || pm?.name || undefined;
 
           const html = generateReceiptHTML(
             data.orderData,

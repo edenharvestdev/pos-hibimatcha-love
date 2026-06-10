@@ -6,7 +6,7 @@ import {
   posOrders, posOrderItems, posOrderItemOptions,
   posOrderPayments, posKitchenTickets,
   posMenuItems, posOptions, posDiscounts,
-  posPaymentMethods, branches, staff,
+  posPaymentMethods, masterPaymentMethods, branches, staff,
   posBranchPaymentSettings,
   posRecipeIngredients, posBranchInventoryStock, posInventoryMovements,
   posInventoryItems, memberPoints, members,
@@ -610,7 +610,10 @@ export const ordersRouter = router({
       // ────────────────────────────────────────
       if (input.autoSyncSheet) try {
         const [order] = await db.select().from(posOrders).where(eq(posOrders.id, input.orderId)).limit(1);
-        const [method] = await db.select().from(posPaymentMethods).where(eq(posPaymentMethods.id, input.paymentMethodId)).limit(1);
+        let [method] = await db.select().from(masterPaymentMethods).where(eq(masterPaymentMethods.id, input.paymentMethodId)).limit(1) as any[];
+        if (!method) {
+          [method] = await db.select().from(posPaymentMethods).where(eq(posPaymentMethods.id, input.paymentMethodId)).limit(1);
+        }
         const [branchRow] = order?.branchId
           ? await db.select().from(branches).where(eq(branches.id, order.branchId)).limit(1)
           : [null as any];
@@ -729,7 +732,10 @@ export const ordersRouter = router({
       const payments = await db.select().from(posOrderPayments).where(eq(posOrderPayments.orderId, input.orderId));
       const payment = input.paymentId ? payments.find((p) => p.id === input.paymentId) : payments[0];
       if (!payment) throw new TRPCError({ code: "NOT_FOUND", message: "No payment recorded for this order" });
-      const [method] = await db.select().from(posPaymentMethods).where(eq(posPaymentMethods.id, payment.paymentMethodId!)).limit(1);
+      let [method] = await db.select().from(masterPaymentMethods).where(eq(masterPaymentMethods.id, payment.paymentMethodId!)).limit(1) as any[];
+      if (!method) {
+        [method] = await db.select().from(posPaymentMethods).where(eq(posPaymentMethods.id, payment.paymentMethodId!)).limit(1);
+      }
       const [branchRow] = order.branchId
         ? await db.select().from(branches).where(eq(branches.id, order.branchId)).limit(1)
         : [null as any];
@@ -777,7 +783,10 @@ export const ordersRouter = router({
         if (!order) continue;
         const payments = await db.select().from(posOrderPayments).where(eq(posOrderPayments.orderId, id));
         for (const payment of payments) {
-          const [method] = await db.select().from(posPaymentMethods).where(eq(posPaymentMethods.id, payment.paymentMethodId!)).limit(1);
+          let [method] = await db.select().from(masterPaymentMethods).where(eq(masterPaymentMethods.id, payment.paymentMethodId!)).limit(1) as any[];
+          if (!method) {
+            [method] = await db.select().from(posPaymentMethods).where(eq(posPaymentMethods.id, payment.paymentMethodId!)).limit(1);
+          }
           const [branchRow] = order.branchId ? await db.select().from(branches).where(eq(branches.id, order.branchId)).limit(1) : [null as any];
           const items = await db.select({ name: posOrderItems.menuItemName, quantity: posOrderItems.quantity }).from(posOrderItems).where(eq(posOrderItems.orderId, id));
           const ts = order.completedAt ?? order.createdAt ?? new Date();
@@ -945,9 +954,14 @@ export const ordersRouter = router({
       }
 
       // Find promptpay payment method
-      const [pm] = await db.select().from(posPaymentMethods)
-        .where(eq(posPaymentMethods.type, "qr"))
-        .limit(1);
+      let [pm] = await db.select().from(masterPaymentMethods)
+        .where(eq(masterPaymentMethods.type, "qr"))
+        .limit(1) as any[];
+      if (!pm) {
+        [pm] = await db.select().from(posPaymentMethods)
+          .where(eq(posPaymentMethods.type, "qr"))
+          .limit(1);
+      }
       const paymentMethodId = pm ? pm.id : 1; // Fallback to Cash or first method if not found
 
       const referenceNumber = "TXN-" + Math.floor(100000 + Math.random() * 900000).toString();
@@ -1007,7 +1021,10 @@ export const ordersRouter = router({
       }).where(eq(posOrders.id, input.orderId));
 
       // Get payment method name for receipt
-      const [payMethod] = await db.select().from(posPaymentMethods).where(eq(posPaymentMethods.id, input.paymentMethodId)).limit(1);
+      let [payMethod] = await db.select().from(masterPaymentMethods).where(eq(masterPaymentMethods.id, input.paymentMethodId)).limit(1) as any[];
+      if (!payMethod) {
+        [payMethod] = await db.select().from(posPaymentMethods).where(eq(posPaymentMethods.id, input.paymentMethodId)).limit(1);
+      }
 
       // Generate receipt
       const fullOrder = await getFullOrder(db, input.orderId);

@@ -2115,16 +2115,26 @@ export const PagePayment = () => {
         <>
           {/* Methods */}
           {/* Group payment methods by type */}
-          {['cash', 'qr', 'card', 'transfer', 'voucher'].map((groupType) => {
+          {['cash', 'qr', 'card', 'transfer', 'voucher', 'loyalty', 'billing', 'credit', 'delivery_platform'].map((groupType) => {
             const groupMethods = methods.filter((m) => m.type === groupType && m.isActive !== false);
             if (groupMethods.length === 0) return null;
-            const groupLabel = { cash: '💵 Cash', qr: '📱 QR Code', card: '💳 Card (EDC)', transfer: '🏦 Bank Transfer', voucher: '🎟️ Voucher' }[groupType] || groupType;
+            const groupLabel = {
+              cash: '💵 Cash',
+              qr: '📱 QR Code',
+              card: '💳 Card (EDC)',
+              transfer: '🏦 Bank Transfer',
+              voucher: '🎟️ Voucher / Gift Card',
+              loyalty: '⭐ Loyalty Points',
+              billing: '🏢 Corporate Billing',
+              credit: '💳 Franchise Credit',
+              delivery_platform: '🛵 Delivery Platform'
+            }[groupType] || groupType;
             return (
               <div key={groupType} style={{ marginBottom: 14 }}>
                 <div className="t-caption" style={{ marginBottom: 8 }}>{groupLabel}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }} className="pay-methods">
                   {groupMethods.map((m) => {
-                    const I = m.type === 'cash' ? IconCoin : m.type === 'qr' ? IconQR : m.type === 'card' ? IconWallet : IconWallet;
+                    const I = m.type === 'cash' ? IconCoin : m.type === 'qr' ? IconQR : m.type === 'card' ? IconWallet : (m.type === 'delivery_platform' ? IconLeaf : IconDiscount);
                     const active = method === m.code;
                     return (
                       <button key={m.id} onClick={() => setMethod(m.code)} style={{
