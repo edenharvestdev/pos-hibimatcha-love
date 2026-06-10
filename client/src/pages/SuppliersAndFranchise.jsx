@@ -912,52 +912,223 @@ export const PageFranchiseDetail = () => {
   if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }} className="muted">Loading branch…</div>;
   if (!b) return <div style={{ padding: 40, textAlign: 'center' }} className="muted">Branch not found</div>;
 
+  const isHQ = b.branchType === 'hq';
+  const isActive = b.status === 'active';
+
+  // Pick a unique hue per branch for the gradient accent
+  const hue = ((b.id ?? 1) * 47 + 140) % 360;
+  const heroGradient = isHQ
+    ? 'linear-gradient(135deg, oklch(0.28 0.06 150) 0%, oklch(0.20 0.04 150) 60%, oklch(0.16 0.03 95) 100%)'
+    : `linear-gradient(135deg, oklch(0.22 0.05 ${hue}) 0%, oklch(0.18 0.04 150) 60%, oklch(0.14 0.03 95) 100%)`;
+
   return (
-    <div className="page">
-      <div className="breadcrumb">Franchise / {b.name}</div>
-      <div className="card" style={{ padding: 0, marginBottom: 16, marginTop: 8, overflow: 'hidden' }}>
-        <Placeholder h={160} radius={0} label={b.branchType === 'hq' ? 'HQ' : 'Branch'}/>
-        <div style={{ padding: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <span className="pill">{b.branchType}</span>
-              <span className={'pill ' + (b.status === 'active' ? 'pill-matcha' : '')}><span className="dot"/> {b.status}</span>
+    <div className="page" style={{ paddingTop: 0 }}>
+      <div style={{ marginBottom: 8, paddingTop: 16 }}>
+        <div className="breadcrumb">Franchise / {b.name}</div>
+      </div>
+
+      {/* ── Hero Banner ── */}
+      <div style={{
+        borderRadius: 'var(--r-lg, 16px)', overflow: 'hidden', marginBottom: 20,
+        background: heroGradient, position: 'relative',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+      }}>
+        {/* Decorative blobs */}
+        <div style={{
+          position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none',
+        }}>
+          <div style={{
+            position: 'absolute', top: '-60px', right: '-60px',
+            width: 280, height: 280, borderRadius: '50%',
+            background: `radial-gradient(circle, oklch(0.65 0.12 ${hue} / 0.25) 0%, transparent 70%)`,
+          }}/>
+          <div style={{
+            position: 'absolute', bottom: '-40px', left: '30%',
+            width: 200, height: 200, borderRadius: '50%',
+            background: 'radial-gradient(circle, oklch(0.65 0.12 150 / 0.18) 0%, transparent 70%)',
+          }}/>
+          {/* Subtle dot grid pattern */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: 'radial-gradient(oklch(1 0 0 / 0.07) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}/>
+        </div>
+
+        {/* Content */}
+        <div style={{ position: 'relative', padding: '32px 32px 28px', color: 'white' }}>
+          {/* Top row: badges + actions */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{
+                padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+                background: isHQ ? 'oklch(0.65 0.15 150 / 0.35)' : 'oklch(1 0 0 / 0.12)',
+                border: `1px solid ${isHQ ? 'oklch(0.65 0.15 150 / 0.5)' : 'oklch(1 0 0 / 0.2)'}`,
+                color: isHQ ? 'oklch(0.9 0.1 150)' : 'oklch(0.9 0 0)',
+              }}>
+                {isHQ ? '⭐ HQ' : b.branchType}
+              </span>
+              <span style={{
+                padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                background: isActive ? 'oklch(0.55 0.15 145 / 0.3)' : 'oklch(1 0 0 / 0.1)',
+                border: `1px solid ${isActive ? 'oklch(0.65 0.12 145 / 0.5)' : 'oklch(1 0 0 / 0.15)'}`,
+                color: isActive ? 'oklch(0.88 0.1 145)' : 'oklch(0.75 0 0)',
+                display: 'flex', alignItems: 'center', gap: 5,
+              }}>
+                <span style={{
+                  width: 6, height: 6, borderRadius: '50%',
+                  background: isActive ? 'oklch(0.7 0.2 145)' : 'oklch(0.6 0 0)',
+                  boxShadow: isActive ? '0 0 6px oklch(0.7 0.2 145)' : 'none',
+                  display: 'inline-block',
+                }}/>
+                {b.status}
+              </span>
             </div>
-            <h1 style={{ fontSize: 32, fontWeight: 600, letterSpacing: '-0.02em', margin: 0 }}>{b.name}</h1>
-            <div className="muted" style={{ marginTop: 4 }}>
-              Code: <span className="mono">{b.branchCode}</span>
-              {b.province ? ` · ${b.province}` : ''}
-              {b.openingDate ? ` · Opened ${new Date(b.openingDate).toLocaleDateString()}` : ''}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-sm" style={{
+                background: 'oklch(1 0 0 / 0.12)', border: '1px solid oklch(1 0 0 / 0.2)',
+                color: 'white', backdropFilter: 'blur(8px)',
+              }}>
+                ✏️ Edit
+              </button>
+              <button className="btn btn-sm" style={{
+                background: 'oklch(1 0 0 / 0.12)', border: '1px solid oklch(1 0 0 / 0.2)',
+                color: 'white', backdropFilter: 'blur(8px)',
+              }}>
+                ⚙️ Settings
+              </button>
             </div>
+          </div>
+
+          {/* Branch name + location */}
+          <div style={{ marginBottom: 24 }}>
+            <h1 style={{
+              fontSize: 36, fontWeight: 700, letterSpacing: '-0.025em',
+              margin: 0, marginBottom: 8, color: 'white',
+              textShadow: '0 1px 12px rgba(0,0,0,0.3)',
+            }}>
+              {b.name}
+            </h1>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+              fontSize: 13, color: 'oklch(0.85 0.02 150)',
+            }}>
+              {b.branchCode && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ opacity: 0.6 }}>CODE</span>
+                  <code style={{ fontFamily: 'monospace', fontWeight: 600, color: 'white' }}>{b.branchCode}</code>
+                </span>
+              )}
+              {b.province && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  📍 {b.province}{b.country && b.country !== 'Thailand' ? `, ${b.country}` : ''}
+                </span>
+              )}
+              {b.openingDate && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  🗓️ Opened {new Date(b.openingDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
+              )}
+              {b.phone && <span>📞 {b.phone}</span>}
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1,
+            background: 'oklch(1 0 0 / 0.08)',
+            borderRadius: 12, overflow: 'hidden', border: '1px solid oklch(1 0 0 / 0.1)',
+          }}>
+            {[
+              { label: 'Tax Rate', value: `${b.taxRate ?? '7.00'}%`, icon: '🧾' },
+              { label: 'Currency', value: b.currency ?? 'THB', icon: '💱' },
+              { label: 'Timezone', value: (b.timezone ?? 'Asia/Bangkok').replace('Asia/', ''), icon: '🕐' },
+              { label: 'Type', value: b.branchType, icon: '🏪' },
+            ].map((s, i) => (
+              <div key={i} style={{
+                padding: '14px 20px',
+                background: 'oklch(1 0 0 / 0.06)',
+                borderRight: i < 3 ? '1px solid oklch(1 0 0 / 0.08)' : 'none',
+              }}>
+                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'oklch(0.75 0.02 150)', marginBottom: 4 }}>{s.icon} {s.label}</div>
+                <div style={{ fontWeight: 600, fontSize: 16, color: 'white' }}>{s.value}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
+      {/* ── Tabs ── */}
+      <div style={{ marginBottom: 20 }}>
         <Tabs items={['Overview', 'Staff', 'Inventory', 'Menu', 'Contract'].map((l) => ({ value: l.toLowerCase(), label: l }))} value={tab} onChange={setTab}/>
       </div>
 
+      {/* ── Tab content ── */}
       {tab === 'overview' ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="inv-grid">
+          {/* Location card */}
           <div className="card" style={{ padding: 24 }}>
-            <SectionHeader title="Location"/>
-            <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10, display: 'grid', placeItems: 'center',
+                background: 'var(--matcha-50)', fontSize: 18,
+              }}>📍</div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>Location & Contact</div>
+            </div>
+            <div style={{ fontSize: 14, lineHeight: 2, color: 'var(--text-secondary)' }}>
               {b.address && <div>{b.address}</div>}
               {b.district && <div>{b.district}</div>}
               {b.province && <div>{b.province} {b.postalCode}</div>}
-              {b.country && <div>{b.country}</div>}
-              {b.phone && <div style={{ marginTop: 8 }}>📞 {b.phone}</div>}
-              {b.email && <div>✉️ {b.email}</div>}
+              {b.country && <div style={{ color: 'var(--text-tertiary)' }}>{b.country}</div>}
+            </div>
+            {(b.phone || b.email) && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+                {b.phone && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--text-tertiary)' }}>📞</span> {b.phone}</div>}
+                {b.email && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: 'var(--text-tertiary)' }}>✉️</span> {b.email}</div>}
+              </div>
+            )}
+          </div>
+
+          {/* Settings card */}
+          <div className="card" style={{ padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, display: 'grid', placeItems: 'center', background: 'var(--matcha-50)', fontSize: 18 }}>⚙️</div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>System Settings</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {[
+                { label: 'Currency', value: b.currency ?? 'THB' },
+                { label: 'Tax Rate', value: `${b.taxRate ?? '7.00'}%` },
+                { label: 'Timezone', value: b.timezone ?? 'Asia/Bangkok' },
+                { label: 'Tax Inclusive', value: b.taxInclusive ? 'Yes' : 'No' },
+              ].map(({ label, value }) => (
+                <div key={label} style={{
+                  padding: '12px 14px', borderRadius: 10,
+                  background: 'var(--bg-muted)', border: '1px solid var(--border-default)',
+                }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontWeight: 600, fontSize: 15 }}>{value}</div>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="card" style={{ padding: 24 }}>
-            <SectionHeader title="Settings"/>
-            <Stat label="Currency" value={b.currency ?? 'THB'}/>
-            <div style={{ height: 12 }}/>
-            <Stat label="Tax Rate" value={`${b.taxRate ?? '7.00'}%`}/>
-            <div style={{ height: 12 }}/>
-            <Stat label="Timezone" value={b.timezone ?? 'Asia/Bangkok'}/>
-          </div>
+
+          {/* Loyalty card */}
+          {b.loyaltyEnabled && (
+            <div className="card" style={{ padding: 24, borderTop: '3px solid var(--matcha-400)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, display: 'grid', placeItems: 'center', background: 'var(--matcha-50)', fontSize: 18 }}>⭐</div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>Loyalty Program</div>
+                <span className="pill pill-matcha" style={{ fontSize: 10 }}>Enabled</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
+                <div><div style={{ color: 'var(--text-tertiary)', fontSize: 11, marginBottom: 2 }}>EARN RATE</div><strong>{b.loyaltyPointsPerBaht ?? 0.04} pts/฿</strong></div>
+                <div><div style={{ color: 'var(--text-tertiary)', fontSize: 11, marginBottom: 2 }}>REDEEM RATE</div><strong>฿{b.loyaltyRedeemRate ?? 1}/pt</strong></div>
+                <div><div style={{ color: 'var(--text-tertiary)', fontSize: 11, marginBottom: 2 }}>POINT EXPIRY</div><strong>{b.loyaltyPointExpireDays ?? 365} days</strong></div>
+              </div>
+            </div>
+          )}
         </div>
       ) : tab === 'menu' ? (
         <BranchMenuTab branchId={b.id} branchName={b.name}/>
@@ -1003,22 +1174,73 @@ const BranchInventoryTab = ({ branchId }) => {
   const { data: items = [], isLoading } = trpc.inventory.listItems.useQuery({ branchId });
   if (isLoading) return <div className="muted" style={{ padding: 24 }}>Loading inventory...</div>;
   if (items.length === 0) return <EmptyState illustration={<EmptyShelf/>} title="No inventory items" desc="Transfer or assign inventory items to this branch."/>;
+
   return (
-    <div className="card" style={{ padding: 16 }}>
-      <table className="table">
-        <thead><tr><th>Item</th><th>SKU</th><th>Category</th><th>Stock</th><th>Unit</th></tr></thead>
-        <tbody>
-          {items.map(it => (
-            <tr key={it.id}>
-              <td style={{ fontWeight: 500 }}>{it.name}</td>
-              <td className="muted">{it.sku || '—'}</td>
-              <td>{it.category?.name || '—'}</td>
-              <td className="tabular">{it.currentStock ?? 0}</td>
-              <td className="muted">{it.unit || '—'}</td>
+    <div>
+      {/* Summary bar */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+        {[
+          { label: 'Total Items', value: items.length, icon: '📦', color: 'var(--matcha-600)' },
+          { label: 'Low Stock', value: items.filter(i => (i.currentStock ?? 0) <= (i.minStock ?? 5) && (i.currentStock ?? 0) > 0).length, icon: '⚠️', color: '#d97706' },
+          { label: 'Out of Stock', value: items.filter(i => (i.currentStock ?? 0) <= 0).length, icon: '🔴', color: '#dc2626' },
+        ].map((s, i) => (
+          <div key={i} className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ fontSize: 28 }}>{s.icon}</div>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: s.color, marginTop: 2 }}>{s.value}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="card" style={{ overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border-default)' }}>
+              {['Item', 'SKU', 'Category', 'Stock', 'Unit', 'Status'].map((h, i) => (
+                <th key={h} style={{ padding: '10px 16px', textAlign: i > 2 ? 'center' : 'left', fontWeight: 600, fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {items.map((it, idx) => {
+              const stock = it.currentStock ?? 0;
+              const min   = it.minStock ?? 5;
+              const isOut = stock <= 0;
+              const isLow = !isOut && stock <= min;
+              const stockBg    = isOut ? '#fef2f2' : isLow ? '#fffbeb' : '#f0fdf4';
+              const stockColor = isOut ? '#dc2626' : isLow ? '#d97706' : '#16a34a';
+              const statusLabel = isOut ? 'Out' : isLow ? 'Low' : 'OK';
+
+              return (
+                <tr key={it.id} style={{ borderBottom: '1px solid var(--border-default)' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-muted)'}
+                  onMouseLeave={e => e.currentTarget.style.background = ''}>
+                  <td style={{ padding: '12px 16px', fontWeight: 500 }}>
+                    {it.nameThai || it.name}
+                    {it.nameThai && it.name !== it.nameThai && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>{it.name}</div>}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: 'var(--text-tertiary)', fontSize: 12 }}>{it.sku || '—'}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    {it.category?.name
+                      ? <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'var(--matcha-50)', color: 'var(--matcha-700)' }}>{it.category.name}</span>
+                      : <span style={{ color: 'var(--text-quaternary)' }}>—</span>
+                    }
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, fontFamily: 'monospace', color: stockColor, fontSize: 15 }}>{stock}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center', color: 'var(--text-tertiary)' }}>{it.unitOfMeasure || it.unit || '—'}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <span style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: stockBg, color: stockColor }}>
+                      {statusLabel}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
