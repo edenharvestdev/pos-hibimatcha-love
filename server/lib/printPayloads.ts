@@ -321,11 +321,8 @@ export function generateReceiptHTML(
   const timeStr = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}:${String(dt.getSeconds()).padStart(2, "0")}`;
   const dateTimeStr = `${dateStr} ${timeStr}`;
 
-  // Generate receipt number if not provided: YYYY + 12-digit running
   const receiptNo = order.receiptNumber || `${dt.getFullYear()}${String(order.id).padStart(12, "0")}`;
-  // Pickup number: short sequential (e.g. 002)
   const pickupNo = order.pickupNumber || String(order.id % 1000).padStart(3, "0");
-  // Order number: short (e.g. 0002)
   const orderNo = order.orderNumber?.replace(/\D/g, "").slice(-4).padStart(4, "0") || String(order.id).padStart(4, "0");
 
   const totalQty = order.items.reduce((s, i) => s + i.quantity, 0);
@@ -333,96 +330,159 @@ export function generateReceiptHTML(
   const paidAmt = order.paidAmount ?? order.totalAmount;
   const roundingAmt = order.roundingAmount ?? 0;
 
+  const branchDisplay = order.branchName.startsWith("Hibi Matcha")
+    ? order.branchName
+    : `Hibi Matcha Cafe ${order.branchName}`;
+
   return `<!DOCTYPE html><html><head><meta charset="utf-8">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; padding: 3mm; }
+  body { font-family: 'Courier New', monospace; font-size: 11px; width: 80mm; padding: 3mm; background: white; }
   .center { text-align: center; }
   .right { text-align: right; }
+  .left { text-align: left; }
   .bold { font-weight: bold; }
-  .large { font-size: 16px; }
-  .xlarge { font-size: 20px; }
-  .small { font-size: 10px; }
-  .line { border-top: 1px dashed #000; margin: 6px 0; }
-  .double-line { border-top: 2px solid #000; margin: 6px 0; }
-  .row { display: flex; justify-content: space-between; margin: 1px 0; }
-  .option { padding-left: 8px; font-size: 10px; color: #333; margin: 1px 0; }
-  .item-table { width: 100%; border-collapse: collapse; margin: 4px 0; }
-  .item-table th { text-align: left; font-size: 11px; border-bottom: 1px solid #000; padding: 2px 0; }
-  .item-table th:nth-child(2) { text-align: right; }
-  .item-table th:nth-child(3) { text-align: center; }
-  .item-table th:nth-child(4) { text-align: right; }
-  .totals-row { display: flex; justify-content: space-between; margin: 2px 0; }
+  .h1 { font-size: 18px; font-weight: bold; }
+  .h2 { font-size: 14px; font-weight: bold; }
+  .h3 { font-size: 12px; }
+  .small { font-size: 9px; }
+  .line { border-top: 1px dashed #000; margin: 5px 0; }
+  .solid-line { border-top: 1px solid #000; margin: 5px 0; }
+  .meta { margin: 2px 0; font-size: 11px; }
+  .item-table { width: 100%; border-collapse: collapse; margin: 4px 0; font-size: 10px; }
+  .item-table thead tr { border-bottom: 1px solid #000; }
+  .item-table thead th { padding: 2px 1px; font-weight: bold; font-size: 10px; }
+  .item-table thead th.col-name { text-align: left; width: 45%; }
+  .item-table thead th.col-price { text-align: right; width: 18%; }
+  .item-table thead th.col-qty { text-align: center; width: 12%; }
+  .item-table thead th.col-total { text-align: right; width: 25%; }
+  .item-name-row td { padding: 3px 1px 0; font-weight: bold; font-size: 10px; }
+  .item-price-row td { padding: 0 1px 3px; }
+  .col-price-val { text-align: right; }
+  .col-qty-val { text-align: center; }
+  .col-total-val { text-align: right; }
+  .option-line { padding-left: 4px; font-size: 9px; color: #333; }
+  .totals { width: 100%; margin: 3px 0; border-collapse: collapse; }
+  .totals td { padding: 1px 0; font-size: 11px; }
+  .totals td.tl { text-align: left; }
+  .totals td.tr { text-align: right; }
+  .totals .bold-row td { font-weight: bold; }
+  .pay-table { width: 100%; margin: 3px 0; font-size: 11px; border-collapse: collapse; }
+  .pay-table td { padding: 1px 0; }
+  .pay-label { font-weight: bold; }
   @media print {
     body { width: 80mm; margin: 0; padding: 2mm; }
     .no-print { display: none; }
   }
 </style></head><body>
-    <div class="center bold large">ใบเสร็จ</div>
-    ${settings.receiptHeaderImage ? `<div class="center" style="margin: 6px 0;"><img src="${settings.receiptHeaderImage}" style="max-width: 50mm; max-height: 25mm;" /></div>` : ""}
-    <div class="center" style="margin-top: 4px;">Hibi Matcha Caf\u00e9</div>
-    <div class="center bold large" style="margin: 4px 0;">Hibi Matcha Cafe ${order.branchName}</div>
-    
-    <div class="line"></div>
-    
-    <div>หมายเลขการรับอาหาร: ${pickupNo}</div>
-    <div>หมายเลขคำสั่งซื้อ: ${orderNo}</div>
-    <div>วันและเวลา: ${dateTimeStr}</div>
-    ${order.deviceSN ? `<div>SN:${order.deviceSN}</div>` : ""}
-    <div>เลขที่ใบเสร็จ:${receiptNo}</div>
-    
-    <div class="line"></div>
-    
-    <table class="item-table">
-      <tr><th>สินค้า</th><th>ราคา</th><th>จำนวน</th><th>รวม</th></tr>
-    </table>
-    
-    ${order.items.map(item => {
-      const skuPrefix = item.menuItemSku ? `${item.menuItemSku}-` : "";
-      return `
-      <div style="margin: 4px 0;">
-        <div class="row">
-          <span style="flex:1; font-weight: bold; font-size: 11px;">${skuPrefix}${item.menuItemName}</span>
-        </div>
-        <div class="row">
-          <span></span>
-          <span style="min-width: 50px; text-align: right;">${item.unitPrice.toFixed(2)}</span>
-          <span style="min-width: 40px; text-align: center;">${item.quantity}</span>
-          <span style="min-width: 55px; text-align: right;">${item.totalPrice.toFixed(2)}</span>
-        </div>
-        ${item.options.map(opt => `<div class="option">- ${opt.name}${opt.priceAdjustment > 0 ? `  +${opt.priceAdjustment.toFixed(2)}` : ""}</div>`).join("")}
-      </div>`;
-    }).join("")}
-    
-    <div class="line"></div>
-    <div class="row bold">
-      <span>รวม</span>
-      <span>${totalQty}</span>
-      <span>${order.subtotal.toFixed(2)}</span>
-    </div>
-    
-    <div class="line"></div>
-    
-    <div class="totals-row"><span>ยอดรวมส่วนลด</span><span>${order.discountAmount > 0 ? order.discountAmount.toFixed(2) : ""}</span></div>
-    <div class="totals-row"><span>ปัดเศษ</span><span>${roundingAmt !== 0 ? roundingAmt.toFixed(2) : ""}</span></div>
-    <div class="totals-row"><span>ยอดรวม</span><span>${order.subtotal.toFixed(2)}</span></div>
-    <div class="totals-row"><span>ภาษีมูลค่าเพิ่ม (7%)</span><span>${order.taxAmount.toFixed(2)}</span></div>
-    <div class="totals-row bold"><span>ยอดรวมทั้งหมด</span><span>${order.totalAmount.toFixed(2)}</span></div>
-    
-    <div class="line"></div>
-    
-    ${roundingAmt !== 0 ? `<div class="totals-row"><span></span><span>${(order.totalAmount + roundingAmt).toFixed(2)}</span></div>` : ""}
-    <div class="totals-row"><span></span><span>${order.totalAmount.toFixed(2)}</span></div>
-    
-    <div class="line"></div>
-    
-    <div>ประเภทการชำระเงิน</div>
-    <div>${payMethodName}</div>
-    <div class="row"><span>ยอดชำระ</span><span>${payMethodName}</span></div>
-    <div class="right">${paidAmt.toFixed(2)}</div>
-    <div class="right bold large">${order.totalAmount.toFixed(2)}</div>
-    
-    <div class="line"></div>
-    <div class="center small">${order.branchName}</div>
-  </body></html>`;
+
+  <div class="center h1">ใบเสร็จ</div>
+
+  ${settings.receiptHeaderImage
+    ? `<div class="center" style="margin: 6px 0;"><img src="${settings.receiptHeaderImage}" style="max-width: 40mm; max-height: 30mm;" /></div>`
+    : `<div class="center" style="margin: 4px 0; font-size: 24px;">☕</div>`
+  }
+
+  <div class="center h3">Hibi Matcha Café</div>
+  <div class="center h2" style="margin: 3px 0;">${branchDisplay}</div>
+
+  <div class="line"></div>
+
+  <div class="meta">หมายเลขการรับอาหาร: ${pickupNo}</div>
+  <div class="meta">หมายเลขคำสั่งซื้อ: ${orderNo}</div>
+  <div class="meta">วันและเวลา: ${dateTimeStr}</div>
+  ${order.deviceSN ? `<div class="meta">SN:${order.deviceSN}</div>` : ""}
+  <div class="meta">เลขที่ใบเสร็จ:${receiptNo}</div>
+
+  <div class="line"></div>
+
+  <table class="item-table">
+    <thead>
+      <tr>
+        <th class="col-name">สินค้า</th>
+        <th class="col-price">ราคา</th>
+        <th class="col-qty">จำนวน</th>
+        <th class="col-total">รวม</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${order.items.map(item => {
+        const skuPrefix = item.menuItemSku ? `${item.menuItemSku}-` : "";
+        const optLines = item.options
+          .map(opt => `<tr><td colspan="4" class="option-line">- (${opt.name}${opt.priceAdjustment !== 0 ? ` ${opt.priceAdjustment > 0 ? "+" : ""}${opt.priceAdjustment.toFixed(2)}` : ""})</td></tr>`)
+          .join("");
+        return `
+          <tr class="item-name-row">
+            <td colspan="4">${skuPrefix}${item.menuItemName}</td>
+          </tr>
+          <tr class="item-price-row">
+            <td></td>
+            <td class="col-price-val">${item.unitPrice.toFixed(2)}</td>
+            <td class="col-qty-val">${item.quantity}</td>
+            <td class="col-total-val">${item.totalPrice.toFixed(2)}</td>
+          </tr>
+          ${optLines}
+        `;
+      }).join("")}
+    </tbody>
+  </table>
+
+  <div class="line"></div>
+
+  <table class="totals">
+    <tr class="bold-row">
+      <td class="tl">รวม</td>
+      <td class="tr" style="text-align:center; width:40px;">${totalQty}</td>
+      <td class="tr">${order.subtotal.toFixed(2)}</td>
+    </tr>
+  </table>
+
+  <div class="line"></div>
+
+  <table class="totals">
+    <tr>
+      <td class="tl">ยอดรวมส่วนลด</td>
+      <td class="tr">${order.discountAmount > 0 ? order.discountAmount.toFixed(2) : ""}</td>
+    </tr>
+    <tr>
+      <td class="tl">ปัดเศษ</td>
+      <td class="tr">${roundingAmt !== 0 ? roundingAmt.toFixed(2) : ""}</td>
+    </tr>
+    <tr>
+      <td class="tl">ยอดรวม</td>
+      <td class="tr">${order.subtotal.toFixed(2)}</td>
+    </tr>
+    <tr>
+      <td class="tl">ภาษีมูลค่าเพิ่ม (7%)</td>
+      <td class="tr">${order.taxAmount.toFixed(2)}</td>
+    </tr>
+    <tr class="bold-row">
+      <td class="tl">ยอดรวมทั้งหมด</td>
+      <td class="tr">${order.totalAmount.toFixed(2)}</td>
+    </tr>
+  </table>
+
+  <div class="line"></div>
+
+  <div class="meta">ประเภทการชำระเงิน</div>
+  <table class="pay-table">
+    <tr>
+      <td class="tl">${payMethodName}</td>
+      <td class="tr">${payMethodName}</td>
+    </tr>
+    <tr style="border-top: 1px solid #000;" class="bold-row">
+      <td class="tl pay-label">ยอดชำระ</td>
+      <td class="tr">${paidAmt.toFixed(2)}</td>
+    </tr>
+    <tr class="bold-row">
+      <td></td>
+      <td class="tr">${order.totalAmount.toFixed(2)}</td>
+    </tr>
+  </table>
+
+  <div class="line"></div>
+
+  <div class="center" style="margin-top: 4px; font-size: 11px;">${order.branchName}</div>
+
+</body></html>`;
 }
