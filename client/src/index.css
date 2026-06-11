@@ -280,3 +280,23 @@ a, button, input, select, textarea, [role="button"] {
     transform: translate(0px, 0px) scale(1) rotate(360deg);
   }
 }
+
+/* Explicit theme utility class mappings for Obsidian Matcha design token styling compatibility */
+.bg-card {
+  background-color: var(--bg-surface) !important;
+}
+.bg-background {
+  background-color: var(--bg-base) !important;
+}
+.bg-muted {
+  background-color: var(--bg-muted) !important;
+}
+.text-card-foreground {
+  color: var(--text-primary) !important;
+}
+.text-muted-foreground {
+  color: var(--text-secondary) !important;
+}
+.border-border {
+  border-color: var(--border-default) !important;
+}

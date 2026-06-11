@@ -254,7 +254,6 @@ export const PageHardwareSettings = () => {
         <Field label={t("Printer Purpose / Type", "วัตถุประสงค์ / ประเภทเครื่องพิมพ์")}>
           <select
             className="input"
-            style={{ appearance: "auto" }}
             value={newPrinter.printerType}
             onChange={(e) => setNewPrinter({ ...newPrinter, printerType: e.target.value })}
           >
@@ -267,7 +266,6 @@ export const PageHardwareSettings = () => {
         <Field label={t("Connection Type", "ประเภทการเชื่อมต่อ")}>
           <select
             className="input"
-            style={{ appearance: "auto" }}
             value={newPrinter.connection}
             onChange={(e) => setNewPrinter({ ...newPrinter, connection: e.target.value })}
           >
@@ -303,7 +301,6 @@ export const PageHardwareSettings = () => {
           <Field label={t("Paper Width (mm)", "ความกว้างกระดาษ (มม.)")}>
             <select
               className="input"
-              style={{ appearance: "auto" }}
               value={newPrinter.paperWidth}
               onChange={(e) => setNewPrinter({ ...newPrinter, paperWidth: Number(e.target.value) })}
             >

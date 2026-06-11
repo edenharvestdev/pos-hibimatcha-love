@@ -72,19 +72,19 @@ export const PageFranchiseWizard = () => {
                <div className="grid grid-cols-2 gap-4">
                  <div>
                    <label className="text-sm font-medium mb-1 block">{t('First Name', 'ชื่อ')}</label>
-                   <input className="w-full border rounded px-3 py-2" value={formData.ownerFirstName} onChange={e => setFormData({...formData, ownerFirstName: e.target.value})} />
+                   <input className="input" value={formData.ownerFirstName} onChange={e => setFormData({...formData, ownerFirstName: e.target.value})} />
                  </div>
                  <div>
                    <label className="text-sm font-medium mb-1 block">{t('Last Name', 'นามสกุล')}</label>
-                   <input className="w-full border rounded px-3 py-2" value={formData.ownerLastName} onChange={e => setFormData({...formData, ownerLastName: e.target.value})} />
+                   <input className="input" value={formData.ownerLastName} onChange={e => setFormData({...formData, ownerLastName: e.target.value})} />
                  </div>
                  <div>
                    <label className="text-sm font-medium mb-1 block">{t('Phone', 'เบอร์โทรศัพท์')}</label>
-                   <input className="w-full border rounded px-3 py-2" value={formData.ownerPhone} onChange={e => setFormData({...formData, ownerPhone: e.target.value})} />
+                   <input className="input" value={formData.ownerPhone} onChange={e => setFormData({...formData, ownerPhone: e.target.value})} />
                  </div>
                  <div>
                    <label className="text-sm font-medium mb-1 block">{t('Email', 'อีเมล')}</label>
-                   <input className="w-full border rounded px-3 py-2" value={formData.ownerEmail} onChange={e => setFormData({...formData, ownerEmail: e.target.value})} />
+                   <input className="input" value={formData.ownerEmail} onChange={e => setFormData({...formData, ownerEmail: e.target.value})} />
                  </div>
                </div>
             </div>
@@ -96,15 +96,15 @@ export const PageFranchiseWizard = () => {
                <div className="grid grid-cols-2 gap-4">
                  <div>
                    <label className="text-sm font-medium mb-1 block">{t('Branch Name', 'ชื่อสาขา')}</label>
-                   <input className="w-full border rounded px-3 py-2" value={formData.branchName} onChange={e => setFormData({...formData, branchName: e.target.value})} />
+                   <input className="input" value={formData.branchName} onChange={e => setFormData({...formData, branchName: e.target.value})} />
                  </div>
                  <div>
                    <label className="text-sm font-medium mb-1 block">{t('Branch Code', 'รหัสสาขา')}</label>
-                   <input className="w-full border rounded px-3 py-2" value={formData.branchCode} onChange={e => setFormData({...formData, branchCode: e.target.value})} />
+                   <input className="input" value={formData.branchCode} onChange={e => setFormData({...formData, branchCode: e.target.value})} />
                  </div>
                  <div className="col-span-2">
                    <label className="text-sm font-medium mb-1 block">{t('Province', 'จังหวัด')}</label>
-                   <input className="w-full border rounded px-3 py-2" value={formData.province} onChange={e => setFormData({...formData, province: e.target.value})} />
+                   <input className="input" value={formData.province} onChange={e => setFormData({...formData, province: e.target.value})} />
                  </div>
                </div>
             </div>
@@ -116,15 +116,15 @@ export const PageFranchiseWizard = () => {
                <div className="grid grid-cols-2 gap-4">
                  <div>
                    <label className="text-sm font-medium mb-1 block">{t('Start Date', 'วันเริ่มสัญญา')}</label>
-                   <input type="date" className="w-full border rounded px-3 py-2" value={formData.contractStartDate} onChange={e => setFormData({...formData, contractStartDate: e.target.value})} />
+                   <input type="date" className="input" value={formData.contractStartDate} onChange={e => setFormData({...formData, contractStartDate: e.target.value})} />
                  </div>
                  <div>
                    <label className="text-sm font-medium mb-1 block">{t('End Date', 'วันสิ้นสุดสัญญา')}</label>
-                   <input type="date" className="w-full border rounded px-3 py-2" value={formData.contractEndDate} onChange={e => setFormData({...formData, contractEndDate: e.target.value})} />
+                   <input type="date" className="input" value={formData.contractEndDate} onChange={e => setFormData({...formData, contractEndDate: e.target.value})} />
                  </div>
                  <div>
                    <label className="text-sm font-medium mb-1 block">{t('Royalty Type', 'ประเภท Royalty')}</label>
-                    <select className="w-full border rounded px-3 py-2" value={formData.royaltyType} onChange={e => setFormData({...formData, royaltyType: e.target.value})}>
+                    <select className="input" value={formData.royaltyType} onChange={e => setFormData({...formData, royaltyType: e.target.value})}>
                        <option value="percentage">Percentage (%)</option>
                        <option value="fixed">Fixed (THB)</option>
                        <option value="hybrid">Hybrid (% + Fixed)</option>
@@ -133,7 +133,7 @@ export const PageFranchiseWizard = () => {
                  </div>
                  <div>
                    <label className="text-sm font-medium mb-1 block">{t('Value', 'มูลค่า')}</label>
-                   <input type="number" className="w-full border rounded px-3 py-2" value={formData.royaltyValue} onChange={e => setFormData({...formData, royaltyValue: e.target.value})} />
+                   <input type="number" className="input" value={formData.royaltyValue} onChange={e => setFormData({...formData, royaltyValue: e.target.value})} />
                  </div>
                </div>
             </div>
@@ -156,15 +156,15 @@ export const PageFranchiseWizard = () => {
 
           {/* Footer Actions */}
           <div className="mt-8 flex justify-between border-t pt-4">
-             <button disabled={step === 1} onClick={handlePrev} className="px-6 py-2 rounded-lg border hover:bg-muted disabled:opacity-50 font-medium">
+             <button disabled={step === 1} onClick={handlePrev} className="btn btn-secondary px-6">
                {t('Back', 'ย้อนกลับ')}
              </button>
              {step < 4 ? (
-               <button onClick={handleNext} className="px-6 py-2 rounded-lg bg-primary text-primary-foreground font-medium">
+               <button onClick={handleNext} className="btn btn-primary px-6">
                  {t('Next', 'ถัดไป')}
                </button>
              ) : (
-               <button onClick={handleSubmit} disabled={onboard.isPending} className="px-6 py-2 rounded-lg bg-primary text-primary-foreground font-medium">
+               <button onClick={handleSubmit} disabled={onboard.isPending} className="btn btn-primary px-6">
                  {onboard.isPending ? t('Creating...', 'กำลังสร้าง...') : t('Confirm & Create Franchise', 'ยืนยันและสร้างแฟรนไชส์')}
                </button>
              )}
