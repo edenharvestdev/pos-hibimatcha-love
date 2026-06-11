@@ -422,13 +422,13 @@ const Sidebar = ({ open, onClose, collapsed, onToggleCollapse }) => {
 
           {/* Bottom links */}
           <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
-            <SideLink path="/backoffice/settings" icon={IconSettings} label="Settings" collapsed={collapsed}/>
-            <SideLink path="/backoffice/settings/master-data" icon={IconGrid} label="Master Data" collapsed={collapsed}/>
-            <SideLink path="/backoffice/settings/document-numbering" icon={IconReceipt} label="Doc Numbering" collapsed={collapsed}/>
-            <SideLink path="/backoffice/settings/hardware" icon={IconPrint} label="Hardware/Printers" collapsed={collapsed}/>
-            <SideLink path="/backoffice/audit" icon={IconCheckCircle} label="Audit Center" collapsed={collapsed}/>
-            <SideLink path="/help" icon={IconHelp} label="Support" collapsed={collapsed}/>
-            {role === 'super' && <SideLink path="/backoffice/audit-log" icon={IconBook} label="Audit Log" collapsed={collapsed}/>}
+            <SideLink path="/backoffice/settings" icon={IconSettings} label={t('settings.title')} collapsed={collapsed}/>
+            <SideLink path="/backoffice/settings/master-data" icon={IconGrid} label={t('nav.masterData')} collapsed={collapsed}/>
+            <SideLink path="/backoffice/settings/document-numbering" icon={IconReceipt} label={t('nav.documentNumbering')} collapsed={collapsed}/>
+            <SideLink path="/backoffice/settings/hardware" icon={IconPrint} label={t('nav.hardwarePrinting')} collapsed={collapsed}/>
+            <SideLink path="/backoffice/audit" icon={IconCheckCircle} label={t('nav.auditCenter')} collapsed={collapsed}/>
+            <SideLink path="/help" icon={IconHelp} label={t('Support', 'ช่วยเหลือ')} collapsed={collapsed}/>
+            {role === 'super' && <SideLink path="/backoffice/audit-log" icon={IconBook} label={t('Audit Log', 'บันทึกเหตุการณ์')} collapsed={collapsed}/>}
           </div>
         </nav>
 

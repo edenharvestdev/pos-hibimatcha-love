@@ -100,36 +100,36 @@
   --tracking-brand: 0.15em;
 }
 
-[data-theme="dark"] {
-  --bg-base: #0e0e0c;
-  --bg-surface: #1a1a17;
-  --bg-elevated: #232320;
-  --bg-muted: #1a1a17;
-  --bg-subtle: #232320;
-  --bg-tint: #131a14;
+[data-theme="dark"], .dark {
+  --bg-base: #0c0f0d;
+  --bg-surface: #141815;
+  --bg-elevated: #1b211d;
+  --bg-muted: #141815;
+  --bg-subtle: #1b211d;
+  --bg-tint: #121a14;
 
-  --text-primary: #fafaf9;
-  --text-secondary: #a8a29e;
-  --text-tertiary: #78716c;
-  --text-quaternary: #57534e;
+  --text-primary: #f6fdf7;
+  --text-secondary: #a7b3ab;
+  --text-tertiary: #78887f;
+  --text-quaternary: #4f5f56;
   --text-inverse: var(--stone-900);
 
-  --border-default: rgba(255,255,255,0.06);
-  --border-strong: rgba(255,255,255,0.1);
-  --border-emphasis: rgba(255,255,255,0.14);
+  --border-default: rgba(74, 222, 128, 0.08);
+  --border-strong: rgba(74, 222, 128, 0.14);
+  --border-emphasis: rgba(74, 222, 128, 0.22);
 
   --accent: var(--matcha-400);
   --accent-soft: rgba(34, 197, 94, 0.12);
   --accent-text: var(--matcha-300);
 
-  --glass-bg: rgba(28, 25, 23, 0.66);
-  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-bg: rgba(20, 24, 21, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.04);
 
-  --shadow-xs:  0 1px 2px rgba(0,0,0,0.3);
-  --shadow-sm:  0 2px 6px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.25);
-  --shadow-md:  0 6px 16px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.25);
-  --shadow-lg:  0 16px 40px rgba(0,0,0,0.5), 0 6px 12px rgba(0,0,0,0.3);
-  --shadow-xl:  0 30px 64px rgba(0,0,0,0.6);
+  --shadow-xs:  0 1px 2px rgba(0,0,0,0.45);
+  --shadow-sm:  0 2px 6px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.35);
+  --shadow-md:  0 6px 16px rgba(0,0,0,0.55), 0 2px 4px rgba(0,0,0,0.35);
+  --shadow-lg:  0 16px 40px rgba(0,0,0,0.65), 0 6px 12px rgba(0,0,0,0.4);
+  --shadow-xl:  0 30px 64px rgba(0,0,0,0.75);
   --glow-soft:  0 0 40px rgba(74, 222, 128, 0.18);
 }
 
@@ -158,7 +158,12 @@ body {
   min-height: 100vh;
 }
 
-[data-theme="dark"] body {
+/* Core element transitions for smooth dark/light mode swapping */
+body, .card, .btn, .input, header, aside, .glass, nav, .sidebar {
+  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease, box-shadow 200ms ease;
+}
+
+[data-theme="dark"] body, .dark body {
   background-image:
     radial-gradient(circle 500px at 100% 0%, rgba(74, 222, 128, 0.12), transparent 70%),
     radial-gradient(circle 400px at 0% 100%, rgba(74, 222, 128, 0.04), transparent 70%),
@@ -176,7 +181,7 @@ body::before {
   mix-blend-mode: multiply;
 }
 
-[data-theme="dark"] body::before { mix-blend-mode: screen; opacity: 0.3; }
+[data-theme="dark"] body::before, .dark body::before { mix-blend-mode: screen; opacity: 0.3; }
 
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; background: none; border: none; padding: 0; }
@@ -184,7 +189,7 @@ a { color: inherit; text-decoration: none; }
 img { display: block; max-width: 100%; }
 
 ::selection { background: var(--matcha-200); color: var(--matcha-900); }
-[data-theme="dark"] ::selection { background: var(--matcha-800); color: var(--matcha-50); }
+[data-theme="dark"] ::selection, .dark ::selection { background: var(--matcha-800); color: var(--matcha-50); }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }

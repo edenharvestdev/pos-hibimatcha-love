@@ -526,7 +526,11 @@ const App = () => {
     } catch { return null; }
   });
 
-  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem('hibi-theme', theme); }, [theme]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('hibi-theme', theme);
+  }, [theme]);
   useEffect(() => { localStorage.setItem('hibi-role', role); }, [role]);
 
   // Route guard: enforce role-based access on every route change

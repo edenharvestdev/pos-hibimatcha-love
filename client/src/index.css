@@ -88,7 +88,7 @@
   --sidebar-ring: oklch(0.60 0.12 150);
 }
 
-.dark {
+.dark, [data-theme="dark"] {
   /* Matcha Dark Mode Palette */
   --primary: oklch(0.65 0.12 150);
   --primary-foreground: oklch(0.15 0.02 150);
@@ -242,7 +242,7 @@ a, button, input, select, textarea, [role="button"] {
   box-shadow: 0 12px 40px -10px rgba(104, 133, 100, 0.12);
 }
 
-.dark .glass-premium {
+.dark .glass-premium, [data-theme="dark"] .glass-premium {
   background: rgba(24, 34, 24, 0.55);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
@@ -261,7 +261,7 @@ a, button, input, select, textarea, [role="button"] {
   z-index: 0;
 }
 
-.dark .ambient-blob {
+.dark .ambient-blob, [data-theme="dark"] .ambient-blob {
   mix-blend-mode: screen;
   opacity: 0.15;
 }

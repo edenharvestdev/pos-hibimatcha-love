@@ -24,7 +24,7 @@ const PLATFORMS = [
 ];
 
 export const PageDeliveryOrders = () => {
-  const { navigate, branch } = useApp();
+  const { navigate, branch, t } = useApp();
   const session = getSession();
   const branchId = branch?.id || session?.currentBranchId;
 
@@ -56,24 +56,24 @@ export const PageDeliveryOrders = () => {
 
   const totalToday = orders.filter((o) => {
     if (!o.createdAt) return false;
-    const t = new Date(o.createdAt).toDateString();
-    return t === new Date().toDateString();
+    const tVal = new Date(o.createdAt).toDateString();
+    return tVal === new Date().toDateString();
   });
 
   return (
     <div className="page">
       <div className="page-header">
-        <div className="breadcrumb">POS / Delivery Orders</div>
+        <div className="breadcrumb">{t("POS / Delivery Orders", "POS / คำสั่งซื้อเดลิเวอรี่")}</div>
         <div className="page-title-row">
           <div>
-            <h1 className="page-title">Delivery Orders</h1>
+            <h1 className="page-title">{t("Delivery Orders", "เดลิเวอรี่")}</h1>
             <p className="page-desc">
-              3rd-party platforms · {orders.length} active · {totalToday.length} today
+              {t("3rd-party platforms", "แพลตฟอร์มเดลิเวอรี่ภายนอก")} · {orders.length} {t("active", "มีผลใช้งาน")} · {totalToday.length} {t("today", "วันนี้")}
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => refetch()} title="Refresh now">
-              <IconRefresh size={14}/> Refresh
+            <button className="btn btn-ghost btn-sm" onClick={() => refetch()} title={t("Refresh", "รีเฟรช")}>
+              <IconRefresh size={14}/> {t("Refresh", "รีเฟรช")}
             </button>
             <button className="btn btn-secondary btn-sm" onClick={() => {
               const rows = orders.map((o) => ({
@@ -88,9 +88,9 @@ export const PageDeliveryOrders = () => {
                 createdAt: o.createdAt,
               }));
               downloadCSV(`delivery-${new Date().toISOString().slice(0,10)}`, rows);
-            }}><IconExport size={14}/> CSV</button>
+            }}><IconExport size={14}/> {t("CSV", "ส่งออก CSV")}</button>
             <button className="btn btn-primary btn-sm" onClick={() => setCreateOpen(true)}>
-              <IconPlus size={14}/> Manual Order
+              <IconPlus size={14}/> {t("Manual Order", "เพิ่มออเดอร์เอง")}
             </button>
           </div>
         </div>
@@ -122,9 +122,9 @@ export const PageDeliveryOrders = () => {
               <div style={{ fontSize: 22, fontWeight: 600 }} className="tabular">
                 {s.orders.toLocaleString()}
               </div>
-              <div className="muted" style={{ fontSize: 11 }}>orders / 30d</div>
+              <div className="muted" style={{ fontSize: 11 }}>{t("orders / 30d", "ออเดอร์ / 30 วัน")}</div>
               <div className="tabular" style={{ fontSize: 12, marginTop: 4, color: p.color, fontWeight: 500 }}>
-                ฿{Math.round(s.payout).toLocaleString()} <span className="muted" style={{ fontWeight: 400 }}>payout</span>
+                ฿{Math.round(s.payout).toLocaleString()} <span className="muted" style={{ fontWeight: 400 }}>{t("payout", "รายรับ")}</span>
               </div>
             </div>
           );
@@ -133,25 +133,34 @@ export const PageDeliveryOrders = () => {
 
       {/* Platform filter tabs */}
       <div style={{ marginBottom: 12 }}>
-        <Tabs items={PLATFORMS.map((p) => ({ value: p.code, label: p.label }))} value={platform} onChange={setPlatform}/>
+        <Tabs items={PLATFORMS.map((p) => ({ value: p.code, label: p.code === "all" ? t("All", "ทั้งหมด") : p.label }))} value={platform} onChange={setPlatform}/>
       </div>
 
       {/* Orders list */}
       {isLoading ? (
-        <div className="muted" style={{ padding: 40, textAlign: "center" }}>Loading orders…</div>
+        <div className="muted" style={{ padding: 40, textAlign: "center" }}>{t("Loading...", "กำลังโหลด...")}</div>
       ) : orders.length === 0 ? (
         <EmptyState
           icon={<IconTruck size={48}/>}
-          title={`No ${platform === "all" ? "" : PLATFORMS.find((p) => p.code === platform)?.label + " "}delivery orders`}
-          desc="Orders from 3rd-party platforms will appear here automatically when their webhooks are configured. You can also add manual orders."
-          action={<button className="btn btn-primary" onClick={() => setCreateOpen(true)}><IconPlus size={16}/> Add Manual Order</button>}
+          title={t(`No delivery orders`, `ไม่มีคำสั่งซื้อเดลิเวอรี่`)}
+          desc={t("Orders from 3rd-party platforms will appear here automatically when their webhooks are configured. You can also add manual orders.", "ออเดอร์จากแพลตฟอร์มเดลิเวอรี่ภายนอกจะเข้าสู่ระบบนี้โดยอัตโนมัติเมื่อตั้งค่า Webhook หรือสามารถเพิ่มแบบกำหนดเองได้ที่นี่")}
+          action={<button className="btn btn-primary" onClick={() => setCreateOpen(true)}><IconPlus size={16}/> {t("Add Manual Order", "เพิ่มออเดอร์เดลิเวอรี่เอง")}</button>}
         />
       ) : (
         <div className="card" style={{ overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
               <tr style={{ background: "var(--bg-muted)" }}>
-                {["Order", "Platform", "Customer", "Status", "Total", "Payout", "Created", ""].map((h) => (
+                {[
+                  t("Order", "ออเดอร์"),
+                  t("Platform", "แพลตฟอร์ม"),
+                  t("Customer", "ลูกค้า"),
+                  t("Status", "สถานะ"),
+                  t("Total", "ยอดรวม"),
+                  t("Payout", "ยอดรับเงิน"),
+                  t("Created", "เวลาสั่ง"),
+                  ""
+                ].map((h) => (
                   <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontWeight: 500, fontSize: 11, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</th>
                 ))}
               </tr>
@@ -180,7 +189,7 @@ export const PageDeliveryOrders = () => {
                     </td>
                     <td style={{ padding: "12px 16px" }}>
                       <span className={"pill " + (o.status === "completed" ? "pill-matcha" : o.status === "cancelled" ? "pill-warning" : "pill-gold")} style={{ fontSize: 11 }}>
-                        <span className="dot"/> {o.status}
+                        <span className="dot"/> {t(o.status, o.status)}
                       </span>
                     </td>
                     <td style={{ padding: "12px 16px", fontWeight: 500 }} className="tabular">฿{Number(o.totalAmount ?? 0).toLocaleString()}</td>
@@ -215,6 +224,7 @@ export const PageDeliveryOrders = () => {
 
 // ─── Manual order entry ────────────────────────────────────────────────────
 const ManualDeliveryDrawer = ({ open, onClose, branchId, onCreated }) => {
+  const { t } = useApp();
   const { data: menu = [] } = trpc.menu.list.useQuery({}, { staleTime: 5000, refetchOnWindowFocus: true, enabled: open });
   const create = trpc.delivery.createManual.useMutation({
     onSuccess: () => onCreated(),
@@ -236,11 +246,11 @@ const ManualDeliveryDrawer = ({ open, onClose, branchId, onCreated }) => {
     <Drawer
       open={open}
       onClose={() => { onClose(); reset(); }}
-      title="Add Manual Delivery Order"
-      subtitle="Use this when a delivery platform doesn't push to webhook automatically"
+      title={t("Add Manual Delivery Order", "เพิ่มออเดอร์เดลิเวอรี่เอง")}
+      subtitle={t("Use this when a delivery platform doesn't push to webhook automatically", "ใช้ในกรณีที่แพลตฟอร์มเดลิเวอรี่ไม่ได้ส่งข้อมูลผ่าน Webhook โดยอัตโนมัติ")}
       width={520}
       footer={<>
-        <button className="btn btn-ghost" onClick={() => { onClose(); reset(); }}>Cancel</button>
+        <button className="btn btn-ghost" onClick={() => { onClose(); reset(); }}>{t("Cancel", "ยกเลิก")}</button>
         <button
           className="btn btn-primary"
           disabled={create.isPending || items.filter((i) => i.menuItemId && i.unitPrice).length === 0}
@@ -257,28 +267,28 @@ const ManualDeliveryDrawer = ({ open, onClose, branchId, onCreated }) => {
             })),
             deliveryFee: String(fee),
           })}
-        >{create.isPending ? "Creating…" : "Create Order"}</button>
+        >{create.isPending ? t("Creating…", "กำลังสร้าง…") : t("Create Order", "สร้างคำสั่งซื้อ")}</button>
       </>}
     >
-      <Field label="Platform" required>
+      <Field label={t("Platform", "แพลตฟอร์ม")} required>
         <Select value={platform} onChange={setPlatform} options={["grab", "lineman", "shopeefood", "foodpanda", "robinhood", "other"]}/>
       </Field>
-      <Field label="External order ID" hint="Optional — auto-generated if blank">
+      <Field label={t("External order ID", "รหัสออเดอร์ภายนอก")} hint={t("Optional — auto-generated if blank", "ไม่บังคับ — ระบบจะสร้างให้หากปล่อยว่าง")}>
         <input className="input" value={externalId} onChange={(e) => setExternalId(e.target.value)} placeholder="GRAB-12345"/>
       </Field>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Field label="Customer name">
+        <Field label={t("Customer name", "ชื่อลูกค้า")}>
           <input className="input" value={customerName} onChange={(e) => setCustomerName(e.target.value)}/>
         </Field>
-        <Field label="Delivery fee (฿)">
+        <Field label={t("Delivery fee (฿)", "ค่าส่ง (฿)")}>
           <input className="input" type="number" value={fee} onChange={(e) => setFee(e.target.value)}/>
         </Field>
       </div>
-      <Field label="Delivery address">
+      <Field label={t("Delivery address", "ที่อยู่จัดส่ง")}>
         <textarea className="input" rows={2} value={address} onChange={(e) => setAddress(e.target.value)}/>
       </Field>
 
-      <div className="t-caption" style={{ marginBottom: 8, marginTop: 16 }}>Items</div>
+      <div className="t-caption" style={{ marginBottom: 8, marginTop: 16 }}>{t("Items", "รายการสินค้า")}</div>
       <div className="card" style={{ padding: 12 }}>
         {items.map((it, i) => (
           <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 70px 100px 28px", gap: 8, padding: "6px 0", borderTop: i === 0 ? "none" : "1px solid var(--border-default)", alignItems: "center" }}>
@@ -288,7 +298,7 @@ const ManualDeliveryDrawer = ({ open, onClose, branchId, onCreated }) => {
               next[i] = { ...it, menuItemId: e.target.value, unitPrice: m?.basePrice ?? it.unitPrice };
               setItems(next);
             }}>
-              <option value="">— Pick item —</option>
+              <option value="">{t("— Pick item —", "— เลือกรายการสินค้า —")}</option>
               {menu.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
             <input className="input" type="number" min={1} value={it.quantity} onChange={(e) => {
@@ -296,17 +306,18 @@ const ManualDeliveryDrawer = ({ open, onClose, branchId, onCreated }) => {
             }}/>
             <input className="input" type="number" step="0.01" value={it.unitPrice} onChange={(e) => {
               const next = items.slice(); next[i] = { ...it, unitPrice: e.target.value }; setItems(next);
-            }} placeholder="Unit ฿"/>
+            }} placeholder={t("Unit ฿", "ราคา/หน่วย ฿")}/>
             <button className="btn btn-ghost btn-icon" style={{ width: 24, height: 24 }} onClick={() => setItems(items.filter((_, idx) => idx !== i))}>×</button>
           </div>
         ))}
-        <button className="btn btn-secondary btn-sm" style={{ marginTop: 10 }} onClick={() => setItems([...items, { menuItemId: "", quantity: 1, unitPrice: "" }])}>+ Add item</button>
+        <button className="btn btn-secondary btn-sm" style={{ marginTop: 10 }} onClick={() => setItems([...items, { menuItemId: "", quantity: 1, unitPrice: "" }])}>+ {t("Add item", "เพิ่มรายการ")}</button>
       </div>
     </Drawer>
   );
 };
 
 const DeliveryOrderDetail = ({ orderId, onClose }) => {
+  const { t } = useApp();
   const { data: order } = trpc.orders.getById.useQuery(
     { id: orderId ?? 0 },
     { enabled: !!orderId }
@@ -318,43 +329,43 @@ const DeliveryOrderDetail = ({ orderId, onClose }) => {
     <Drawer
       open={!!orderId}
       onClose={onClose}
-      title={order?.orderNumber || "Loading…"}
+      title={order?.orderNumber || t("Loading…", "กำลังโหลด…")}
       subtitle={`${p.label} · ${order?.externalOrderId || ""}`}
       width={480}
     >
       {!order ? (
-        <div className="muted" style={{ padding: 20 }}>Loading…</div>
+        <div className="muted" style={{ padding: 20 }}>{t("Loading…", "กำลังโหลด…")}</div>
       ) : (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-            <Field label="Status"><span className="pill pill-gold">{order.status}</span></Field>
-            <Field label="Total"><div style={{ fontSize: 18, fontWeight: 600 }}>฿{Number(order.totalAmount).toLocaleString()}</div></Field>
-            <Field label="Delivery fee"><div>฿{Number(order.deliveryFee ?? 0).toLocaleString()}</div></Field>
-            <Field label="Platform payout"><div style={{ color: "var(--matcha-700)", fontWeight: 500 }}>฿{Number(order.platformPayout ?? 0).toLocaleString()}</div></Field>
+            <Field label={t("Status", "สถานะ")}><span className="pill pill-gold">{t(order.status, order.status)}</span></Field>
+            <Field label={t("Total", "ยอดเงินรวม")}><div style={{ fontSize: 18, fontWeight: 600 }}>฿{Number(order.totalAmount).toLocaleString()}</div></Field>
+            <Field label={t("Delivery fee", "ค่าจัดส่ง")}><div>฿{Number(order.deliveryFee ?? 0).toLocaleString()}</div></Field>
+            <Field label={t("Platform payout", "ยอดเงินรายรับ")}><div style={{ color: "var(--matcha-700)", fontWeight: 500 }}>฿{Number(order.platformPayout ?? 0).toLocaleString()}</div></Field>
           </div>
 
           {order.customerName && (
-            <Field label="Customer">
+            <Field label={t("Customer", "ข้อมูลลูกค้า")}>
               <div>{order.customerName}</div>
               {order.customerPhone && <div className="muted" style={{ fontSize: 12 }}>📞 {order.customerPhone}</div>}
             </Field>
           )}
           {order.deliveryAddress && (
-            <Field label="Delivery address">
+            <Field label={t("Delivery address", "ที่อยู่จัดส่ง")}>
               <div style={{ padding: 10, background: "var(--bg-muted)", borderRadius: 6, fontSize: 13 }}>{order.deliveryAddress}</div>
             </Field>
           )}
           {order.riderName && (
-            <Field label="Rider">
+            <Field label={t("Rider", "ผู้ส่งอาหาร (ไรเดอร์)")}>
               <div>{order.riderName} {order.riderPhone && `· ${order.riderPhone}`}</div>
             </Field>
           )}
 
-          <div className="t-caption" style={{ marginBottom: 8, marginTop: 16 }}>Items</div>
+          <div className="t-caption" style={{ marginBottom: 8, marginTop: 16 }}>{t("Items", "รายการสินค้า")}</div>
           <div className="card" style={{ padding: 0 }}>
             {(order.items ?? []).map((it, i) => (
               <div key={it.id ?? i} style={{
-                display: "flex", justifyContent: "space-between", gap: 12,
+                display: "flex", justifycontent: "space-between", gap: 12,
                 padding: "10px 14px", borderTop: i === 0 ? "none" : "1px solid var(--border-default)",
               }}>
                 <div>

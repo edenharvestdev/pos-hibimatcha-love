@@ -114,50 +114,51 @@ export const PageHardwareSettings = () => {
   };
 
   const handleDelete = (id, name) => {
-    if (window.confirm(lang === "th" ? `ต้องการลบเครื่องพิมพ์ "${name}"?` : `Delete printer "${name}"?`)) {
+    if (window.confirm(t('Delete printer "{name}"?', 'ต้องการลบเครื่องพิมพ์ "{name}"?').replace('{name}', name))) {
       deletePrinterMut.mutate({ id });
     }
   };
 
   const handleTestPrint = (p) => {
     alert(
-      lang === "th"
-        ? `ส่งชุดคำสั่งพิมพ์ทดสอบไปยัง "${p.printerName}" สำเร็จ! (ประเภทการเชื่อมต่อ: ${p.connection})`
-        : `Test print job successfully enqueued to "${p.printerName}"! (Connection: ${p.connection})`
+      t(
+        `Test print job successfully enqueued to "${p.printerName}"! (Connection: ${p.connection})`,
+        `ส่งชุดคำสั่งพิมพ์ทดสอบไปยัง "${p.printerName}" สำเร็จ! (ประเภทการเชื่อมต่อ: ${p.connection})`
+      )
     );
   };
 
   const connectionTypes = {
-    usb: "USB Connection",
-    network: "LAN / Ethernet Network",
-    bluetooth: "Bluetooth Pairing",
-    browser: "Web Browser Print Dialog",
+    usb: t("USB Connection", "การเชื่อมต่อ USB"),
+    network: t("LAN / Ethernet Network", "เครือข่าย LAN / Ethernet"),
+    bluetooth: t("Bluetooth Pairing", "จับคู่บลูทูธ"),
+    browser: t("Web Browser Print Dialog", "สั่งพิมพ์ผ่านเบราว์เซอร์"),
   };
 
   const printerTypeLabels = {
-    order_slip: "Order Slip Printer",
-    label: "Sticky Drink Label Printer",
-    kitchen: "Kitchen Ticket Printer",
-    receipt: "Cashier Customer Receipt Printer",
+    order_slip: t("Order Slip Printer", "เครื่องพิมพ์ใบสั่งคิว"),
+    label: t("Sticky Drink Label Printer", "เครื่องพิมพ์สติกเกอร์แก้ว"),
+    kitchen: t("Kitchen Ticket Printer", "เครื่องพิมพ์ตั๋วในครัว"),
+    receipt: t("Cashier Customer Receipt Printer", "เครื่องพิมพ์ใบเสร็จแคชเชียร์"),
   };
 
   return (
     <div className="page" style={{ padding: 24 }}>
       <div className="page-header" style={{ marginBottom: 20 }}>
         <div className="breadcrumb">
-          {t("admin.title")} / Settings
+          {t("admin.title")} / {t("settings.title")}
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h1 className="page-title" style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)" }}>
-              {lang === "th" ? "ตั้งค่าเครื่องพิมพ์และฮาร์ดแวร์" : "Hardware & Printers"}
+              {t("Hardware & Printers", "ตั้งค่าเครื่องพิมพ์และฮาร์ดแวร์")}
             </h1>
             <p className="page-desc" style={{ color: "var(--text-tertiary)", marginTop: 4 }}>
-              Register receipt, kitchen ticket, and sticky label printers and assign them to print stations.
+              {t("Register receipt, kitchen ticket, and sticky label printers and assign them to print stations.", "ลงทะเบียนเครื่องพิมพ์ใบเสร็จ ตั๋วสั่งอาหารในครัว และสติกเกอร์ติดแก้วน้ำ พร้อมกำหนดเครื่องพิมพ์ตามจุดขาย")}
             </p>
           </div>
           <button className="btn btn-primary" onClick={() => setAddDrawerOpen(true)}>
-            <IconPlus size={16} /> Add Printer
+            <IconPlus size={16} /> {t("Add Printer", "เพิ่มเครื่องพิมพ์")}
           </button>
         </div>
       </div>
@@ -166,15 +167,15 @@ export const PageHardwareSettings = () => {
         <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 20 }}>
           <IconInfo size={20} style={{ color: "var(--matcha-600)" }} />
           <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-            Matches documents with hardware profiles. LAN network printers require static IP configurations.
+            {t("Matches documents with hardware profiles. LAN network printers require static IP configurations.", "จับคู่เอกสารกับโปรไฟล์ฮาร์ดแวร์ เครื่องพิมพ์เครือข่าย LAN ต้องใช้การตั้งค่า IP แบบคงที่")}
           </span>
         </div>
 
         {isLoading ? (
-          <div className="muted" style={{ padding: 20, textAlign: "center" }}>Loading printers...</div>
+          <div className="muted" style={{ padding: 20, textAlign: "center" }}>{t("Loading printers...", "กำลังโหลดเครื่องพิมพ์...")}</div>
         ) : printers.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-tertiary)" }}>
-            <p>No hardware printers configured for this branch. Add one to customize printing routing.</p>
+            <p>{t("No hardware printers configured for this branch. Add one to customize printing routing.", "ยังไม่ได้ตั้งค่าเครื่องพิมพ์สำหรับสาขานี้ เพิ่มเครื่องพิมพ์เพื่อเริ่มกำหนดปลายทางงานพิมพ์")}</p>
           </div>
         ) : (
           <div style={{ display: "grid", gap: 16 }}>
@@ -195,23 +196,23 @@ export const PageHardwareSettings = () => {
                     <div style={{ fontWeight: 600, fontSize: 16 }}>{p.printerName}</div>
                     {p.isDefault && (
                       <span className="pill pill-matcha" style={{ fontSize: 10 }}>
-                        Default
+                        {t("Default", "เริ่มต้น")}
                       </span>
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 12, marginTop: 6, fontSize: 12, color: "var(--text-secondary)" }}>
-                    <span>Type: <strong>{printerTypeLabels[p.printerType] || p.printerType}</strong></span>
-                    <span>Port: <strong>{connectionTypes[p.connection] || p.connection}</strong></span>
+                    <span>{t("Type: ", "ประเภท: ")}<strong>{printerTypeLabels[p.printerType] || p.printerType}</strong></span>
+                    <span>{t("Port: ", "พอร์ต: ")}<strong>{connectionTypes[p.connection] || p.connection}</strong></span>
                     {p.connection === "network" && (
                       <span>IP: <strong className="mono">{p.ipAddress}:{p.port}</strong></span>
                     )}
-                    <span>Paper: <strong className="mono">{p.paperWidth}mm</strong></span>
+                    <span>{t("Paper: ", "กระดาษ: ")}<strong className="mono">{p.paperWidth}mm</strong></span>
                   </div>
                 </div>
 
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="btn btn-secondary btn-sm" onClick={() => handleTestPrint(p)}>
-                    Test Print
+                    {t("Test Print", "ทดสอบพิมพ์")}
                   </button>
                   <button
                     className="btn btn-ghost btn-icon"
@@ -231,18 +232,18 @@ export const PageHardwareSettings = () => {
       <SlideOver
         open={addDrawerOpen}
         onClose={() => setAddDrawerOpen(false)}
-        title="Register Hardware Printer"
-        subtitle="Add a new printing device"
+        title={t("Register Hardware Printer", "ลงทะเบียนเครื่องพิมพ์")}
+        subtitle={t("Add a new printing device", "เพิ่มอุปกรณ์พิมพ์ใหม่")}
         footer={
           <>
-            <button className="btn btn-ghost" onClick={() => setAddDrawerOpen(false)}>Cancel</button>
+            <button className="btn btn-ghost" onClick={() => setAddDrawerOpen(false)}>{t("Cancel", "ยกเลิก")}</button>
             <button className="btn btn-primary" onClick={handleCreatePrinter} disabled={createPrinterMut.isPending || !newPrinter.printerName.trim()}>
-              {createPrinterMut.isPending ? "Adding..." : "Add Printer"}
+              {createPrinterMut.isPending ? t("Adding...", "กำลังเพิ่ม...") : t("Add Printer", "เพิ่มเครื่องพิมพ์")}
             </button>
           </>
         }
       >
-        <Field label="Printer Name *" required>
+        <Field label={t("Printer Name", "ชื่อเครื่องพิมพ์") + " *"} required>
           <input
             className="input"
             value={newPrinter.printerName}
@@ -250,36 +251,36 @@ export const PageHardwareSettings = () => {
             placeholder="e.g. Counter Receipt EPSON"
           />
         </Field>
-        <Field label="Printer Purpose / Type">
+        <Field label={t("Printer Purpose / Type", "วัตถุประสงค์ / ประเภทเครื่องพิมพ์")}>
           <select
             className="input"
             style={{ appearance: "auto" }}
             value={newPrinter.printerType}
             onChange={(e) => setNewPrinter({ ...newPrinter, printerType: e.target.value })}
           >
-            <option value="receipt">Cashier Receipt (Customer)</option>
-            <option value="kitchen">Kitchen Ticket (Orders)</option>
-            <option value="label">Sticky Drink Labels (Cups)</option>
-            <option value="order_slip">Order Slip / Queue</option>
+            <option value="receipt">{t("Cashier Receipt (Customer)", "ใบเสร็จลูกค้า (แคชเชียร์)")}</option>
+            <option value="kitchen">{t("Kitchen Ticket (Orders)", "ตั๋วสั่งอาหาร (ครัว)")}</option>
+            <option value="label">{t("Sticky Drink Labels (Cups)", "สติกเกอร์เครื่องดื่ม (ติดแก้ว)")}</option>
+            <option value="order_slip">{t("Order Slip / Queue", "ใบสั่งออเดอร์ / คิว")}</option>
           </select>
         </Field>
-        <Field label="Connection Type">
+        <Field label={t("Connection Type", "ประเภทการเชื่อมต่อ")}>
           <select
             className="input"
             style={{ appearance: "auto" }}
             value={newPrinter.connection}
             onChange={(e) => setNewPrinter({ ...newPrinter, connection: e.target.value })}
           >
-            <option value="browser">Web Browser Print Dialog</option>
-            <option value="network">LAN Network (Ethernet/Static IP)</option>
-            <option value="usb">Local USB Port</option>
-            <option value="bluetooth">Bluetooth Device</option>
+            <option value="browser">{t("Web Browser Print Dialog", "หน้าต่างสั่งพิมพ์ของเว็บเบราว์เซอร์")}</option>
+            <option value="network">{t("LAN Network (Ethernet/Static IP)", "เครือข่าย LAN (Ethernet/IP คงที่)")}</option>
+            <option value="usb">{t("Local USB Port", "พอร์ต USB")}</option>
+            <option value="bluetooth">{t("Bluetooth Device", "อุปกรณ์บลูทูธ")}</option>
           </select>
         </Field>
 
         {newPrinter.connection === "network" && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 12 }}>
-            <Field label="IP Address *" required>
+            <Field label={t("IP Address", "ที่อยู่ IP") + " *"} required>
               <input
                 className="input mono"
                 value={newPrinter.ipAddress}
@@ -287,7 +288,7 @@ export const PageHardwareSettings = () => {
                 placeholder="192.168.1.200"
               />
             </Field>
-            <Field label="Port">
+            <Field label={t("Port", "พอร์ต")}>
               <input
                 className="input mono"
                 type="number"
@@ -299,7 +300,7 @@ export const PageHardwareSettings = () => {
         )}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Field label="Paper Width (mm)">
+          <Field label={t("Paper Width (mm)", "ความกว้างกระดาษ (มม.)")}>
             <select
               className="input"
               style={{ appearance: "auto" }}
@@ -310,7 +311,7 @@ export const PageHardwareSettings = () => {
               <option value={58}>58mm</option>
             </select>
           </Field>
-          <Field label="Max Characters Per Line">
+          <Field label={t("Max Characters Per Line", "จำนวนตัวอักษรสูงสุดต่อบรรทัด")}>
             <input
               className="input"
               type="number"
@@ -324,7 +325,7 @@ export const PageHardwareSettings = () => {
           <Toggle
             checked={newPrinter.isDefault}
             onChange={(v) => setNewPrinter({ ...newPrinter, isDefault: v })}
-            label="Set as default device for this branch"
+            label={t("Set as default device for this branch", "ตั้งเป็นเครื่องพิมพ์เริ่มต้นสำหรับสาขานี้")}
           />
         </div>
       </SlideOver>
