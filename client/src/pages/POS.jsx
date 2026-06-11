@@ -1621,6 +1621,8 @@ const OptionSheet = ({ item, onClose, onAdd, editingItem = null }) => {
   const missingRequired = groups.some((ig) => {
     const g = ig.group;
     if (!g?.isRequired) return false;
+    const opts = (ig.options ?? []).filter((o) => o.isActive);
+    if (opts.length === 0) return false;
     const sel = selections[g.id];
     if (g.selectionType === 'single') return sel == null;
     if (g.selectionType === 'multi') return !(sel instanceof Set) || sel.size === 0;

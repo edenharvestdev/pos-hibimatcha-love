@@ -54,7 +54,7 @@ export const Drawer = ({ open, onClose, title, subtitle, width = 720, children, 
           </div>
           <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Close"><IconX size={18}/></button>
         </header>
-        <div style={{ flex: 1, overflow: 'auto', padding: '24px 24px 32px' }}>{children}</div>
+        <div style={{ flex: 1, overflow: 'auto', padding: '24px 24px 80px' }}>{children}</div>
         {footer && (
           <footer style={{ padding: '16px 24px', borderTop: '1px solid var(--border-default)', background: 'var(--bg-muted)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
             {footer}
