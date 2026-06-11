@@ -2704,6 +2704,8 @@ export const PageReceipt = () => {
     const items = (order.items ?? []).map(it =>
       `<div class="row"><span>${it.quantity}× ${it.menuItemName}</span><span>฿${Number(it.totalPrice).toLocaleString()}</span></div>`
     ).join('');
+    const isPaid = order.payments && order.payments.some(p => p.status === 'completed');
+    const headerTitle = isPaid ? 'ใบเสร็จรับเงิน (Receipt)' : 'ใบแจ้งยอดชำระ (Bill/Invoice)';
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt - ${order.orderNumber}</title>
 <style>
   @page { size: ${mmW} auto; margin: 2mm; }
@@ -2730,11 +2732,12 @@ export const PageReceipt = () => {
   .big { font-size: 1.4em; }
   .small { font-size: 0.85em; color: #555; }
   .header { font-size: 1.2em; font-weight: 700; margin-bottom: 2px; }
+  .qr { text-align: center; margin: 8px 0; }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&family=Noto+Sans+Thai:wght@400;700&display=swap" rel="stylesheet">
 </head><body>
 <div class="receipt">
-  <div class="center header">HIBI MATCHA</div>
+  <div class="center header">${headerTitle}</div>
   <div class="center small">ひびマッチャ · hibi MATCHA</div>
   <div class="center small">${orderDate} · ${orderTime}</div>
   <div class="center small">${order.orderNumber} · ${order.orderType || 'dine-in'}${order.tableNumber ? ' · Table ' + order.tableNumber : ''}</div>
@@ -2746,6 +2749,13 @@ export const PageReceipt = () => {
   <div class="row"><span>VAT 7%</span><span>฿${Number(order.taxAmount ?? 0).toLocaleString()}</span></div>
   <div class="sep"></div>
   <div class="row bold big"><span>Total</span><span>฿${Number(order.totalAmount ?? 0).toLocaleString()}</span></div>
+  
+  ${order.paymentQrPayload && !isPaid ? `
+    <div class="sep"></div>
+    <div class="center bold">สแกนเพื่อชำระเงิน (Scan to Pay)</div>
+    <div class="qr"><img src="${order.paymentQrPayload}" style="width: 150px; height: 150px; display: block; margin: 8px auto 0;" /></div>
+  ` : ''}
+
   <div class="sep"></div>
   <div class="center small" style="margin-top:8px;">ありがとうございます</div>
   <div class="center small">Thank you · ขอบคุณค่ะ</div>

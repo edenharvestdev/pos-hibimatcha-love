@@ -8,6 +8,7 @@ import {
   posBranchInventoryStock,
   posInventoryMovements,
   posRecipeIngredients,
+  branches,
 } from "../../drizzle/schema";
 import { logAudit } from "../lib/audit";
 import { router, staffProcedure, staffAdminProcedure } from "../_core/trpc";
@@ -434,6 +435,12 @@ export const inventoryRouter = router({
           },
         });
 
+        if (newCost > 0) {
+          await db.update(posInventoryItems)
+            .set({ costPerUnit: String(newCost) })
+            .where(eq(posInventoryItems.id, item.inventoryItemId));
+        }
+
         const itemTotalCost = newQty * newCost;
         await db.insert(posInventoryMovements).values({
           branchId: targetBranchId,
@@ -537,7 +544,29 @@ export const inventoryRouter = router({
       const targetBranchId = ctx.staff.role === "super_admin" ? input?.branchId : ctx.staff.currentBranchId;
       if (!targetBranchId && ctx.staff.role !== "super_admin") return [];
 
-      let rows = await db.select().from(posInventoryMovements);
+      let selectFields = {
+        id: posInventoryMovements.id,
+        branchId: posInventoryMovements.branchId,
+        inventoryItemId: posInventoryMovements.inventoryItemId,
+        movementType: posInventoryMovements.movementType,
+        quantity: posInventoryMovements.quantity,
+        unitOfMeasure: posInventoryMovements.unitOfMeasure,
+        costPerUnit: posInventoryMovements.costPerUnit,
+        totalCost: posInventoryMovements.totalCost,
+        referenceType: posInventoryMovements.referenceType,
+        referenceId: posInventoryMovements.referenceId,
+        notes: posInventoryMovements.notes,
+        performedByStaffId: posInventoryMovements.performedByStaffId,
+        createdAt: posInventoryMovements.createdAt,
+        itemName: posInventoryItems.name,
+        itemNameThai: posInventoryItems.nameThai,
+        itemSku: posInventoryItems.sku,
+      };
+
+      let rows = await db.select(selectFields)
+        .from(posInventoryMovements)
+        .leftJoin(posInventoryItems, eq(posInventoryMovements.inventoryItemId, posInventoryItems.id));
+
       if (targetBranchId) rows = rows.filter((m) => m.branchId === targetBranchId);
       if (input?.itemId) rows = rows.filter((m) => m.inventoryItemId === input.itemId);
       if (input?.type) rows = rows.filter((m) => m.movementType === input.type);
@@ -570,6 +599,10 @@ export const inventoryRouter = router({
       if (input.fromBranchId === input.toBranchId)
         throw new TRPCError({ code: "BAD_REQUEST", message: "Source and destination branch must differ" });
 
+      const [fromBranch] = await db.select().from(branches).where(eq(branches.id, input.fromBranchId)).limit(1);
+      const [toBranch] = await db.select().from(branches).where(eq(branches.id, input.toBranchId)).limit(1);
+      if (!fromBranch || !toBranch) throw new TRPCError({ code: "BAD_REQUEST", message: "Branch not found" });
+
       const movementIds: number[] = [];
       for (const it of input.items) {
         const qty = Number(it.quantity);
@@ -588,6 +621,12 @@ export const inventoryRouter = router({
           });
         }
 
+        const [item] = await db.select().from(posInventoryItems)
+          .where(eq(posInventoryItems.id, it.inventoryItemId)).limit(1);
+
+        const cost = Number(srcStock?.averageCost ?? 0) || Number(item?.costPerUnit ?? 0);
+        const totalCost = cost * qty;
+
         await db.update(posBranchInventoryStock).set({
           currentStock: sql`${posBranchInventoryStock.currentStock} - ${qty}`,
         }).where(and(
@@ -604,25 +643,37 @@ export const inventoryRouter = router({
           currentStock: sql`${posBranchInventoryStock.currentStock} + ${qty}`,
         } });
 
+        const customNoteText = it.notes || input.transferNote;
+        const outNote = `โอนย้ายไปยังสาขา ${toBranch.name} (${toBranch.branchCode ?? ''})` + (customNoteText ? ` | ${customNoteText}` : '');
+
         const [outRes] = await db.insert(posInventoryMovements).values({
           branchId: input.fromBranchId,
           inventoryItemId: it.inventoryItemId,
           movementType: "transferred_out",
           quantity: String(-qty),
           unitOfMeasure: it.unitOfMeasure as any,
+          costPerUnit: String(cost),
+          totalCost: String(totalCost.toFixed(2)),
           referenceType: "transfer",
-          notes: it.notes || input.transferNote || `transfer_to_branch_${input.toBranchId}`,
+          notes: outNote,
           performedByStaffId: ctx.staff.staffId,
         });
-        movementIds.push((outRes as any).insertId as number);
+        const outId = (outRes as any).insertId as number;
+        movementIds.push(outId);
+
+        const inNote = `โอนย้ายมาจากสาขา ${fromBranch.name} (${fromBranch.branchCode ?? ''})` + (customNoteText ? ` | ${customNoteText}` : '');
+
         const [inRes] = await db.insert(posInventoryMovements).values({
           branchId: input.toBranchId,
           inventoryItemId: it.inventoryItemId,
           movementType: "transferred_in",
           quantity: it.quantity,
           unitOfMeasure: it.unitOfMeasure as any,
+          costPerUnit: String(cost),
+          totalCost: String(totalCost.toFixed(2)),
           referenceType: "transfer",
-          notes: it.notes || input.transferNote || `transfer_from_branch_${input.fromBranchId}`,
+          referenceId: outId,
+          notes: inNote,
           performedByStaffId: ctx.staff.staffId,
         });
         movementIds.push((inRes as any).insertId as number);

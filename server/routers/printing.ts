@@ -397,11 +397,18 @@ export const printingRouter = router({
         paymentMethodName = pm?.nameThai || pm?.name || undefined;
       }
 
+      let qrDataUrl: string | undefined;
+      const isPaid = payments.some((p: any) => p.status === "completed") || data.orderData.paidAmount >= data.orderData.totalAmount;
+      if (data.settings.promptpayId && data.orderData.totalAmount > 0 && !isPaid) {
+        qrDataUrl = await generatePromptPayQRDataUrl(data.settings.promptpayId, data.orderData.totalAmount);
+      }
+
       const html = generateReceiptHTML(
         data.orderData,
         data.settings,
         paymentMethodName,
-        lastPayment?.referenceNumber ?? undefined
+        lastPayment?.referenceNumber ?? undefined,
+        qrDataUrl
       );
       const result = await printToNetworkPrinter(
         { ipAddress: printer.ipAddress, port: printer.port || 9100 },
@@ -540,11 +547,18 @@ export const printingRouter = router({
             paymentMethodName = pm?.nameThai || pm?.name || undefined;
           }
 
+          let qrDataUrl: string | undefined;
+          const isPaid = payments.some((p: any) => p.status === "completed") || data.orderData.paidAmount >= data.orderData.totalAmount;
+          if (data.settings.promptpayId && data.orderData.totalAmount > 0 && !isPaid) {
+            qrDataUrl = await generatePromptPayQRDataUrl(data.settings.promptpayId, data.orderData.totalAmount);
+          }
+
           const html = generateReceiptHTML(
             data.orderData,
             data.settings,
             paymentMethodName,
-            lastPayment?.referenceNumber ?? undefined
+            lastPayment?.referenceNumber ?? undefined,
+            qrDataUrl
           );
           results.receipt = await printToNetworkPrinter(
             { ipAddress: receiptPrinter.ipAddress, port: receiptPrinter.port || 9100 },

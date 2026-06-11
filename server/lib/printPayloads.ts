@@ -119,6 +119,7 @@ export async function generateOrderSlipHTML(
   return `<!DOCTYPE html><html><head><meta charset="utf-8">${THERMAL_STYLE}</head><body>
     <div class="center bold xlarge">HIBI MATCHA</div>
     <div class="center small">${order.branchName}</div>
+    <div class="center bold" style="margin: 4px auto; border: 1px solid #000; padding: 2px 4px; font-size: 13px; width: fit-content; max-width: 90%;">ใบเตรียมสินค้า (Order Slip)</div>
     <div class="line"></div>
     <div class="row"><span>Order: <b>${order.orderNumber}</b></span><span>${order.orderType}</span></div>
     ${order.tableNumber ? `<div>โต๊ะ: ${order.tableNumber}</div>` : ""}
@@ -282,7 +283,7 @@ export function generateKitchenTicketHTML(order: OrderData): string {
     .row { display: flex; justify-content: space-between; }
     @media print { body { width: 80mm; margin: 0; padding: 2mm; } }
   </style></head><body>
-    <div class="center bold xlarge">🍵 KITCHEN</div>
+    <div class="center bold xlarge" style="border: 2px solid #000; padding: 4px 0;">🍵 ครัว (Kitchen Ticket)</div>
     <div class="line"></div>
     <div class="row">
       <span class="bold large">${order.orderNumber}</span>
@@ -314,7 +315,8 @@ export function generateReceiptHTML(
   order: OrderData,
   settings: BranchPaymentSettings,
   paymentMethod?: string,
-  referenceNumber?: string
+  referenceNumber?: string,
+  qrDataUrl?: string
 ): string {
   const dt = new Date(order.createdAt);
   const dateStr = `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${dt.getFullYear()}`;
@@ -370,13 +372,17 @@ export function generateReceiptHTML(
   .pay-table { width: 100%; margin: 3px 0; font-size: 11px; border-collapse: collapse; }
   .pay-table td { padding: 1px 0; }
   .pay-label { font-weight: bold; }
+  .qr { text-align: center; margin: 6px 0; }
+  .qr img { width: 45mm; height: 45mm; }
   @media print {
     body { width: 80mm; margin: 0; padding: 2mm; }
     .no-print { display: none; }
   }
 </style></head><body>
 
-  <div class="center h1">ใบเสร็จ</div>
+  <div class="center h1" style="font-size: 20px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 6px;">
+    ${paymentMethod ? "ใบเสร็จรับเงิน (Receipt)" : "ใบแจ้งยอดชำระ (Bill/Invoice)"}
+  </div>
 
   ${settings.receiptHeaderImage
     ? `<div class="center" style="margin: 6px 0;"><img src="${settings.receiptHeaderImage}" style="max-width: 40mm; max-height: 30mm;" /></div>`
@@ -479,6 +485,13 @@ export function generateReceiptHTML(
       <td class="tr">${order.totalAmount.toFixed(2)}</td>
     </tr>
   </table>
+
+  ${qrDataUrl ? `
+    <div class="line"></div>
+    <div class="center bold" style="margin-top: 4px;">สแกนเพื่อชำระเงิน (Scan to Pay)</div>
+    <div class="qr"><img src="${qrDataUrl}" alt="PromptPay QR" /></div>
+    <div class="center bold large" style="font-size: 15px; margin-bottom: 4px;">฿${order.totalAmount.toFixed(2)}</div>
+  ` : ""}
 
   <div class="line"></div>
 

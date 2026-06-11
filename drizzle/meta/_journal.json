@@ -127,6 +127,20 @@
       "when": 1781100993686,
       "tag": "0017_slimy_starjammers",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1781171121551,
+      "tag": "0018_useful_maximus",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1781174727001,
+      "tag": "0019_cute_mister_fear",
+      "breakpoints": true
     }
   ]
 }

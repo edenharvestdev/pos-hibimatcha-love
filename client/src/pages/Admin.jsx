@@ -766,7 +766,7 @@ export const PageAdminOptions = () => {
   const [activeId, setActiveId] = useState(null);
   const [newGroupOpen, setNewGroupOpen] = useState(false);
   const [newGroupForm, setNewGroupForm] = useState({ name: '', nameThai: '', selectionType: 'single', isRequired: false });
-  const [newOption, setNewOption] = useState({ name: '', priceAdjustment: '0' });
+  const [newOption, setNewOption] = useState({ name: '', priceAdjustment: '0', costAdjustment: '0' });
 
   useEffect(() => {
     if (groups.length > 0 && !activeId) setActiveId(groups[0].id);
@@ -789,7 +789,7 @@ export const PageAdminOptions = () => {
     onSuccess: () => { refetchGroups(); refetchGroup(); },
   });
   const createOption = trpc.options.createOption.useMutation({
-    onSuccess: () => { refetchGroup(); refetchGroups(); setNewOption({ name: '', priceAdjustment: '0' }); },
+    onSuccess: () => { refetchGroup(); refetchGroups(); setNewOption({ name: '', priceAdjustment: '0', costAdjustment: '0' }); },
   });
   const updateOption = trpc.options.updateOption.useMutation({
     onSuccess: () => refetchGroup(),
@@ -880,13 +880,22 @@ export const PageAdminOptions = () => {
                 </Field>
               </div>
 
-              <div className="t-caption" style={{ marginBottom: 8 }}>Options</div>
+              <div className="t-caption" style={{ marginBottom: 8 }}>{lang === 'th' ? 'รายการตัวเลือก' : 'Options'}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '20px 1fr 120px 120px 80px 28px', gap: 12, marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid var(--border-default)', color: 'var(--text-tertiary)', fontSize: 12, fontWeight: 500 }}>
+                <div></div>
+                <div>{lang === 'th' ? 'ชื่อตัวเลือก' : 'Option Name'}</div>
+                <div>{lang === 'th' ? 'ราคาเพิ่ม' : 'Price Adj.'}</div>
+                <div>{lang === 'th' ? 'ต้นทุน' : 'Cost'}</div>
+                <div>{lang === 'th' ? 'ใช้งาน' : 'Active'}</div>
+                <div></div>
+              </div>
+
               <div>
                 {(activeGroup.options ?? []).length === 0 ? (
-                  <div className="muted" style={{ fontSize: 13, padding: '12px 0' }}>No options yet. Add one below.</div>
+                  <div className="muted" style={{ fontSize: 13, padding: '12px 0' }}>{lang === 'th' ? 'ไม่มีตัวเลือกในกลุ่มนี้ เพิ่มตัวเลือกด้านล่าง' : 'No options yet. Add one below.'}</div>
                 ) : (
                   (activeGroup.options ?? []).map((opt, i) => (
-                    <div key={opt.id} style={{ display: 'grid', gridTemplateColumns: '20px 1fr 120px 80px 28px', gap: 12, padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border-default)', alignItems: 'center' }}>
+                    <div key={opt.id} style={{ display: 'grid', gridTemplateColumns: '20px 1fr 120px 120px 80px 28px', gap: 12, padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border-default)', alignItems: 'center' }}>
                       <span style={{ cursor: 'grab', color: 'var(--text-quaternary)' }}>::</span>
                       <input
                         className="input"
@@ -909,6 +918,20 @@ export const PageAdminOptions = () => {
                           }}
                         />
                       </div>
+                      <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>฿</span>
+                        <input
+                          className="input"
+                          type="number"
+                          placeholder={lang === 'th' ? 'ต้นทุน' : 'Cost'}
+                          defaultValue={opt.costAdjustment ?? 0}
+                          style={{ paddingLeft: 24 }}
+                          onBlur={(e) => {
+                            const v = e.target.value;
+                            if (v !== String(opt.costAdjustment)) updateOption.mutate({ id: opt.id, costAdjustment: v });
+                          }}
+                        />
+                      </div>
                       <Toggle
                         checked={!!opt.isActive}
                         onChange={(v) => updateOption.mutate({ id: opt.id, isActive: v })}
@@ -925,10 +948,10 @@ export const PageAdminOptions = () => {
                 )}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px auto', gap: 8, marginTop: 14, alignItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px auto', gap: 8, marginTop: 14, alignItems: 'center' }}>
                 <input
                   className="input"
-                  placeholder="New option name"
+                  placeholder={lang === 'th' ? 'ชื่อตัวเลือกใหม่' : 'New option name'}
                   value={newOption.name}
                   onChange={(e) => setNewOption({ ...newOption, name: e.target.value })}
                 />
@@ -942,6 +965,17 @@ export const PageAdminOptions = () => {
                     style={{ paddingLeft: 32 }}
                   />
                 </div>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}>฿</span>
+                  <input
+                    className="input"
+                    type="number"
+                    placeholder={lang === 'th' ? 'ต้นทุน' : 'Cost'}
+                    value={newOption.costAdjustment}
+                    onChange={(e) => setNewOption({ ...newOption, costAdjustment: e.target.value })}
+                    style={{ paddingLeft: 24 }}
+                  />
+                </div>
                 <button
                   className="btn btn-primary btn-sm"
                   onClick={() => {
@@ -950,10 +984,11 @@ export const PageAdminOptions = () => {
                       groupId: activeGroup.id,
                       name: newOption.name.trim(),
                       priceAdjustment: newOption.priceAdjustment || '0',
+                      costAdjustment: newOption.costAdjustment || '0',
                     });
                   }}
                   disabled={createOption.isPending || !newOption.name.trim()}
-                ><IconPlus size={14}/> Add</button>
+                ><IconPlus size={14}/> {lang === 'th' ? 'เพิ่ม' : 'Add'}</button>
               </div>
 
               {/* ─── Linked Menus Section ─── */}

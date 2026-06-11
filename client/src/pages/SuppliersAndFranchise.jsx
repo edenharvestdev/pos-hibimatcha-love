@@ -610,6 +610,8 @@ export const PageFranchiseNew = () => {
     name: '',
     branchCode: '',
     branchType: 'company-owned',
+    businessModel: 'cafe',
+    status: 'inactive', // รออนุมัติตั้งสาขา
     country: 'Thailand',
     province: '',
     district: '',
@@ -626,6 +628,16 @@ export const PageFranchiseNew = () => {
     mobileOrdering: true,
     menuInheritance: 'master',
     accessCode: '',
+    ownershipType: 'company',
+    ownerName: '',
+    ownerPhone: '',
+    ownerEmail: '',
+    ownerAddress: '',
+    ownerTaxId: '',
+    ownerCitizenId: '',
+    contractType: 'standard',
+    royaltyPercent: '5',
+    contractStart: '',
   });
 
   const utils = trpc.useUtils();
@@ -646,6 +658,8 @@ export const PageFranchiseNew = () => {
       name: form.name,
       branchCode: form.branchCode,
       branchType: form.branchType,
+      businessModel: form.businessModel,
+      status: form.status,
       country: form.country || undefined,
       province: form.province || undefined,
       district: form.district || undefined,
@@ -656,8 +670,31 @@ export const PageFranchiseNew = () => {
       taxRate: form.taxRate,
       openingDate: form.openingDate || undefined,
       accessCode: form.accessCode || undefined,
+      ownershipType: form.ownershipType,
+      ownerName: form.ownershipType === 'company' ? 'Hibi House' : form.ownerName,
+      ownerPhone: form.ownerPhone || undefined,
+      ownerEmail: form.ownerEmail || undefined,
+      ownerAddress: form.ownerAddress || undefined,
+      ownerTaxId: form.ownerTaxId || undefined,
+      ownerCitizenId: form.ownerCitizenId || undefined,
+      royaltyType: form.ownershipType === 'company' ? 'none' : 'percentage',
+      royaltyValue: form.ownershipType === 'company' ? '0.00' : form.royaltyPercent,
+      contractStartDate: form.contractStart || undefined,
     });
   };
+
+  const businessModelOptions = [
+    { value: 'cafe', label: 'Cafe (คาเฟ่)' },
+    { value: 'mall', label: 'Mall (ห้างสรรพสินค้า)' },
+    { value: 'delivery_only', label: 'Delivery Only (เปิดรับ Delivery เท่านั้น)' },
+    { value: 'event', label: 'Event (ออกบูธ)' },
+  ];
+
+  const ownershipTypeOptions = [
+    { value: 'company', label: 'ร้านของ Hibi (Company-owned / เราเปิดสาขาเอง)' },
+    { value: 'individual', label: 'บุคคลธรรมดา (Individual Franchise)' },
+    { value: 'corporate', label: 'นิติบุคคล (Corporate Franchise)' }
+  ];
 
   return (
     <div className="page" style={{ maxWidth: 1000 }}>
@@ -706,19 +743,25 @@ export const PageFranchiseNew = () => {
               <Field label="Branch type" required>
                 <Select value={form.branchType} onChange={(v) => setField('branchType', v)} options={['hq', 'company-owned', 'franchise']}/>
               </Field>
+              <Field label="รูปแบบธุรกิจ (Business Model)" required>
+                <Select value={form.businessModel} onChange={(v) => setField('businessModel', v)} options={businessModelOptions}/>
+              </Field>
               <Field label="Branch code" required><input className="input" value={form.branchCode} onChange={(e) => setField('branchCode', e.target.value)} placeholder="HB06"/></Field>
               <Field label="Display name" required><input className="input" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Hibi Matcha Asok"/></Field>
-              <Field label="Country"><Select value={form.country} onChange={(v) => setField('country', v)} options={['Thailand', 'Japan', 'Singapore', 'Malaysia']}/></Field>
-              <Field label="Province"><input className="input" value={form.province} onChange={(e) => setField('province', e.target.value)} placeholder="Bangkok"/></Field>
-              <Field label="Opening date"><input className="input" type="date" value={form.openingDate} onChange={(e) => setField('openingDate', e.target.value)}/></Field>
+              <Field label="สถานะร้านค้า (Shop Status)">
+                <input className="input" value="รออนุมัติตั้งสาขา" disabled style={{ background: 'var(--bg-muted)', cursor: 'not-allowed', color: 'var(--text-secondary)' }}/>
+              </Field>
             </div>
           </>
         )}
         {step === 2 && (
           <>
             <div className="t-h2" style={{ fontWeight: 600, marginBottom: 6 }}>Location</div>
+            <p className="muted" style={{ marginBottom: 24 }}>Branch address and contact information.</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <Field label="Address"><input className="input" value={form.address} onChange={(e) => setField('address', e.target.value)}/></Field>
+              <Field label="Country"><Select value={form.country} onChange={(v) => setField('country', v)} options={['Thailand', 'Japan', 'Singapore', 'Malaysia']}/></Field>
+              <Field label="Province"><input className="input" value={form.province} onChange={(e) => setField('province', e.target.value)} placeholder="Bangkok"/></Field>
+              <Field label="Address" style={{ gridColumn: 'span 2' }}><input className="input" value={form.address} onChange={(e) => setField('address', e.target.value)}/></Field>
               <Field label="District"><input className="input" value={form.district} onChange={(e) => setField('district', e.target.value)}/></Field>
               <Field label="Postal code"><input className="input" value={form.postalCode} onChange={(e) => setField('postalCode', e.target.value)}/></Field>
               <Field label="Phone"><input className="input" value={form.phone} onChange={(e) => setField('phone', e.target.value)}/></Field>
@@ -788,7 +831,7 @@ export const PageFranchiseNew = () => {
               {Object.entries(form).map(([k, v]) => v ? (
                 <div key={k} style={{ display: 'flex', padding: '4px 0', fontSize: 13 }}>
                   <span className="muted" style={{ width: 140 }}>{k}</span>
-                  <span>{v}</span>
+                  <span>{String(v)}</span>
                 </div>
               ) : null)}
             </div>
@@ -798,20 +841,80 @@ export const PageFranchiseNew = () => {
           <>
             <div className="t-h2" style={{ fontWeight: 600, marginBottom: 6 }}>Ownership</div>
             <p className="muted" style={{ marginBottom: 24 }}>Franchise owner or company-operated details.</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <Field label="Owner name"><input className="input" value={form.ownerName || ''} onChange={(e) => setField('ownerName', e.target.value)} placeholder="Full name"/></Field>
-              <Field label="Owner phone"><input className="input" value={form.ownerPhone || ''} onChange={(e) => setField('ownerPhone', e.target.value)} placeholder="08x-xxx-xxxx"/></Field>
-              <Field label="Owner email"><input className="input" type="email" value={form.ownerEmail || ''} onChange={(e) => setField('ownerEmail', e.target.value)}/></Field>
-              <Field label="Contract type">
-                <Select value={form.contractType || 'standard'} onChange={(v) => setField('contractType', v)} options={['standard', 'premium', 'master']}/>
-              </Field>
-              <Field label="Royalty (%)">
-                <input className="input" value={form.royaltyPercent || '5'} onChange={(e) => setField('royaltyPercent', e.target.value)} placeholder="5"/>
-              </Field>
-              <Field label="Contract start">
-                <input className="input" type="date" value={form.contractStart || ''} onChange={(e) => setField('contractStart', e.target.value)}/>
+
+            <div style={{ marginBottom: 20 }}>
+              <Field label="ประเภทการสมัคร / เจ้าของ (Ownership Type)">
+                <Select value={form.ownershipType} onChange={(v) => setField('ownershipType', v)} options={ownershipTypeOptions}/>
               </Field>
             </div>
+
+            {form.ownershipType === 'company' && (
+              <div style={{ padding: 18, background: 'var(--matcha-50)', border: '1px solid var(--matcha-200)', borderRadius: 'var(--r-md)', color: 'var(--matcha-800)', fontSize: 14, lineHeight: 1.6 }}>
+                <strong>🏪 ร้านของ Hibi (Company-owned / เราเปิดสาขาเอง)</strong>
+                <p style={{ marginTop: 8 }}>สาขาประเภทนี้จะบริหารงานโดยตรงโดยสำนักงานใหญ่ (HQ) สิทธิ์การทำรายการ ระบบการเงิน สัญญา และคลังสินค้าจะอยู่ภายใต้การดูแลหลักของ Hibi House</p>
+              </div>
+            )}
+
+            {form.ownershipType === 'individual' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <Field label="ชื่อผู้จดทะเบียน (Owner Name)" required>
+                  <input className="input" value={form.ownerName} onChange={(e) => setField('ownerName', e.target.value)} placeholder="ชื่อ-นามสกุล"/>
+                </Field>
+                <Field label="เลขบัตรประชาชน (Citizen ID)" required>
+                  <input className="input" value={form.ownerCitizenId} onChange={(e) => setField('ownerCitizenId', e.target.value)} placeholder="x-xxxx-xxxxx-xx-x"/>
+                </Field>
+                <Field label="เบอร์โทรศัพท์ (Phone)" required>
+                  <input className="input" value={form.ownerPhone} onChange={(e) => setField('ownerPhone', e.target.value)} placeholder="08x-xxx-xxxx"/>
+                </Field>
+                <Field label="อีเมล (Email)" required>
+                  <input className="input" type="email" value={form.ownerEmail} onChange={(e) => setField('ownerEmail', e.target.value)} placeholder="email@example.com"/>
+                </Field>
+                <Field label="ที่อยู่ตามบัตรประชาชน (Address)" style={{ gridColumn: 'span 2' }}>
+                  <input className="input" value={form.ownerAddress} onChange={(e) => setField('ownerAddress', e.target.value)} placeholder="บ้านเลขที่, ถนน, ตำบล, อำเภอ..."/>
+                </Field>
+                <Field label="Contract type">
+                  <Select value={form.contractType} onChange={(v) => setField('contractType', v)} options={['standard', 'premium', 'master']}/>
+                </Field>
+                <Field label="Royalty (%)">
+                  <input className="input" value={form.royaltyPercent} onChange={(e) => setField('royaltyPercent', e.target.value)} placeholder="5"/>
+                </Field>
+                <Field label="Contract start" style={{ gridColumn: 'span 2' }}>
+                  <input className="input" type="date" value={form.contractStart} onChange={(e) => setField('contractStart', e.target.value)}/>
+                </Field>
+              </div>
+            )}
+
+            {form.ownershipType === 'corporate' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <Field label="ชื่อบริษัท/นิติบุคคล (Company Name)" required>
+                  <input className="input" value={form.ownerName} onChange={(e) => setField('ownerName', e.target.value)} placeholder="บริษัท จำกัด"/>
+                </Field>
+                <Field label="เลขประจำตัวผู้เสียภาษี (Tax ID)" required>
+                  <input className="input" value={form.ownerTaxId} onChange={(e) => setField('ownerTaxId', e.target.value)} placeholder="เลขทะเบียน 13 หลัก"/>
+                </Field>
+                <Field label="ชื่อกรรมการผู้มีอำนาจลงนาม (Authorized Director)" required>
+                  <input className="input" value={form.ownerCitizenId} onChange={(e) => setField('ownerCitizenId', e.target.value)} placeholder="ชื่อกรรมการผู้ลงนาม"/>
+                </Field>
+                <Field label="เบอร์โทรติดต่อ (Phone)" required>
+                  <input className="input" value={form.ownerPhone} onChange={(e) => setField('ownerPhone', e.target.value)} placeholder="08x-xxx-xxxx"/>
+                </Field>
+                <Field label="อีเมลติดต่อ (Email)" required>
+                  <input className="input" type="email" value={form.ownerEmail} onChange={(e) => setField('ownerEmail', e.target.value)} placeholder="info@company.com"/>
+                </Field>
+                <Field label="ที่ตั้งสำนักงานใหญ่ (Company Address)" style={{ gridColumn: 'span 2' }}>
+                  <input className="input" value={form.ownerAddress} onChange={(e) => setField('ownerAddress', e.target.value)} placeholder="ที่ตั้งจดทะเบียนบริษัท..."/>
+                </Field>
+                <Field label="Contract type">
+                  <Select value={form.contractType} onChange={(v) => setField('contractType', v)} options={['standard', 'premium', 'master']}/>
+                </Field>
+                <Field label="Royalty (%)">
+                  <input className="input" value={form.royaltyPercent} onChange={(e) => setField('royaltyPercent', e.target.value)} placeholder="5"/>
+                </Field>
+                <Field label="Contract start" style={{ gridColumn: 'span 2' }}>
+                  <input className="input" type="date" value={form.contractStart} onChange={(e) => setField('contractStart', e.target.value)}/>
+                </Field>
+              </div>
+            )}
           </>
         )}
         {step === 5 && (
@@ -821,9 +924,6 @@ export const PageFranchiseNew = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <Field label="Inventory mode">
                 <Select value={form.inventoryMode || 'shared'} onChange={(v) => setField('inventoryMode', v)} options={['shared', 'independent']}/>
-              </Field>
-              <Field label="Low stock alert threshold">
-                <input className="input" type="number" value={form.lowStockThreshold || '10'} onChange={(e) => setField('lowStockThreshold', e.target.value)}/>
               </Field>
               <Field label="Auto-reorder">
                 <div style={{ paddingTop: 8 }}><Toggle checked={form.autoReorder || false} onChange={(v) => setField('autoReorder', v)}/></div>

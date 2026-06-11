@@ -11,6 +11,7 @@ import { DistributeDrawer } from "@/components/DistributeDrawer";
 import DynamicAttributeField from "@/components/DynamicAttributeField";
 import AddOptionModal from "@/components/AddOptionModal";
 import { displayName } from "@/lib/i18n";
+import { downloadPDF } from "@/lib/export";
 
 // Dynamic Attributes Section for item drawer
 const DynamicAttributesSection = ({ categoryId, attributes, onChange, onAddOption }) => {
@@ -149,7 +150,10 @@ export const PageInvOverview = () => {
             return (
               <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 80px', gap: 12, padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border-default)', alignItems: 'center', fontSize: 13 }}>
                 <span className="pill" style={{ color }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: color }}/> {m.movementType}</span>
-                <span className="muted">{m.notes ?? `Item ${m.inventoryItemId}`}</span>
+                <span className="muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <strong>{m.itemNameThai || m.itemName || `Item #${m.inventoryItemId}`}</strong>
+                  {m.notes ? ` - ${m.notes}` : ''}
+                </span>
                 <span style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span className="tabular" style={{ color, fontWeight: 500 }}>{isPositive ? '+' : ''}{m.quantity}</span>
                   <span className="muted" style={{ fontSize: 11 }}>{at}</span>
@@ -682,7 +686,11 @@ export const PageInvReceiving = () => {
                 <td style={{ padding: '8px' }}>
                   <Select
                     value={row.itemId}
-                    onChange={(v) => updateLine(i, { itemId: v })}
+                    onChange={(v) => {
+                      const selectedItem = items.find((it) => String(it.id) === v);
+                      const cost = selectedItem?.costPerUnit ?? '';
+                      updateLine(i, { itemId: v, costPerUnit: cost });
+                    }}
                     options={items.map((it) => ({ value: String(it.id), label: `${it.sku ?? ''} ${it.name}`.trim() }))}
                     placeholder="Choose item…"
                   />
@@ -891,6 +899,221 @@ export const PageInvTransfer = () => {
     return dt.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) + ' ' + dt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const getTransferDirection = (m, currentBranchName, activeTab) => {
+    if (m.notes) {
+      if (m.movementType === 'transferred_out') {
+        const match = m.notes.match(/โอนย้ายไปยังสาขา\s+([^|]+)/);
+        if (match) {
+          return { from: currentBranchName, to: match[1].trim() };
+        }
+      } else if (m.movementType === 'transferred_in') {
+        const match = m.notes.match(/โอนย้ายมาจากสาขา\s+([^|]+)/);
+        if (match) {
+          return { from: match[1].trim(), to: currentBranchName };
+        }
+      }
+    }
+    return {
+      from: activeTab === 'outgoing' ? currentBranchName : 'สาขาอื่น',
+      to: activeTab === 'outgoing' ? 'สาขาอื่น' : currentBranchName,
+    };
+  };
+
+  const getGroupedTransferMovements = (movement) => {
+    const targetTime = new Date(movement.createdAt).getTime();
+    const timeLimit = 15000; // 15 seconds to group batch insertions
+    return current.filter(m => {
+      const diff = Math.abs(new Date(m.createdAt).getTime() - targetTime);
+      return diff <= timeLimit && 
+             m.movementType === movement.movementType && 
+             m.branchId === movement.branchId;
+    });
+  };
+
+  const handlePrintShippingNote = (m) => {
+    const myBranchName = myBranch?.name || 'สาขาปัจจุบัน';
+    const grouped = getGroupedTransferMovements(m);
+    const dir = getTransferDirection(m, myBranchName, tab);
+    
+    const itemsHtml = grouped.map((x, idx) => {
+      const it = itemMap.get(x.inventoryItemId);
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${it?.sku || '—'}</td>
+          <td>${it?.nameThai || it?.name || `Item #${x.inventoryItemId}`}</td>
+          <td class="right">${Math.abs(Number(x.quantity))}</td>
+          <td>${x.unitOfMeasure || 'ชิ้น'}</td>
+          <td>${x.notes ? x.notes.split('|')[1]?.trim() || '—' : '—'}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const html = `
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <h1>ใบส่งของ / ใบส่งสินค้า (Delivery Slip)</h1>
+          <p style="margin: 4px 0 0; font-size: 13px; color: #666;">เอกสารโอนย้ายสินค้าภายในสาขา</p>
+        </div>
+        <div style="text-align: right; font-size: 13px;">
+          <strong>เลขที่โอนย้าย (Ref No):</strong> TRF-${m.id}<br/>
+          <strong>วันที่ (Date):</strong> ${fmtDate(m.createdAt)}
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; padding: 15px; background: #f9f9f5; border-radius: 8px; font-size: 13px;">
+        <div>
+          <strong style="color: #666;">ต้นทาง (From Branch):</strong><br/>
+          <span style="font-size: 15px; font-weight: 600; color: #1a1a17;">${dir.from}</span>
+        </div>
+        <div>
+          <strong style="color: #666;">ปลายทาง (To Branch):</strong><br/>
+          <span style="font-size: 15px; font-weight: 600; color: #386b52;">${dir.to}</span>
+        </div>
+      </div>
+
+      <h2>รายการสินค้าโอนย้าย</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ลำดับ</th>
+            <th>รหัสสินค้า</th>
+            <th>รายการสินค้า</th>
+            <th class="right">จำนวน</th>
+            <th>หน่วย</th>
+            <th>หมายเหตุ</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+      </table>
+
+      <div style="margin-top: 50px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; font-size: 13px;">
+        <div>
+          <p>...........................................................</p>
+          <p style="font-weight: 500; margin: 4px 0;">ผู้ส่งของ (Sender Signature)</p>
+          <p style="color: #888; font-size: 11px;">วันที่ ...../...../.....</p>
+        </div>
+        <div>
+          <p>...........................................................</p>
+          <p style="font-weight: 500; margin: 4px 0;">ผู้รับของ (Receiver Signature)</p>
+          <p style="color: #888; font-size: 11px;">วันที่ ...../...../.....</p>
+        </div>
+      </div>
+    `;
+
+    downloadPDF(`ใบส่งสินค้า_${m.id}`, html);
+  };
+
+  const handlePrintTaxInvoice = (m) => {
+    const myBranchName = myBranch?.name || 'สาขาปัจจุบัน';
+    const grouped = getGroupedTransferMovements(m);
+    const dir = getTransferDirection(m, myBranchName, tab);
+
+    let subtotal = 0;
+    const itemsHtml = grouped.map((x, idx) => {
+      const it = itemMap.get(x.inventoryItemId);
+      const qty = Math.abs(Number(x.quantity));
+      const cost = Number(x.costPerUnit || 0);
+      const rowTotal = qty * cost;
+      subtotal += rowTotal;
+
+      return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${it?.sku || '—'}</td>
+          <td>${it?.nameThai || it?.name || `Item #${x.inventoryItemId}`}</td>
+          <td class="right">${qty}</td>
+          <td class="right">฿${cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td class="right">฿${rowTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const vat = subtotal * 0.07;
+    const grandTotal = subtotal + vat;
+
+    const html = `
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <h1 style="color: #222; font-size: 20px;">ใบเสร็จรับเงิน / ใบกำกับภาษี (Receipt / Tax Invoice)</h1>
+          <p style="margin: 4px 0 0; font-size: 12px; color: #555;">
+            <strong>บริษัท ฮิบิ มัทฉะ จำกัด (สำนักงานใหญ่)</strong><br/>
+            เลขผู้เสียภาษี: 0105566000123<br/>
+            123 ถนนลาดพร้าว แขวงคลองเจ้าคุณสิงห์ เขตวังทองหลาง กรุงเทพฯ 10310
+          </p>
+        </div>
+        <div style="text-align: right; font-size: 13px;">
+          <strong>เลขที่เอกสาร (Ref):</strong> INV-TRF-${m.id}<br/>
+          <strong>วันที่เอกสาร (Date):</strong> ${fmtDate(m.createdAt)}
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; padding: 15px; border: 1px dashed #ccc; border-radius: 8px; font-size: 13px;">
+        <div>
+          <strong style="color: #666;">ข้อมูลผู้ส่ง (Seller):</strong><br/>
+          <span style="font-size: 14px; font-weight: 600;">${dir.from}</span><br/>
+          <span style="font-size: 12px; color: #777;">ผู้จัดส่งสินค้าและบันทึกตัดสต็อก</span>
+        </div>
+        <div>
+          <strong style="color: #666;">ข้อมูลผู้ซื้อ (Buyer):</strong><br/>
+          <span style="font-size: 14px; font-weight: 600;">${dir.to}</span><br/>
+          <span style="font-size: 12px; color: #777;">ผู้รับโอนสินค้าและเข้าคลังสาขา</span>
+        </div>
+      </div>
+
+      <h2>รายการชำระเงินโอนสินค้า</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ลำดับ</th>
+            <th>รหัสสินค้า</th>
+            <th>รายการสินค้า</th>
+            <th class="right">จำนวน</th>
+            <th class="right">ราคาต่อหน่วย</th>
+            <th class="right">ราคารวม</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+      </table>
+
+      <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+        <div style="width: 300px; font-size: 13px; line-height: 1.8;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>มูลค่าสินค้าก่อนภาษี (Subtotal):</span>
+            <strong>฿${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>ภาษีมูลค่าเพิ่ม 7% (VAT):</span>
+            <strong>฿${vat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 16px; border-top: 1px double #ddd; padding-top: 8px; margin-top: 8px; color: #386b52;">
+            <strong>จำนวนเงินรวมทั้งสิ้น (Grand Total):</strong>
+            <strong>฿${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 60px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; font-size: 13px;">
+        <div>
+          <p>...........................................................</p>
+          <p style="font-weight: 500; margin: 4px 0;">ผู้ชำระเงิน (Payer Signature)</p>
+          <p style="color: #888; font-size: 11px;">วันที่ ...../...../.....</p>
+        </div>
+        <div>
+          <p>...........................................................</p>
+          <p style="font-weight: 500; margin: 4px 0;">ผู้ออกใบกำกับ (Issuer Signature)</p>
+          <p style="color: #888; font-size: 11px;">วันที่ ...../...../.....</p>
+        </div>
+      </div>
+    `;
+
+    downloadPDF(`ใบเสร็จโอนย้าย_${m.id}`, html);
+  };
+
   return (
     <div className="page">
       <div className="page-header">
@@ -946,34 +1169,43 @@ export const PageInvTransfer = () => {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 14 }}>
           {current.map((m) => {
-            const item = itemMap.get(m.itemId);
+            const item = itemMap.get(m.inventoryItemId);
             const fromBranch = branchMap.get(m.branchId);
+            const dir = getTransferDirection(m, myBranch?.name || 'สาขาปัจจุบัน', tab);
             return (
               <div key={m.id} className="card" style={{ padding: 20 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                   <div>
                     <div className="mono" style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>#{m.id}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                      <span style={{ fontWeight: 500 }}>{fromBranch?.name || 'Branch'}</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{dir.from}</span>
                       <IconChevRight size={14} style={{ color: 'var(--text-tertiary)' }}/>
-                      <span style={{ fontWeight: 500 }}>{m.referenceType || (tab === 'outgoing' ? 'Destination' : 'Source')}</span>
+                      <span style={{ fontWeight: 600, color: 'var(--matcha-700)' }}>{dir.to}</span>
                     </div>
                   </div>
                   <span className={'pill ' + (tab === 'outgoing' ? 'pill-warning' : 'pill-matcha')}><span className="dot"/> {tab === 'outgoing' ? 'Transferred Out' : 'Transferred In'}</span>
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', paddingTop: 10, paddingBottom: 10 }}>
-                  <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{item?.name || `Item #${m.itemId}`}</div>
-                  <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{item?.itemCode || ''}</div>
+                  <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{item?.nameThai || item?.name || `Item #${m.inventoryItemId}`}</div>
+                  <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{item?.sku || ''}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-secondary)', paddingTop: 10, borderTop: '1px solid var(--border-default)' }}>
                   <span className="tabular">{Math.abs(Number(m.quantity ?? 0))} {m.unitOfMeasure || ''}</span>
-                  {m.costValue != null && <><span>·</span><span className="tabular">฿{Number(m.costValue).toLocaleString()}</span></>}
+                  {m.totalCost != null && <><span>·</span><span className="tabular">฿{Number(m.totalCost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></>}
                   <span style={{ flex: 1 }}/>
                   <span className="muted" style={{ fontSize: 11 }}>{fmtDate(m.createdAt)}</span>
                 </div>
                 {m.notes && (
                   <div className="muted" style={{ fontSize: 12, marginTop: 8, padding: 8, background: 'var(--bg-muted)', borderRadius: 'var(--r-subtle)' }}>{m.notes}</div>
                 )}
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, borderTop: '1px solid var(--border-default)', paddingTop: 12 }}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => handlePrintShippingNote(m)} style={{ flex: 1, fontSize: 11.5, padding: '4px 8px' }}>
+                    พิมพ์ใบส่งสินค้า
+                  </button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => handlePrintTaxInvoice(m)} style={{ flex: 1, fontSize: 11.5, padding: '4px 8px' }}>
+                    พิมพ์บิล/ใบกำกับภาษี
+                  </button>
+                </div>
               </div>
             );
           })}

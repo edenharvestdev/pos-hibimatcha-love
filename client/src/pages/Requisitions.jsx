@@ -1,10 +1,11 @@
 // ============================================
 // Requisitions: Branch requests stock/menu from HQ
 // ============================================
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useApp, useToast, Drawer, Modal, Field, Select, Toggle, Tabs, EmptyState, SectionHeader } from "@/components";
-import { IconPlus, IconCheck, IconX, IconTruck, IconBox, IconMenu } from "@/icons";
+import { IconPlus, IconCheck, IconX, IconTruck, IconBox, IconMenu, IconReceipt } from "@/icons";
+import { downloadPDF } from "@/lib/export";
 
 const STATUS_COLORS = {
   pending: 'var(--gold)',
@@ -295,6 +296,24 @@ const CreateRequisitionDrawer = ({ onClose, branchId }) => {
 const RequisitionDetailDrawer = ({ req, onClose, role }) => {
   const toast = useToast();
   const { data: detail } = trpc.requisitions.getById.useQuery({ id: req.id });
+  const [editItems, setEditItems] = useState([]);
+
+  useEffect(() => {
+    if (detail?.items) {
+      setEditItems(
+        detail.items.map((item) => ({
+          id: item.id,
+          itemId: item.itemId,
+          itemName: item.itemName,
+          requestedQty: item.requestedQty,
+          approvedQty: item.approvedQty ?? item.requestedQty,
+          unit: item.unit,
+          notes: item.notes ?? "",
+          status: item.status === "rejected" ? "rejected" : "approved",
+        }))
+      );
+    }
+  }, [detail]);
 
   const approveMutation = trpc.requisitions.approve.useMutation({
     onSuccess: () => { toast.success('อนุมัติสำเร็จ — stock ถูกโอนแล้ว'); onClose(); },
@@ -311,12 +330,67 @@ const RequisitionDetailDrawer = ({ req, onClose, role }) => {
     onError: (err) => toast.error(err.message),
   });
 
+  const handlePrint = () => {
+    if (!detail) return;
+    const statusText = STATUS_LABELS[detail.status] || detail.status;
+    const priorityText = PRIORITY_LABELS[detail.priority] || detail.priority;
+    const itemsHtml = detail.items.map((item, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${item.itemName}</td>
+        <td class="right">${item.requestedQty}</td>
+        <td class="right">${item.approvedQty ?? '—'}</td>
+        <td>${item.unit ?? 'ชิ้น'}</td>
+        <td>${item.notes || '—'}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+      <h1>ใบขอเบิกสินค้า (Requisition Note)</h1>
+      <div class="meta">
+        <strong>เลขที่เอกสาร:</strong> ${detail.requestNumber}<br/>
+        <strong>สาขาที่ขอเบิก:</strong> ${detail.requestingBranchName}<br/>
+        <strong>ขอเบิกจาก:</strong> ${detail.sourceBranchName}<br/>
+        <strong>ประเภทสินค้า:</strong> ${detail.type}<br/>
+        <strong>สถานะ:</strong> ${statusText}<br/>
+        <strong>ความเร่งด่วน:</strong> ${priorityText}<br/>
+        <strong>วันที่ขอเบิก:</strong> ${new Date(detail.createdAt).toLocaleString('th-TH')}<br/>
+        ${detail.notes ? `<strong>หมายเหตุรวม:</strong> ${detail.notes}<br/>` : ''}
+        ${detail.rejectionReason ? `<strong>เหตุผลปฏิเสธ:</strong> ${detail.rejectionReason}<br/>` : ''}
+      </div>
+      <h2>รายการสินค้า</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ลำดับ</th>
+            <th>ชื่อสินค้า</th>
+            <th class="right">จำนวนขอเบิก</th>
+            <th class="right">จำนวนอนุมัติ/จัดส่ง</th>
+            <th>หน่วย</th>
+            <th>หมายเหตุ</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+      </table>
+    `;
+    downloadPDF(`ใบขอเบิก_${detail.requestNumber}`, html);
+  };
+
   if (!detail) return <Drawer open onClose={onClose} title="Loading..."><div style={{ padding: 20 }}>กำลังโหลด...</div></Drawer>;
 
   return (
     <Drawer open onClose={onClose} title={`ใบขอ ${detail.requestNumber}`} width={500}>
       <div style={{ padding: 20 }}>
         {/* Header info */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>รายละเอียดใบขอ</div>
+          <button className="btn btn-secondary btn-sm" onClick={handlePrint}>
+            <IconReceipt size={14} style={{ marginRight: 4 }}/> พิมพ์ใบเบิก
+          </button>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
           <div>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>สาขาที่ขอ</div>
@@ -353,27 +427,94 @@ const RequisitionDetailDrawer = ({ req, onClose, role }) => {
         )}
 
         {/* Items */}
-        <SectionHeader title={`รายการ (${detail.items.length})`}/>
+        <SectionHeader title={detail.status === 'pending' && role === 'super' ? `แก้ไขการอนุมัติสินค้า (${detail.items.length})` : `รายการ (${detail.items.length})`}/>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-          {detail.items.map(item => (
-            <div key={item.id} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 12px', borderRadius: 'var(--r-default)',
-              background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
-            }}>
-              <span style={{ flex: 1, fontSize: 13 }}>{item.itemName}</span>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>{item.requestedQty} {item.unit}</span>
-              {item.status !== 'pending' && (
-                <span className="pill" style={{
-                  background: item.status === 'approved' ? 'var(--matcha-50)' : 'var(--red-50, #fef2f2)',
-                  color: item.status === 'approved' ? 'var(--matcha-700)' : 'var(--red)',
-                  fontSize: 10,
-                }}>
-                  {item.status === 'approved' ? `อนุมัติ ${item.approvedQty}` : 'ปฏิเสธ'}
-                </span>
-              )}
-            </div>
-          ))}
+          {detail.status === 'pending' && role === 'super' ? (
+            editItems.map((item, idx) => (
+              <div key={item.id} style={{
+                display: 'flex', flexDirection: 'column', gap: 8,
+                padding: '12px 14px', borderRadius: 'var(--r-default)',
+                background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: item.status === 'rejected' ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: item.status === 'rejected' ? 'line-through' : 'none' }}>{item.itemName}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>(ขอ {item.requestedQty} {item.unit})</span>
+                  
+                  {item.status === 'approved' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>อนุมัติ:</span>
+                      <input
+                        type="number"
+                        className="input"
+                        style={{ width: 80, textAlign: 'center', height: 32 }}
+                        value={item.approvedQty}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, approvedQty: val } : it));
+                        }}
+                      />
+                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', minWidth: 30 }}>{item.unit}</span>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 12, color: 'var(--red)', fontWeight: 500 }}>ปฏิเสธแล้ว</span>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      const nextStatus = item.status === 'approved' ? 'rejected' : 'approved';
+                      setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, status: nextStatus } : it));
+                    }}
+                    className="btn btn-xs"
+                    style={{
+                      background: item.status === 'approved' ? 'var(--red-50, #fef2f2)' : 'var(--matcha-50)',
+                      color: item.status === 'approved' ? 'var(--red)' : 'var(--matcha-700)',
+                      border: 'none',
+                    }}
+                  >
+                    {item.status === 'approved' ? 'ปฏิเสธ' : 'อนุมัติ'}
+                  </button>
+                </div>
+                
+                <input
+                  className="input"
+                  style={{ height: 32, fontSize: 12 }}
+                  placeholder="หมายเหตุ / เหตุผลจัดส่งไม่ตรงตามขอเบิก"
+                  value={item.notes}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, notes: val } : it));
+                  }}
+                />
+              </div>
+            ))
+          ) : (
+            detail.items.map(item => (
+              <div key={item.id} style={{
+                display: 'flex', flexDirection: 'column', gap: 4,
+                padding: '10px 12px', borderRadius: 'var(--r-default)',
+                background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ flex: 1, fontSize: 13 }}>{item.itemName}</span>
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>{item.requestedQty} {item.unit}</span>
+                  {item.status !== 'pending' && (
+                    <span className="pill" style={{
+                      background: item.status === 'approved' ? 'var(--matcha-50)' : 'var(--red-50, #fef2f2)',
+                      color: item.status === 'approved' ? 'var(--matcha-700)' : 'var(--red)',
+                      fontSize: 10,
+                    }}>
+                      {item.status === 'approved' ? `อนุมัติ ${item.approvedQty}` : 'ปฏิเสธ'}
+                    </span>
+                  )}
+                </div>
+                {item.notes && (
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', paddingLeft: 4 }}>
+                    หมายเหตุ: {item.notes}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
 
         {detail.rejectionReason && (
@@ -389,7 +530,15 @@ const RequisitionDetailDrawer = ({ req, onClose, role }) => {
               <>
                 <button
                   className="btn btn-primary"
-                  onClick={() => approveMutation.mutate({ id: detail.id })}
+                  onClick={() => approveMutation.mutate({
+                    id: detail.id,
+                    items: editItems.map(it => ({
+                      itemId: it.itemId,
+                      approvedQty: String(it.approvedQty),
+                      status: it.status,
+                      notes: it.notes || undefined
+                    }))
+                  })}
                   disabled={approveMutation.isPending}
                   style={{ flex: 1 }}
                 >

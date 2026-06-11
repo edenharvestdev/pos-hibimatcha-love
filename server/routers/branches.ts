@@ -36,6 +36,15 @@ const BranchInput = z.object({
   royaltyValue: z.string().optional(),
   franchiseOwnerId: z.number().optional(),
   accessCode: z.string().max(20).optional(),
+  status: z.enum(["active", "inactive", "closed"]).optional(),
+  businessModel: z.string().optional(),
+  ownershipType: z.string().optional(),
+  ownerName: z.string().optional(),
+  ownerPhone: z.string().optional(),
+  ownerEmail: z.string().optional(),
+  ownerAddress: z.string().optional(),
+  ownerTaxId: z.string().optional(),
+  ownerCitizenId: z.string().optional(),
 });
 
 export const branchesRouter = router({

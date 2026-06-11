@@ -140,6 +140,7 @@ export const requisitionsRouter = router({
         itemId: z.number().int(),
         approvedQty: z.string(),
         status: z.enum(["approved", "rejected"]),
+        notes: z.string().optional(),
       })).optional(), // if not provided, approve all as-is
     }))
     .mutation(async ({ ctx, input }) => {
@@ -158,7 +159,11 @@ export const requisitionsRouter = router({
           const item = items.find(i => i.itemId === update.itemId);
           if (item) {
             await db.update(posRequisitionItems)
-              .set({ approvedQty: update.approvedQty, status: update.status })
+              .set({ 
+                approvedQty: update.approvedQty, 
+                status: update.status,
+                notes: update.notes ?? item.notes,
+              })
               .where(eq(posRequisitionItems.id, item.id));
           }
         }
@@ -188,6 +193,9 @@ export const requisitionsRouter = router({
       if (overallStatus === "approved" || overallStatus === "partially_approved") {
         const approvedStockItems = updatedItems.filter(i => i.status === "approved" && i.itemType === "inventory");
         const [hq] = await db.select().from(branches).where(eq(branches.branchType, "hq")).limit(1);
+        const [reqBranch] = await db.select().from(branches).where(eq(branches.id, req.requestingBranchId)).limit(1);
+        const destBranchName = reqBranch?.name ?? `สาขา #${req.requestingBranchId}`;
+        const sourceBranchName = hq?.name ?? "Hibi House (HQ)";
 
         for (const item of approvedStockItems) {
           const qty = Number(item.approvedQty || item.requestedQty);
@@ -228,7 +236,7 @@ export const requisitionsRouter = router({
             movementType: "transfer_out",
             quantity: String(-qty),
             unit: item.unit ?? "piece",
-            notes: `Requisition ${req.requestNumber} → branch ${req.requestingBranchId}`,
+            notes: `ใบเบิก ${req.requestNumber} → ${destBranchName}`,
             performedByStaffId: ctx.staff.staffId,
           } as any);
           await db.insert(posInventoryMovements).values({
@@ -237,7 +245,7 @@ export const requisitionsRouter = router({
             movementType: "transfer_in",
             quantity: String(qty),
             unit: item.unit ?? "piece",
-            notes: `Requisition ${req.requestNumber} from HQ`,
+            notes: `ใบเบิก ${req.requestNumber} จาก ${sourceBranchName}`,
             performedByStaffId: ctx.staff.staffId,
           } as any);
         }

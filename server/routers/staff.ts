@@ -149,7 +149,7 @@ export const staffRouter = router({
       }
 
       const [result] = await db.insert(staff).values({
-        employeeCode: code,
+        employeeCode: code!,
         firstName: input.firstName,
         lastName: input.lastName,
         firstNameThai: input.firstNameThai,

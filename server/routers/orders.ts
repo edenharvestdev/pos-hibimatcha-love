@@ -242,6 +242,7 @@ const OrderItemInput = z.object({
     optionId: z.number().int(),
     optionName: z.string().optional(),
     priceAdjustment: z.string().optional(),
+    costAdjustment: z.string().optional(),
   })).optional(),
 });
 
@@ -272,7 +273,7 @@ export const ordersRouter = router({
         unitPrice: number;
         totalPrice: number;
         notes?: string;
-        options: Array<{ optionId: number; optionName: string; priceAdjustment: string }>;
+        options: Array<{ optionId: number; optionName: string; priceAdjustment: string; costAdjustment: string }>;
       }> = [];
 
       for (const item of input.items) {
@@ -281,7 +282,7 @@ export const ordersRouter = router({
         if (!menuItem) throw new TRPCError({ code: "BAD_REQUEST", message: `Menu item ${item.menuItemId} not found` });
 
         let unitPrice = Number(menuItem.basePrice);
-        const resolvedOptions: Array<{ optionId: number; optionName: string; priceAdjustment: string }> = [];
+        const resolvedOptions: Array<{ optionId: number; optionName: string; priceAdjustment: string; costAdjustment: string }> = [];
 
         for (const opt of item.options ?? []) {
           const [option] = await db.select().from(posOptions)
@@ -292,6 +293,7 @@ export const ordersRouter = router({
               optionId: option.id,
               optionName: option.name ?? opt.optionName ?? "",
               priceAdjustment: option.priceAdjustment ?? "0",
+              costAdjustment: option.costAdjustment ?? "0",
             });
           }
         }
@@ -458,6 +460,7 @@ export const ordersRouter = router({
             optionId: opt.optionId,
             optionName: opt.optionName,
             priceAdjustment: opt.priceAdjustment,
+            costAdjustment: opt.costAdjustment,
           });
         }
       }
@@ -1118,7 +1121,12 @@ export const ordersRouter = router({
         case "receipt": {
           const payments = fullOrder.payments || [];
           const lastPayment = payments[payments.length - 1];
-          return { html: generateReceiptHTML(orderData, settings, undefined, lastPayment?.referenceNumber || undefined) };
+          let qrDataUrl: string | undefined;
+          const isPaid = payments.some((p: any) => p.status === "completed") || orderData.paidAmount >= orderData.totalAmount;
+          if (settings.promptpayId && orderData.totalAmount > 0 && !isPaid) {
+            qrDataUrl = await generatePromptPayQRDataUrl(settings.promptpayId, orderData.totalAmount);
+          }
+          return { html: generateReceiptHTML(orderData, settings, undefined, lastPayment?.referenceNumber || undefined, qrDataUrl) };
         }
       }
     }),

@@ -77,6 +77,16 @@ export const branches = mysqlTable("branches", {
   // Logo / branding per branch
   logoUrl: varchar("logoUrl", { length: 500 }),
 
+  // Business Model & Ownership details
+  businessModel: varchar("businessModel", { length: 100 }),
+  ownershipType: varchar("ownershipType", { length: 100 }),
+  ownerName: varchar("ownerName", { length: 255 }),
+  ownerPhone: varchar("ownerPhone", { length: 100 }),
+  ownerEmail: varchar("ownerEmail", { length: 255 }),
+  ownerAddress: text("ownerAddress"),
+  ownerTaxId: varchar("ownerTaxId", { length: 100 }),
+  ownerCitizenId: varchar("ownerCitizenId", { length: 100 }),
+
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
 });
@@ -166,6 +176,7 @@ export const posOptions = mysqlTable("pos_options", {
   name: varchar("name", { length: 100 }),
   nameThai: varchar("nameThai", { length: 100 }),
   priceAdjustment: decimal("priceAdjustment", { precision: 10, scale: 2 }).default("0"),
+  costAdjustment: decimal("costAdjustment", { precision: 10, scale: 2 }).default("0"),
   sortOrder: int("sortOrder").default(0),
   isDefault: boolean("isDefault").default(false),
   isActive: boolean("isActive").default(true),
@@ -368,6 +379,7 @@ export const posOrderItemOptions = mysqlTable("pos_order_item_options", {
   optionId: int("optionId"),
   optionName: varchar("optionName", { length: 100 }),
   priceAdjustment: decimal("priceAdjustment", { precision: 10, scale: 2 }),
+  costAdjustment: decimal("costAdjustment", { precision: 10, scale: 2 }).default("0"),
   createdAt: timestamp("createdAt").defaultNow(),
 });
 
