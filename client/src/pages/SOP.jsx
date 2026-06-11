@@ -391,11 +391,143 @@ const getYoutubeEmbedUrl = (url) => {
   return null;
 };
 
+// ----- Drawer to request a branch-specific variant of a master SOP -----
+const SopVariantRequestDrawer = ({ open, onClose, sop, branchId, onSuccess }) => {
+  const [blocks, setBlocks] = useState([]);
+  const [reason, setReason] = useState('');
+  const [summary, setSummary] = useState('');
+
+  const requestVariant = trpc.sop.requestVariant.useMutation({
+    onSuccess: () => {
+      alert('ส่งคำขอปรับปรุงสูตรเฉพาะสาขาเรียบร้อยแล้ว! (Variant request submitted!)');
+      onSuccess?.();
+      onClose();
+    },
+    onError: (e) => alert(e.message || 'Failed to submit variant request'),
+  });
+
+  useEffect(() => {
+    if (open && sop?.content) {
+      try {
+        const parsed = typeof sop.content === 'string' ? JSON.parse(sop.content) : sop.content;
+        setBlocks(Array.isArray(parsed) ? parsed : [{ type: 'paragraph', text: String(sop.content) }]);
+      } catch (e) {
+        setBlocks([{ type: 'paragraph', text: String(sop.content) }]);
+      }
+      setReason('');
+      setSummary('');
+    }
+  }, [open, sop]);
+
+  const save = () => {
+    if (!reason.trim()) { alert('กรุณาระบุเหตุผลในการปรับปรุงสูตร (Reason is required)'); return; }
+    requestVariant.mutate({
+      masterSopId: sop.id,
+      proposedContent: blocks,
+      reason,
+      changesSummary: summary || undefined,
+    });
+  };
+
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      title="ขอปรับปรุงสูตรเฉพาะสาขา (Request Branch Variant)"
+      subtitle={sop?.title}
+      width={640}
+      footer={<>
+        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button className="btn btn-primary" onClick={save} disabled={requestVariant.isPending}>
+          {requestVariant.isPending ? 'Submitting…' : 'ส่งคำขออนุมัติ (Submit Request)'}
+        </button>
+      </>}
+    >
+      <div style={{ padding: 12, background: 'rgba(217, 119, 6, 0.08)', border: '1px solid var(--warning)', borderRadius: 'var(--r-default)', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+        <strong>คำชี้แจง:</strong> การขอปรับปรุงสูตรจะถูกส่งไปยังสำนักงานใหญ่ (HQ) เพื่อตรวจสอบและอนุมัติ เมื่อได้รับการอนุมัติแล้ว สาขาของคุณจะแสดงวิธีปฏิบัติตามสูตรนี้ทันที
+      </div>
+
+      <div style={{ display: 'grid', gap: 16, marginBottom: 20 }}>
+        <Field label="เหตุผลที่ขอปรับปรุงสูตร (Reason for variant)" required>
+          <textarea
+            className="input"
+            rows={2}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="ตัวอย่างเช่น: สาขาใช้วัตถุดิบทดแทนเนื่องจากขนส่งเข้าไม่ถึง / เปลี่ยนแปลงปริมาณน้ำแข็งตามเครื่องสไลด์ไอศกรีม..."
+          />
+        </Field>
+
+        <Field label="สรุปการเปลี่ยนแปลง (Summary of changes)">
+          <input
+            className="input"
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            placeholder="เช่น: ปรับปริมาณผงมัทฉะจาก 4g เป็น 5g"
+          />
+        </Field>
+      </div>
+
+      <div className="t-caption" style={{ marginBottom: 10 }}>แก้ไขเนื้อหาขั้นตอน (Customize Content Steps)</div>
+      <div style={{ display: 'grid', gap: 12, maxHeight: 400, overflowY: 'auto', padding: 4, marginBottom: 16 }}>
+        {blocks.map((block, idx) => (
+          <div key={idx} style={{ padding: 14, background: 'var(--bg-muted)', borderRadius: 'var(--r-md)', border: '1px solid var(--border-default)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span className="pill" style={{ textTransform: 'uppercase', fontSize: 10, fontWeight: 600 }}>{block.type}</span>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ padding: 0, height: 'auto', color: 'var(--red-600)', minWidth: 'auto' }}
+                onClick={() => setBlocks(prev => prev.filter((_, i) => i !== idx))}
+              >
+                ลบขั้นตอน
+              </button>
+            </div>
+            {block.type === 'list' ? (
+              <textarea
+                className="input"
+                rows={3}
+                value={(block.items || []).join('\n')}
+                onChange={(e) => {
+                  const next = [...blocks];
+                  next[idx] = { ...next[idx], items: e.target.value.split('\n') };
+                  setBlocks(next);
+                }}
+                placeholder="รายการข้อความ (หนึ่งรายการต่อบรรทัด)..."
+              />
+            ) : (
+              <textarea
+                className="input"
+                rows={2}
+                value={block.text || ''}
+                onChange={(e) => {
+                  const next = [...blocks];
+                  next[idx] = { ...next[idx], text: e.target.value };
+                  setBlocks(next);
+                }}
+                placeholder="เนื้อหารายละเอียดขั้นตอน..."
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setBlocks(prev => [...prev, { type: 'heading', text: '' }])}>+ เพิ่มหัวข้อย่อย (Heading)</button>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setBlocks(prev => [...prev, { type: 'paragraph', text: '' }])}>+ เพิ่มย่อหน้า (Paragraph)</button>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setBlocks(prev => [...prev, { type: 'list', items: [''] }])}>+ เพิ่มรายการข้อ (List)</button>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setBlocks(prev => [...prev, { type: 'callout', text: '' }])}>+ เพิ่มกล่องเตือน (Callout)</button>
+      </div>
+    </Drawer>
+  );
+};
+
 export const PageSOPDetail = () => {
-  const { navigate, route } = useApp();
+  const { navigate, route, branch, role, lang } = useApp();
   const [acked, setAcked] = useState(false);
   const [autoAckTriggered, setAutoAckTriggered] = useState(false);
   const [linkMenuOpen, setLinkMenuOpen] = useState(false);
+  const [variantRequestOpen, setVariantRequestOpen] = useState(false);
 
   // Extract SOP id from route like /backoffice/sop/42 or /sop/42
   const sopId = useMemo(() => {
@@ -404,14 +536,41 @@ export const PageSOPDetail = () => {
     return m ? Number(m[1]) : null;
   }, [route]);
 
-  const { data: sop, isLoading } = trpc.sop.getById.useQuery(
+  const { data: sop, isLoading, refetch } = trpc.sop.getById.useQuery(
     { id: sopId ?? 0 },
     { enabled: !!sopId }
   );
+
+  const { data: variantRequests = [], refetch: refetchVariants } = trpc.sop.listVariants.useQuery(
+    { branchId: branch?.id || undefined },
+    { enabled: !!branch?.id, staleTime: 5000 }
+  );
+
+  const pendingRequest = useMemo(() => {
+    if (!sop) return null;
+    const targetSopId = sop.masterSopId || sop.id;
+    return variantRequests.find((v) => v.masterSopId === targetSopId && v.status === 'pending');
+  }, [variantRequests, sop]);
+
   const acknowledge = trpc.sop.acknowledge.useMutation({
     onSuccess: () => setAcked(true),
     onError: (e) => alert(e.message),
   });
+
+  const archiveSop = trpc.sop.archive.useMutation();
+
+  const handleRevertToMaster = async () => {
+    if (!sop) return;
+    if (confirm('คุณต้องการยกเลิกวิธีปฏิบัติเฉพาะสาขานี้ และกลับไปใช้สูตรหลักร่วมกันใช่หรือไม่? (Revert to HQ master SOP?)')) {
+      try {
+        await archiveSop.mutateAsync({ id: sop.id });
+        alert('กลับไปใช้สูตรหลักเรียบร้อยแล้ว!');
+        navigate(route.startsWith('/backoffice') ? '/backoffice/sop' : '/sop');
+      } catch (e) {
+        alert('Revert failed: ' + (e.message || 'Unknown'));
+      }
+    }
+  };
 
   // Automation: auto-acknowledge — gated by Settings → Automation toggle.
   // Manual Acknowledge button always works as fallback.
@@ -485,6 +644,18 @@ export const PageSOPDetail = () => {
                 </button>
               </>
             )}
+            {sop.branchId === null && sop.allowBranchVariants && branch?.id && (role === 'staff_admin' || role === 'admin' || role === 'super_admin') && (
+              <>
+                <span>·</span>
+                <button
+                  onClick={() => setVariantRequestOpen(true)}
+                  className="btn btn-secondary btn-sm"
+                  title="Request a branch-specific variant of this SOP"
+                >
+                  <IconEdit size={14}/> Request Branch Variant
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -496,6 +667,53 @@ export const PageSOPDetail = () => {
         sopId={sop.id}
         sopTitle={sop.title}
       />
+
+      {/* Variant request drawer */}
+      <SopVariantRequestDrawer
+        open={variantRequestOpen}
+        onClose={() => setVariantRequestOpen(false)}
+        sop={sop}
+        branchId={branch?.id}
+        onSuccess={() => { refetch(); refetchVariants(); }}
+      />
+
+      {/* Banner/status for branch overrides */}
+      {sop.branchId !== null && sop.masterSopId !== null && (
+        <div style={{ maxWidth: 1200, margin: '20px auto 0', padding: '0 40px' }}>
+          <div className="card" style={{ padding: 16, background: 'rgba(76, 111, 76, 0.08)', border: '1px solid var(--matcha-200)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ color: 'var(--matcha-600)' }}><IconBuilding size={20}/></span>
+              <div style={{ fontSize: 13, color: 'var(--matcha-800)' }}>
+                <strong>นี่คือวิธีปฏิบัติเฉพาะสาขาที่ถูกปรับปรุงแยกต่างหาก (Branch Override)</strong>
+                <br/>สาขานี้กำลังใช้เวอร์ชันที่ปรับแต่งเองแยกจากสูตรหลักของสำนักงานใหญ่
+              </div>
+            </div>
+            {branch?.id && (role === 'staff_admin' || role === 'admin' || role === 'super_admin') && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => setVariantRequestOpen(true)} style={{ background: 'var(--bg-surface)' }}>
+                  <IconEdit size={12}/> {lang === 'th' ? 'แก้ไขวิธีปฏิบัติ' : 'Edit Variant'}
+                </button>
+                <button className="btn btn-secondary btn-sm" style={{ color: 'var(--danger)', background: 'var(--bg-surface)' }} onClick={handleRevertToMaster} disabled={archiveSop.isPending}>
+                  {archiveSop.isPending ? 'Reverting…' : 'กลับไปใช้สูตรหลัก (Revert to Master)'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Banner/status for pending requests */}
+      {pendingRequest && (
+        <div style={{ maxWidth: 1200, margin: '20px auto 0', padding: '0 40px' }}>
+          <div className="card" style={{ padding: 16, background: 'rgba(217, 119, 6, 0.08)', border: '1px solid var(--warning)', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ color: 'var(--warning)' }}><IconWarning size={20}/></span>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              <strong>อยู่ระหว่างการตรวจสอบคำขอปรับปรุงสูตรเฉพาะสาขา (Pending Review)</strong>
+              <br/>คำขอปรับปรุงเฉพาะสาขาของคุณถูกส่งไปยังสำนักงานใหญ่แล้วและรออนุมัติ: <em>"{pendingRequest.changeReason}"</em>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ maxWidth: 1200, margin: '-40px auto 0', padding: '0 40px 80px', position: 'relative', display: 'grid', gridTemplateColumns: '200px minmax(0, 1fr) 240px', gap: 32 }} className="sop-grid">
         {/* TOC */}

@@ -71,7 +71,24 @@ export const sopRouter = router({
       if (input?.categoryId) rows = rows.filter((s) => s.categoryId === input.categoryId);
       if (input?.status) rows = rows.filter((s) => s.status === input.status);
       else rows = rows.filter((s) => s.status !== "archived");
-      if (input?.branchId) rows = rows.filter((s) => s.branchId === null || s.branchId === input.branchId);
+
+      if (input?.branchId) {
+        // Find overrides for this branch
+        const branchOverrides = rows.filter((s) => s.branchId === input.branchId && s.masterSopId !== null);
+        const overriddenMasterIds = new Set(branchOverrides.map((s) => s.masterSopId));
+
+        rows = rows.filter((s) => {
+          // Keep branch's own overrides
+          if (s.branchId === input.branchId) return true;
+          // Keep master SOPs only if they are not overridden by this branch
+          if (s.branchId === null && !overriddenMasterIds.has(s.id)) return true;
+          return false;
+        });
+      } else {
+        // HQ / general view: only return master SOPs
+        rows = rows.filter((s) => s.branchId === null);
+      }
+
       if (input?.search) {
         const q = input.search.toLowerCase();
         rows = rows.filter((s) =>
@@ -227,9 +244,22 @@ export const sopRouter = router({
 
       let sops = await db.select().from(posSops)
         .where(and(eq(posSops.status, "published"), eq(posSops.requiresAcknowledgment, true)));
-      // Filter SOPs by branch (global SOPs + branch-specific)
+      
       if (input?.branchId) {
-        sops = sops.filter((s) => s.branchId === null || s.branchId === input.branchId);
+        // Find overrides for this branch
+        const branchOverrides = sops.filter((s) => s.branchId === input.branchId && s.masterSopId !== null);
+        const overriddenMasterIds = new Set(branchOverrides.map((s) => s.masterSopId));
+
+        sops = sops.filter((s) => {
+          // Keep branch's own overrides
+          if (s.branchId === input.branchId) return true;
+          // Keep master SOPs only if they are not overridden by this branch
+          if (s.branchId === null && !overriddenMasterIds.has(s.id)) return true;
+          return false;
+        });
+      } else {
+        // HQ / general view: only return master SOPs
+        sops = sops.filter((s) => s.branchId === null);
       }
 
       let relevantStaff = await db.select({ id: staff.id, firstName: staff.firstName, lastName: staff.lastName, employeeCode: staff.employeeCode })
@@ -312,12 +342,69 @@ export const sopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [req] = await db.select().from(posSopVariantRequests)
+        .where(eq(posSopVariantRequests.id, input.variantId)).limit(1);
+      if (!req) throw new TRPCError({ code: "NOT_FOUND", message: "Variant request not found" });
+
+      const [master] = await db.select().from(posSops)
+        .where(eq(posSops.id, req.masterSopId)).limit(1);
+      if (!master) throw new TRPCError({ code: "NOT_FOUND", message: "Master SOP not found" });
+
+      // Check if a branch SOP override already exists
+      const [existing] = await db.select().from(posSops)
+        .where(and(
+          eq(posSops.masterSopId, req.masterSopId),
+          eq(posSops.branchId, req.branchId)
+        )).limit(1);
+
+      if (existing) {
+        await db.update(posSops).set({
+          content: req.proposedContent,
+          title: master.title,
+          titleThai: master.titleThai,
+          subtitle: master.subtitle,
+          subtitleThai: master.subtitleThai,
+          coverImageUrl: master.coverImageUrl,
+          videoUrl: master.videoUrl,
+          categoryId: master.categoryId,
+          tags: master.tags,
+          requiresAcknowledgment: master.requiresAcknowledgment,
+          requiredRoles: master.requiredRoles,
+          acknowledgmentDeadlineDays: master.acknowledgmentDeadlineDays,
+          status: "published",
+          updatedAt: new Date(),
+        }).where(eq(posSops.id, existing.id));
+      } else {
+        await db.insert(posSops).values({
+          masterSopId: req.masterSopId,
+          branchId: req.branchId,
+          content: req.proposedContent,
+          slug: `${master.slug || "sop"}-branch-${req.branchId}-${Date.now().toString(36)}`,
+          title: master.title,
+          titleThai: master.titleThai,
+          subtitle: master.subtitle,
+          subtitleThai: master.subtitleThai,
+          coverImageUrl: master.coverImageUrl,
+          videoUrl: master.videoUrl,
+          categoryId: master.categoryId,
+          tags: master.tags,
+          requiresAcknowledgment: master.requiresAcknowledgment,
+          requiredRoles: master.requiredRoles,
+          acknowledgmentDeadlineDays: master.acknowledgmentDeadlineDays,
+          status: "published",
+          authorStaffId: req.requestedByStaffId,
+          version: 1,
+        } as any);
+      }
+
       await db.update(posSopVariantRequests).set({
         status: "approved",
         reviewedByStaffId: ctx.staff.staffId,
         reviewedAt: new Date(),
         reviewNotes: input.notes,
       }).where(eq(posSopVariantRequests.id, input.variantId));
+
       const [updated] = await db.select().from(posSopVariantRequests).where(eq(posSopVariantRequests.id, input.variantId)).limit(1);
       await logAudit({ staff: ctx.staff, action: "approve_variant", entity: "pos_sop_variant_requests", entityId: input.variantId });
       return updated;

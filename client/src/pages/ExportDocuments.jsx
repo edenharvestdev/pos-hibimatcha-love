@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { useApp, useToast, Drawer, Modal, Field, Select, Tabs, EmptyState } from "@/components";
 import { IconPlus, IconExport, IconImport, IconEdit, IconTrash, IconReceipt, IconTruck, IconSave } from "@/icons";
 import { downloadCSV, downloadPDF } from "@/lib/export";
+import { AGAPE_LOGO_BASE64 } from "@/lib/logoBase64";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -58,9 +59,11 @@ function bahtText(amount) {
 
 const DEFAULT_COMPANY = {
   companyName: "บริษัท อากาเป้ เอสเซนส์ กรุ๊ป จำกัด",
-  companyAddress: "55/60 ซอยนวมินทร์111 แยก4 แขวงนวมินทร์ เขตบึงกุ่ม กรุงเทพมหานคร",
+  companyAddress: "55/60 ซอยนวมินทร์111 แยก4 แขวงนวมินทร์ เขตบึงกุ่ม กรุงเทพมหานคร 10230",
   companyTaxId: "0105568070121",
   companyBranch: "สำนักงานใหญ่",
+  companyPhone: "080-2349443",
+  companyEmail: "hibimatchacafe@gmail.com",
 };
 
 function getDefaultInvoice() {
@@ -72,8 +75,10 @@ function getDefaultInvoice() {
     customerAddress: "",
     customerTaxId: "",
     customerBranch: "สำนักงานใหญ่",
+    customerPhone: "",
     documentNumber: "",
     soNumber: "",
+    poNumber: "",
     documentDate: todayISO(),
     deliveryDate: "",
     salesperson: "",
@@ -97,27 +102,39 @@ function getDefaultShipping() {
     docType: "shipping_note",
     ...DEFAULT_COMPANY,
     customerCode: "",
-    customerName: "",
-    customerAddress: "",
+    customerName: "Hibi Matcha Café สาขาลาดพร้าว107",
+    customerAddress: "297 หมู่บ้านดีสมโชค ซอย 3 แขวงคลองจั่น บางกะปิ กรุงเทพมหานคร 10240",
     customerTaxId: "",
     customerBranch: "",
-    documentNumber: "",
+    customerPhone: "0839130556",
+    documentNumber: "0876-0001",
     soNumber: "",
-    documentDate: todayISO(),
+    poNumber: "A123456",
+    documentDate: "2009-11-12",
     deliveryDate: "",
     salesperson: "",
     reference: "",
     shippingBy: "",
     salesRegion: "",
-    items: [{ no: 1, productCode: "", description: "", quantity: 0, unit: "กรัม", unitPrice: 0, totalPrice: 0 }],
-    subtotal: 0,
+    items: [
+      { no: 1, productCode: "MA-001", description: "ฝาแก้ว สีใส", quantity: 5000, unit: "ชิ้น", unitPrice: 1.306, totalPrice: 6530.00 },
+      { no: 2, productCode: "MA-002", description: "ฝาแก้ว สีครีม/เบจ", quantity: 2000, unit: "ชิ้น", unitPrice: 1.306, totalPrice: 2612.00 },
+      { no: 3, productCode: "MA-003", description: "ฝาแก้ว สีเขียว", quantity: 9000, unit: "ชิ้น", unitPrice: 1.306, totalPrice: 11754.00 },
+      { no: 4, productCode: "MA-004", description: "ฝาแก้ว สีขาว", quantity: 6000, unit: "ชิ้น", unitPrice: 1.306, totalPrice: 7836.00 },
+      { no: 5, productCode: "MA-005", description: "นมมะพร้าว1000ml", quantity: 116, unit: "กล่อง", unitPrice: 75.772, totalPrice: 8789.55 },
+      { no: 6, productCode: "MA-006", description: "น้ำมะพร้าว 1000ml", quantity: 302, unit: "กล่อง", unitPrice: 70.693, totalPrice: 21349.29 },
+      { no: 7, productCode: "MA-007", description: "น้ำมะพร้าวจัดสมิน 1000ml", quantity: 184, unit: "กล่อง", unitPrice: 85.021, totalPrice: 15643.86 },
+      { no: 8, productCode: "MA-008", description: "butter milk 1000ml", quantity: 36, unit: "กล่อง", unitPrice: 138.375, totalPrice: 4981.50 },
+      { no: 9, productCode: "S-004", description: "Rice Moji 500g", quantity: 20, unit: "ถุง", unitPrice: 111.130, totalPrice: 2222.60 },
+    ],
+    subtotal: 81718.80,
     discount: 0,
-    totalBeforeVat: 0,
+    totalBeforeVat: 81718.80,
     vatRate: 7,
-    vatAmount: 0,
-    grandTotal: 0,
-    amountInWords: "",
-    note: "สินค้าตามเอกสารนี้เป็นสมบัติของผู้ขายจนกว่าผู้ซื้อจะชำระเงินเรียบร้อยแล้ว",
+    vatAmount: 5720.32,
+    grandTotal: 87439.12,
+    amountInWords: "แปดหมื่นเจ็ดพันสี่ร้อยสามสิบเก้าบาทสิบสองสตางค์",
+    note: "",
   };
 }
 
@@ -553,11 +570,13 @@ export const PageExportDocuments = () => {
           <>
         {/* Company Info Section */}
         <SectionTitle title="ข้อมูลบริษัท (ผู้ขาย)" />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 24 }}>
           <FormField label="ชื่อบริษัท" value={formData.companyName} onChange={(v) => setField("companyName", v)} />
           <FormField label="เลขประจำตัวผู้เสียภาษี" value={formData.companyTaxId} onChange={(v) => setField("companyTaxId", v)} />
-          <FormField label="ที่อยู่" value={formData.companyAddress} onChange={(v) => setField("companyAddress", v)} fullWidth />
           <FormField label="สำนักงาน" value={formData.companyBranch} onChange={(v) => setField("companyBranch", v)} />
+          <FormField label="เบอร์โทรศัพท์" value={formData.companyPhone} onChange={(v) => setField("companyPhone", v)} />
+          <FormField label="อีเมล" value={formData.companyEmail} onChange={(v) => setField("companyEmail", v)} />
+          <FormField label="ที่อยู่" value={formData.companyAddress} onChange={(v) => setField("companyAddress", v)} fullWidth />
         </div>
 
         {/* Customer Info Section */}
@@ -566,8 +585,9 @@ export const PageExportDocuments = () => {
           <FormField label="รหัสลูกค้า" value={formData.customerCode} onChange={(v) => setField("customerCode", v)} />
           <FormField label="ชื่อลูกค้า/บริษัท" value={formData.customerName} onChange={(v) => setField("customerName", v)} />
           <FormField label="เลขประจำตัวผู้เสียภาษี" value={formData.customerTaxId} onChange={(v) => setField("customerTaxId", v)} />
-          <FormField label="ที่อยู่" value={formData.customerAddress} onChange={(v) => setField("customerAddress", v)} fullWidth />
           <FormField label="สำนักงาน/สาขา" value={formData.customerBranch} onChange={(v) => setField("customerBranch", v)} />
+          <FormField label="เบอร์โทรศัพท์" value={formData.customerPhone} onChange={(v) => setField("customerPhone", v)} />
+          <FormField label="ที่อยู่" value={formData.customerAddress} onChange={(v) => setField("customerAddress", v)} fullWidth />
         </div>
 
         {/* Document Meta */}
@@ -575,6 +595,7 @@ export const PageExportDocuments = () => {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16, marginBottom: 24 }}>
           <FormField label="เลขที่เอกสาร" value={formData.documentNumber || nextNum || ""} onChange={(v) => setField("documentNumber", v)} placeholder={nextNum || "Auto"} />
           {tab === "receipt_tax_invoice" && <FormField label="เลขที่ใบสั่งขาย (SO)" value={formData.soNumber} onChange={(v) => setField("soNumber", v)} />}
+          {tab === "shipping_note" && <FormField label="ใบสั่งซื้อ" value={formData.poNumber} onChange={(v) => setField("poNumber", v)} />}
           <FormField label="วันที่" value={formData.documentDate} onChange={(v) => setField("documentDate", v)} type="date" />
           {tab === "receipt_tax_invoice" && <FormField label="วันที่ส่งของ" value={formData.deliveryDate} onChange={(v) => setField("deliveryDate", v)} type="date" />}
           {tab === "receipt_tax_invoice" && <FormField label="พนักงานขาย" value={formData.salesperson} onChange={(v) => setField("salesperson", v)} />}
@@ -590,10 +611,10 @@ export const PageExportDocuments = () => {
             <thead>
               <tr style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-default)" }}>
                 <th style={thStyle}>ลำดับ</th>
-                {tab === "receipt_tax_invoice" && <th style={thStyle}>รหัสสินค้า</th>}
+                <th style={thStyle}>รหัสสินค้า</th>
                 <th style={{ ...thStyle, minWidth: 200 }}>รายละเอียด</th>
                 <th style={thStyle}>จำนวน</th>
-                <th style={thStyle}>หน่วย</th>
+                {tab !== "shipping_note" && <th style={thStyle}>หน่วย</th>}
                 <th style={thStyle}>ราคา/หน่วย</th>
                 <th style={thStyle}>{tab === "receipt_tax_invoice" ? "ราคารวมภาษี" : "จำนวนเงิน"}</th>
                 <th style={{ ...thStyle, width: 40 }}></th>
@@ -603,22 +624,22 @@ export const PageExportDocuments = () => {
               {formData.items.map((item, idx) => (
                 <tr key={idx} style={{ borderBottom: "1px solid var(--border-default)" }}>
                   <td style={tdStyle}>{item.no}</td>
-                  {tab === "receipt_tax_invoice" && (
-                    <td style={tdStyle}>
-                      <input style={inputStyle} value={item.productCode || ""} onChange={(e) => updateItem(idx, "productCode", e.target.value)} />
-                    </td>
-                  )}
+                  <td style={tdStyle}>
+                    <input style={inputStyle} value={item.productCode || ""} onChange={(e) => updateItem(idx, "productCode", e.target.value)} placeholder="รหัส..." />
+                  </td>
                   <td style={tdStyle}>
                     <input style={{ ...inputStyle, width: "100%" }} value={item.description} onChange={(e) => updateItem(idx, "description", e.target.value)} placeholder="ชื่อสินค้า..." />
                   </td>
                   <td style={tdStyle}>
                     <input style={{ ...inputStyle, width: 70, textAlign: "right" }} type="number" value={item.quantity || ""} onChange={(e) => updateItem(idx, "quantity", Number(e.target.value))} />
                   </td>
+                  {tab !== "shipping_note" && (
+                    <td style={tdStyle}>
+                      <input style={{ ...inputStyle, width: 60 }} value={item.unit} onChange={(e) => updateItem(idx, "unit", e.target.value)} />
+                    </td>
+                  )}
                   <td style={tdStyle}>
-                    <input style={{ ...inputStyle, width: 60 }} value={item.unit} onChange={(e) => updateItem(idx, "unit", e.target.value)} />
-                  </td>
-                  <td style={tdStyle}>
-                    <input style={{ ...inputStyle, width: 90, textAlign: "right" }} type="number" value={item.unitPrice || ""} onChange={(e) => updateItem(idx, "unitPrice", Number(e.target.value))} />
+                    <input style={{ ...inputStyle, width: 90, textAlign: "right" }} type="number" value={item.unitPrice || ""} onChange={(e) => updateItem(idx, "unitPrice", Number(e.target.value))} step="any" />
                   </td>
                   <td style={{ ...tdStyle, textAlign: "right", fontWeight: 500 }}>
                     {formatNumber(item.totalPrice)}
@@ -643,17 +664,20 @@ export const PageExportDocuments = () => {
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <div style={{ width: 350, background: "var(--bg-secondary)", borderRadius: 8, padding: 16 }}>
             <TotalRow label="รวมเป็นเงิน" value={formatNumber(formData.subtotal)} />
-            {tab === "receipt_tax_invoice" && (
+            {(tab === "receipt_tax_invoice" || tab === "shipping_note") && (
               <TotalRow label="หักส่วนลด">
                 <input style={{ ...inputStyle, width: 100, textAlign: "right" }} type="number" value={formData.discount || ""} onChange={(e) => setField("discount", Number(e.target.value))} />
               </TotalRow>
             )}
-            <TotalRow label="จำนวนเงินรวมทั้งสิ้น" value={formatNumber(formData.grandTotal)} bold />
+            {tab === "shipping_note" && (
+              <TotalRow label="คงเหลือ" value={formatNumber(formData.subtotal - (formData.discount || 0))} />
+            )}
+            <TotalRow label={tab === "shipping_note" ? "สุทธิ" : "จำนวนเงินรวมทั้งสิ้น"} value={formatNumber(formData.grandTotal)} bold />
             <TotalRow label={`ภาษีมูลค่าเพิ่ม ${formData.vatRate}%`} value={formatNumber(formData.vatAmount)} />
             {tab === "receipt_tax_invoice" && (
               <TotalRow label="ราคาสินค้า (ก่อน VAT)" value={formatNumber(formData.totalBeforeVat)} />
             )}
-            {tab === "receipt_tax_invoice" && formData.amountInWords && (
+            {(tab === "receipt_tax_invoice" || tab === "shipping_note") && formData.amountInWords && (
               <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic" }}>
                 ({formData.amountInWords})
               </div>
@@ -866,89 +890,272 @@ function generateInvoicePDFHtml(data) {
 function generateShippingPDFHtml(data) {
   const items = data.items.map((it) => `
     <tr>
-      <td style="padding:6px 8px;border-bottom:1px solid #ddd;text-align:center;">${it.no}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #ddd;">${it.description}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #ddd;text-align:center;">${it.quantity}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #ddd;text-align:center;">${it.unit}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #ddd;text-align:right;">${formatNumber(it.unitPrice)}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #ddd;text-align:right;">${formatNumber(it.totalPrice)}</td>
+      <td style="padding: 6px; border-right: 1px solid #8eb543; border-bottom: 1px solid #8eb543; text-align: center;">${it.no}</td>
+      <td style="padding: 6px; border-right: 1px solid #8eb543; border-bottom: 1px solid #8eb543; text-align: left;">${it.productCode || ""}</td>
+      <td style="padding: 6px; border-right: 1px solid #8eb543; border-bottom: 1px solid #8eb543; text-align: left;">${it.description}</td>
+      <td style="padding: 6px; border-right: 1px solid #8eb543; border-bottom: 1px solid #8eb543; text-align: right;">${it.quantity}</td>
+      <td style="padding: 6px; border-right: 1px solid #8eb543; border-bottom: 1px solid #8eb543; text-align: right;">${formatNumber(it.unitPrice)}</td>
+      <td style="padding: 6px; border-bottom: 1px solid #8eb543; text-align: right;">${formatNumber(it.totalPrice)}</td>
     </tr>
   `).join("");
 
+  // Pad items with empty rows if fewer than 9 to maintain layout structure
+  const minRows = 10;
+  let extraRowsHtml = "";
+  if (data.items.length < minRows) {
+    for (let i = data.items.length + 1; i <= minRows; i++) {
+      extraRowsHtml += `
+        <tr>
+          <td style="padding: 6px; border-right: 1px solid #8eb543; border-bottom: 1px solid #8eb543; text-align: center; color: transparent;">${i}</td>
+          <td style="padding: 6px; border-right: 1px solid #8eb543; border-bottom: 1px solid #8eb543; color: transparent;">&nbsp;</td>
+          <td style="padding: 6px; border-right: 1px solid #8eb543; border-bottom: 1px solid #8eb543; color: transparent;">&nbsp;</td>
+          <td style="padding: 6px; border-right: 1px solid #8eb543; border-bottom: 1px solid #8eb543; color: transparent;">&nbsp;</td>
+          <td style="padding: 6px; border-right: 1px solid #8eb543; border-bottom: 1px solid #8eb543; color: transparent;">&nbsp;</td>
+          <td style="padding: 6px; border-bottom: 1px solid #8eb543; color: transparent;">&nbsp;</td>
+        </tr>
+      `;
+    }
+  }
+
+  const discountVal = Number(data.discount) || 0;
+  const discountText = discountVal > 0 ? `${formatNumber(discountVal)}` : "-";
+
   return `
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
-      body { font-family: 'Sarabun', sans-serif; font-size: 13px; color: #333; }
-      @page { size: A4; margin: 15mm; }
-      .header { text-align: center; margin-bottom: 16px; }
-      .doc-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
-      .meta { display: flex; justify-content: flex-end; gap: 24px; font-size: 12px; margin-bottom: 12px; }
-      .customer-info { margin-bottom: 16px; font-size: 12px; line-height: 1.6; }
-      table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-      th { background: #f5f5f0; padding: 8px; border: 1px solid #ddd; font-size: 12px; }
-      .totals { margin-left: auto; width: 280px; margin-top: 8px; }
-      .totals tr td { padding: 4px 8px; font-size: 12px; }
-      .totals tr td:last-child { text-align: right; }
-      .totals .grand { font-weight: 700; font-size: 14px; border-top: 2px solid #333; }
-      .note { font-size: 11px; margin-top: 12px; color: #666; }
-      .signatures { display: flex; justify-content: space-between; margin-top: 40px; }
-      .sig-box { text-align: center; width: 160px; }
-      .sig-line { border-top: 1px solid #333; margin-top: 50px; padding-top: 4px; font-size: 11px; }
-      .sig-date { font-size: 10px; color: #888; margin-top: 2px; }
+      @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+      * { box-sizing: border-box; }
+      body { font-family: 'Sarabun', sans-serif; font-size: 13px; color: #111; margin: 0; padding: 0; }
+      @page { size: A4; margin: 12mm 15mm; }
+      
+      /* Main grid */
+      .top-section { display: flex; justify-content: space-between; margin-bottom: 10px; }
+      .left-col { width: 55%; }
+      .right-col { width: 40%; text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
+      
+      /* Typography */
+      .company-name { font-size: 16px; font-weight: bold; margin-bottom: 4px; color: #000; }
+      .company-details { font-size: 12px; line-height: 1.4; color: #333; }
+      
+      /* Title Badge */
+      .title-badge { 
+        background-color: #8eb543; 
+        color: white; 
+        font-size: 20px; 
+        font-weight: bold; 
+        padding: 6px 40px; 
+        border-radius: 12px; 
+        text-align: center;
+        display: inline-block;
+        margin-bottom: 4px;
+        width: 220px;
+      }
+      .subtitle-red { color: red; font-weight: bold; font-size: 13px; margin-bottom: 8px; text-align: center; width: 220px; }
+      .tax-id-line { font-size: 12px; font-weight: bold; margin-bottom: 6px; width: 220px; text-align: left; padding-left: 10px; }
+      
+      /* Info box */
+      .info-box { 
+        border: 1px solid #8eb543; 
+        border-radius: 12px; 
+        padding: 8px 12px; 
+        font-size: 12px; 
+        text-align: left;
+        width: 220px;
+        line-height: 1.6;
+      }
+      .info-row { display: flex; justify-content: space-between; }
+      .info-label { font-weight: bold; color: #000; }
+      .info-value { color: #111; }
+      
+      /* Warning text */
+      .warning-text { color: red; font-weight: bold; font-size: 12px; margin: 6px 0; }
+      
+      /* Customer box */
+      .customer-box {
+        border: 1px solid #8eb543;
+        border-radius: 12px;
+        padding: 8px 14px;
+        margin-bottom: 12px;
+        font-size: 12px;
+        line-height: 1.5;
+        min-height: 80px;
+      }
+      .customer-title { font-weight: bold; display: inline-block; margin-right: 4px; }
+      
+      /* Table styling */
+      table.items-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        border: 1.5px solid #8eb543; 
+        font-size: 12px;
+        margin-bottom: 10px;
+      }
+      table.items-table th { 
+        border: 1px solid #8eb543; 
+        padding: 8px 6px; 
+        font-weight: bold; 
+        color: #000;
+        text-align: center;
+      }
+      table.items-table td {
+        vertical-align: middle;
+      }
+      
+      /* Footer sections */
+      .footer-section { display: flex; justify-content: space-between; margin-bottom: 10px; }
+      .remarks-box { 
+        width: 60%; 
+        font-size: 10px; 
+        color: #333; 
+        line-height: 1.4;
+      }
+      .remarks-title { font-weight: bold; font-size: 11px; margin-bottom: 4px; color: #000; }
+      .remarks-list { margin: 0; padding-left: 14px; }
+      
+      .totals-box { width: 38%; }
+      .totals-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+      .totals-table td { padding: 4px 0; }
+      .totals-table td.label { font-weight: bold; color: #000; text-align: left; }
+      .totals-table td.val { text-align: right; padding-right: 4px; }
+      
+      /* Grand total bar */
+      .grand-total-bar {
+        border: 1.5px solid #8eb543;
+        background-color: #fff;
+        padding: 8px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+        font-weight: bold;
+        margin-bottom: 14px;
+        border-radius: 4px;
+      }
+      .thai-words { color: #111; }
+      .net-amount { font-size: 14px; color: #000; }
+      
+      /* Signatures */
+      .signatures-section { display: flex; justify-content: space-between; margin-top: 10px; }
+      .signature-box {
+        border: 1px solid #8eb543;
+        border-radius: 12px;
+        width: 48%;
+        padding: 10px;
+        text-align: center;
+        font-size: 12px;
+        min-height: 85px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .signature-title { font-weight: bold; text-align: left; margin-bottom: 25px; }
+      .signature-line { border-bottom: 1px dotted #333; width: 70%; margin: 0 auto 4px auto; }
+      .signature-date { margin-top: 4px; }
     </style>
 
-    <div class="header">
-      <div class="doc-title">ใบขนส่งสินค้า / Delivery Note</div>
+    <div class="top-section">
+      <div class="left-col">
+        <img src="${AGAPE_LOGO_BASE64}" style="height: 44px; margin-bottom: 6px; display: block;" alt="agape" />
+        <div class="company-name">${data.companyName}</div>
+        <div class="company-details">
+          ${data.companyAddress}<br/>
+          <strong>โทร.</strong> ${data.companyPhone || "-"}<br/>
+          E-mail: ${data.companyEmail || "-"}
+        </div>
+      </div>
+      <div class="right-col">
+        <div class="title-badge">ใบส่งสินค้า</div>
+        <div class="subtitle-red">ต้นฉบับ</div>
+        <div class="tax-id-line">
+          <strong>เลขผู้เสียภาษี</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${data.companyTaxId}
+        </div>
+        <div class="info-box">
+          <div class="info-row"><span class="info-label">เลขที่</span> <span class="info-value">${data.documentNumber}</span></div>
+          <div class="info-row"><span class="info-label">วันที่</span> <span class="info-value">${formatDate(data.documentDate)}</span></div>
+          <div class="info-row"><span class="info-label">ใบสั่งซื้อ</span> <span class="info-value">${data.poNumber || "-"}</span></div>
+        </div>
+      </div>
     </div>
 
-    <div class="meta">
-      <span>วันที่ ${formatDate(data.documentDate)}</span>
-      <span>เลขที่ ${data.documentNumber || ""}</span>
+    <div class="warning-text">ไม่ใช่ใบกำกับภาษี</div>
+
+    <div class="customer-box">
+      <div><span class="customer-title">ลูกค้า</span> ${data.customerName}</div>
+      <div style="margin-left: 36px; margin-top: 2px;">
+        ${data.customerAddress}<br/>
+        <strong>โทร.</strong> ${data.customerPhone || "-"}
+      </div>
     </div>
 
-    <div class="customer-info">
-      <div><strong>ชื่อลูกค้า:</strong> ${data.customerName}</div>
-      <div>${data.customerAddress}</div>
-      <div><strong>เลขประจำตัวผู้เสียภาษี:</strong> ${data.customerTaxId || ""}</div>
-    </div>
-
-    <table>
+    <table class="items-table">
       <thead>
-        <tr>
-          <th style="width:40px;">ลำดับ</th>
-          <th>รายการ</th>
-          <th style="width:60px;">จำนวน</th>
-          <th style="width:60px;">หน่วย</th>
-          <th style="width:90px;">ราคา/หน่วยละ</th>
-          <th style="width:100px;">จำนวนเงิน</th>
+        <tr style="border-bottom: 1.5px solid #8eb543; background: #fff;">
+          <th style="width: 45px; border-right: 1px solid #8eb543;">ลำดับ</th>
+          <th style="width: 100px; border-right: 1px solid #8eb543;">รหัสสินค้า</th>
+          <th style="border-right: 1px solid #8eb543; text-align: left; padding-left: 10px;">รายการ</th>
+          <th style="width: 75px; border-right: 1px solid #8eb543;">จำนวน</th>
+          <th style="width: 90px; border-right: 1px solid #8eb543;">ราคา/หน่วย</th>
+          <th style="width: 110px;">จำนวนเงิน</th>
         </tr>
       </thead>
       <tbody>
         ${items}
+        ${extraRowsHtml}
       </tbody>
     </table>
 
-    <table class="totals">
-      <tr><td>รวมราคาสินค้า</td><td>${formatNumber(data.subtotal)}</td></tr>
-      <tr><td>ภาษีมูลค่าเพิ่ม ${data.vatRate}%</td><td>${formatNumber(data.vatAmount)}</td></tr>
-      <tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td>${formatNumber(data.grandTotal)}</td></tr>
-    </table>
-
-    ${data.note ? `<div class="note">${data.note}</div>` : ""}
-    <div style="font-size:11px;margin-top:8px;">ได้รับสินค้าดังรายการข้างต้นไว้เรียบร้อยแล้ว</div>
-
-    <div class="signatures">
-      <div class="sig-box">
-        <div class="sig-line">ผู้รับสินค้า</div>
-        <div class="sig-date">วันที่......./........./.........</div>
+    <div class="footer-section">
+      <div class="remarks-box">
+        <div class="remarks-title">หมายเหตุ</div>
+        <ol class="remarks-list">
+          <li>กรุณาตรวจสอบสินค้า จำนวน และสภาพสินค้าให้ถูกต้องครบถ้วนก่อนลงนามรับสินค้า</li>
+          <li>เมื่อลงนามรับสินค้าแล้ว บริษัทฯ จะถือว่าท่านได้รับสินค้าครบถ้วนและอยู่ในสภาพเรียบร้อย</li>
+          <li>กรณีพบว่าสินค้าไม่ครบ ชำระ หรือไม่ตรงตามรายการ กรุณาแจ้งบริษัทฯ ภายใน 24 ชั่วโมง นับจากเวลารับสินค้า</li>
+          <li>เอกสารฉบับนี้ใช้เป็นหลักฐานการส่งมอบสินค้า และไม่ใช่ใบเสร็จรับเงิน</li>
+        </ol>
       </div>
-      <div class="sig-box">
-        <div class="sig-line">ผู้ขายสินค้า</div>
-        <div class="sig-date">วันที่......./........./.........</div>
+      <div class="totals-box">
+        <table class="totals-table">
+          <tr>
+            <td class="label">รวม</td>
+            <td class="val">${formatNumber(data.subtotal)}</td>
+          </tr>
+          <tr>
+            <td class="label">ส่วนลด 0%</td>
+            <td class="val">${discountText}</td>
+          </tr>
+          <tr>
+            <td class="label">คงเหลือ</td>
+            <td class="val">${formatNumber(data.subtotal - discountVal)}</td>
+          </tr>
+          <tr>
+            <td class="label">ภาษีมูลค่าเพิ่ม 7%</td>
+            <td class="val">${formatNumber(data.vatAmount)}</td>
+          </tr>
+        </table>
       </div>
-      <div class="sig-box">
-        <div class="sig-line">ผู้รับเงิน</div>
-        <div class="sig-date">วันที่......./........./.........</div>
+    </div>
+
+    <div class="grand-total-bar">
+      <div class="thai-words">${data.amountInWords || ""}</div>
+      <div class="net-amount">
+        สุทธิ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${formatNumber(data.grandTotal)}
+      </div>
+    </div>
+
+    <div class="signatures-section">
+      <div class="signature-box">
+        <div class="signature-title">ผู้รับสินค้า</div>
+        <div>
+          <div class="signature-line"></div>
+          <div class="signature-date">วันที่ ........................................</div>
+        </div>
+      </div>
+      <div class="signature-box">
+        <div class="signature-title">ผู้ส่งสินค้า</div>
+        <div>
+          <div class="signature-line"></div>
+          <div class="signature-date">วันที่ ........................................</div>
+        </div>
       </div>
     </div>
   `;

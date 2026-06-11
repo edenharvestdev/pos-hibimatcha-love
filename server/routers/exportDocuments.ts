@@ -39,6 +39,8 @@ const documentDataSchema = z.object({
   companyAddress: z.string(),
   companyTaxId: z.string(),
   companyBranch: z.string().optional(), // สำนักงานใหญ่ / สาขา
+  companyPhone: z.string().optional(),
+  companyEmail: z.string().optional(),
 
   // Customer info
   customerCode: z.string().optional(),
@@ -46,10 +48,12 @@ const documentDataSchema = z.object({
   customerAddress: z.string(),
   customerTaxId: z.string().optional(),
   customerBranch: z.string().optional(),
+  customerPhone: z.string().optional(),
 
   // Document meta
   documentNumber: z.string(),
   soNumber: z.string().optional(), // Sales Order number
+  poNumber: z.string().optional(), // Purchase Order number
   documentDate: z.string(), // date string
   deliveryDate: z.string().optional(),
   salesperson: z.string().optional(),

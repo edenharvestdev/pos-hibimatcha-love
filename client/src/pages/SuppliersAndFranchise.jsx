@@ -1151,16 +1151,24 @@ const BranchStaffTab = ({ branchId }) => {
   if (isLoading) return <div className="muted" style={{ padding: 24 }}>Loading staff...</div>;
   if (staffList.length === 0) return <EmptyState illustration={<EmptyZen/>} title="No staff assigned" desc="Assign staff to this branch from the Staff page."/>;
   return (
-    <div className="card" style={{ padding: 16 }}>
-      <table className="table">
-        <thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Phone</th></tr></thead>
+    <div className="card" style={{ overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border-default)' }}>
+            {['Name', 'Role', 'Status', 'Phone'].map((h) => (
+              <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
         <tbody>
           {staffList.map(s => (
-            <tr key={s.id}>
-              <td style={{ fontWeight: 500 }}>{s.firstName} {s.lastName}</td>
-              <td><span className="pill pill-neutral">{s.role}</span></td>
-              <td><span className={`pill ${s.status === 'active' ? 'pill-matcha' : ''}`}><span className="dot"/> {s.status}</span></td>
-              <td className="muted">{s.phone || '—'}</td>
+            <tr key={s.id} style={{ borderBottom: '1px solid var(--border-default)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-muted)'}
+              onMouseLeave={e => e.currentTarget.style.background = ''}>
+              <td style={{ padding: '12px 16px', fontWeight: 500 }}>{s.firstName} {s.lastName}</td>
+              <td style={{ padding: '12px 16px' }}><span className="pill pill-neutral">{s.role}</span></td>
+              <td style={{ padding: '12px 16px' }}><span className={`pill ${s.status === 'active' ? 'pill-matcha' : ''}`}><span className="dot"/> {s.status}</span></td>
+              <td style={{ padding: '12px 16px' }} className="muted">{s.phone || '—'}</td>
             </tr>
           ))}
         </tbody>

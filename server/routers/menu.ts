@@ -50,21 +50,28 @@ export const menuRouter = router({
       includeArchived: z.boolean().optional(),
       search: z.string().optional(),
     }).optional())
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return [];
 
       let rows = await db.select().from(posMenuItems);
 
-      // If branchId provided, filter by branch menu availability
-      if (input?.branchId) {
+      const activeBranchId = ctx.staff.role === "super_admin" ? input?.branchId : ctx.staff.currentBranchId;
+
+      if (activeBranchId) {
         const branchMenus = await db.select().from(posBranchMenuItems)
-          .where(eq(posBranchMenuItems.branchId, input.branchId));
-        if (branchMenus.length > 0) {
+          .where(eq(posBranchMenuItems.branchId, activeBranchId));
+        if (ctx.staff.role !== "super_admin") {
           const availableIds = new Set(branchMenus.filter(bm => bm.isAvailable !== false).map(bm => bm.menuItemId));
           rows = rows.filter((m) => availableIds.has(m.id));
+        } else {
+          if (branchMenus.length > 0) {
+            const availableIds = new Set(branchMenus.filter(bm => bm.isAvailable !== false).map(bm => bm.menuItemId));
+            rows = rows.filter((m) => availableIds.has(m.id));
+          }
         }
-        // If no branch menu entries exist, show all (branch hasn't been configured yet)
+      } else if (ctx.staff.role !== "super_admin") {
+        return [];
       }
 
       if (!input?.includeArchived) rows = rows.filter((m) => !m.isArchived);
@@ -83,12 +90,15 @@ export const menuRouter = router({
 
   listAvailable: staffProcedure
     .input(z.object({ branchId: z.number().int() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return [];
 
+      const targetBranchId = ctx.staff.role === "super_admin" ? input.branchId : ctx.staff.currentBranchId;
+      if (!targetBranchId) return [];
+
       const overrides = await db.select().from(posBranchMenuItems)
-        .where(eq(posBranchMenuItems.branchId, input.branchId));
+        .where(eq(posBranchMenuItems.branchId, targetBranchId));
       const overrideMap = new Map(overrides.map((o) => [o.menuItemId, o]));
 
       const items = await db.select().from(posMenuItems)
@@ -107,16 +117,19 @@ export const menuRouter = router({
             stockLevel: override?.stockLevel ?? null,
           };
         })
-                .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     }),
+
   // Returns ONLY items explicitly assigned to a branch (have a row in pos_branch_menu_items with isAvailable=true)
   listAssignedToBranch: staffProcedure
     .input(z.object({ branchId: z.number().int() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return [];
+      const targetBranchId = ctx.staff.role === "super_admin" ? input.branchId : ctx.staff.currentBranchId;
+      if (!targetBranchId) return [];
       const assignments = await db.select().from(posBranchMenuItems)
-        .where(and(eq(posBranchMenuItems.branchId, input.branchId), eq(posBranchMenuItems.isAvailable, true)));
+        .where(and(eq(posBranchMenuItems.branchId, targetBranchId), eq(posBranchMenuItems.isAvailable, true)));
       if (assignments.length === 0) return [];
       const menuItemIds = assignments.map(a => a.menuItemId);
       const items = await db.select().from(posMenuItems)
@@ -127,11 +140,26 @@ export const menuRouter = router({
         return { ...item, displayPrice: override?.priceOverride ?? item.basePrice, stockLevel: override?.stockLevel ?? null };
       }).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     }),
+
   getById: staffProcedure
     .input(z.object({ id: z.number().int() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [isAssigned] = await db.select().from(posBranchMenuItems)
+          .where(and(
+            eq(posBranchMenuItems.menuItemId, input.id),
+            eq(posBranchMenuItems.branchId, ctx.staff.currentBranchId)
+          )).limit(1);
+        if (!isAssigned) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Menu item not assigned to your branch" });
+        }
+      }
 
       const [item] = await db.select().from(posMenuItems)
         .where(eq(posMenuItems.id, input.id)).limit(1);
@@ -192,15 +220,22 @@ export const menuRouter = router({
       const [result] = await db.insert(posMenuItems).values(input as any);
       const id = (result as any).insertId as number;
 
-      // Auto-link to Hibi House (HQ) so every new menu item is available there
-      // by default. Other branches must be enabled explicitly via distributeMenuItems.
-      const [hq] = await db.select().from(branches).where(eq(branches.branchType, "hq")).limit(1);
-      if (hq) {
+      const targetBranchId = ctx.staff.role === "super_admin" ? ctx.staff.currentBranchId : ctx.staff.currentBranchId;
+      if (targetBranchId) {
         await db.insert(posBranchMenuItems).values({
-          branchId: hq.id,
+          branchId: targetBranchId,
           menuItemId: id,
           isAvailable: true,
         }).onDuplicateKeyUpdate({ set: { isAvailable: true } });
+      } else {
+        const [hq] = await db.select().from(branches).where(eq(branches.branchType, "hq")).limit(1);
+        if (hq) {
+          await db.insert(posBranchMenuItems).values({
+            branchId: hq.id,
+            menuItemId: id,
+            isAvailable: true,
+          }).onDuplicateKeyUpdate({ set: { isAvailable: true } });
+        }
       }
 
       const [created] = await db.select().from(posMenuItems).where(eq(posMenuItems.id, id)).limit(1);
@@ -211,9 +246,22 @@ export const menuRouter = router({
   // List which branches a menu item is enabled at + their overrides
   listBranchAvailability: staffAdminProcedure
     .input(z.object({ menuItemId: z.number().int() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return [];
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [isAssigned] = await db.select().from(posBranchMenuItems)
+          .where(and(eq(posBranchMenuItems.menuItemId, input.menuItemId), eq(posBranchMenuItems.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!isAssigned) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Menu item not assigned to your branch" });
+        }
+      }
+
       const rows = await db.select({
         id: posBranchMenuItems.id,
         branchId: posBranchMenuItems.branchId,
@@ -263,11 +311,26 @@ export const menuRouter = router({
       isAvailable: z.boolean(),
       priceOverride: z.string().optional().nullable(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const targetBranchId = ctx.staff.role === "super_admin" ? input.branchId : ctx.staff.currentBranchId;
+      if (!targetBranchId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+      }
+
+      if (ctx.staff.role !== "super_admin") {
+        const [exists] = await db.select().from(posBranchMenuItems)
+          .where(and(eq(posBranchMenuItems.menuItemId, input.menuItemId), eq(posBranchMenuItems.branchId, targetBranchId)))
+          .limit(1);
+        if (!exists) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Menu item not assigned to your branch" });
+        }
+      }
+
       await db.insert(posBranchMenuItems).values({
-        branchId: input.branchId,
+        branchId: targetBranchId,
         menuItemId: input.menuItemId,
         isAvailable: input.isAvailable,
         priceOverride: input.priceOverride ?? null,
@@ -285,15 +348,29 @@ export const menuRouter = router({
       branchId: z.number().int(),
       status: z.enum(["open", "out_of_stock", "hidden"]),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       
+      const targetBranchId = ctx.staff.role === "super_admin" ? input.branchId : ctx.staff.currentBranchId;
+      if (!targetBranchId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+      }
+
+      if (ctx.staff.role !== "super_admin") {
+        const [exists] = await db.select().from(posBranchMenuItems)
+          .where(and(eq(posBranchMenuItems.menuItemId, input.menuItemId), eq(posBranchMenuItems.branchId, targetBranchId)))
+          .limit(1);
+        if (!exists) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Menu item not assigned to your branch" });
+        }
+      }
+
       const isAvailable = input.status !== "hidden";
       const stockLevel = input.status === "out_of_stock" ? 0 : null;
 
       await db.insert(posBranchMenuItems).values({
-        branchId: input.branchId,
+        branchId: targetBranchId,
         menuItemId: input.menuItemId,
         isAvailable,
         stockLevel,
@@ -310,6 +387,19 @@ export const menuRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...data } = input;
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [isAssigned] = await db.select().from(posBranchMenuItems)
+          .where(and(eq(posBranchMenuItems.menuItemId, id), eq(posBranchMenuItems.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!isAssigned) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Menu item not assigned to your branch" });
+        }
+      }
+
       await db.update(posMenuItems).set(data as any).where(eq(posMenuItems.id, id));
       const [updated] = await db.select().from(posMenuItems).where(eq(posMenuItems.id, id)).limit(1);
       await logAudit({ staff: ctx.staff, action: "update", entity: "pos_menu_items", entityId: id });
@@ -321,6 +411,19 @@ export const menuRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [isAssigned] = await db.select().from(posBranchMenuItems)
+          .where(and(eq(posBranchMenuItems.menuItemId, input.id), eq(posBranchMenuItems.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!isAssigned) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Menu item not assigned to your branch" });
+        }
+      }
+
       await db.update(posMenuItems).set({ isArchived: true, isActive: false }).where(eq(posMenuItems.id, input.id));
       await logAudit({ staff: ctx.staff, action: "archive", entity: "pos_menu_items", entityId: input.id });
       return { success: true };
@@ -331,6 +434,19 @@ export const menuRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [isAssigned] = await db.select().from(posBranchMenuItems)
+          .where(and(eq(posBranchMenuItems.menuItemId, input.id), eq(posBranchMenuItems.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!isAssigned) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Menu item not assigned to your branch" });
+        }
+      }
+
       await db.update(posMenuItems).set({ isArchived: false, isActive: true }).where(eq(posMenuItems.id, input.id));
       return { success: true };
     }),
@@ -340,11 +456,34 @@ export const menuRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [isAssigned] = await db.select().from(posBranchMenuItems)
+          .where(and(eq(posBranchMenuItems.menuItemId, input.id), eq(posBranchMenuItems.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!isAssigned) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Menu item not assigned to your branch" });
+        }
+      }
+
       const [original] = await db.select().from(posMenuItems).where(eq(posMenuItems.id, input.id)).limit(1);
       if (!original) throw new TRPCError({ code: "NOT_FOUND" });
       const { id, sku, createdAt, updatedAt, ...rest } = original;
       const [result] = await db.insert(posMenuItems).values({ ...rest, name: `${rest.name} (Copy)`, sku: undefined });
       const newId = (result as any).insertId as number;
+
+      const targetBranchId = ctx.staff.role === "super_admin" ? ctx.staff.currentBranchId : ctx.staff.currentBranchId;
+      if (targetBranchId) {
+        await db.insert(posBranchMenuItems).values({
+          branchId: targetBranchId,
+          menuItemId: newId,
+          isAvailable: true,
+        }).onDuplicateKeyUpdate({ set: { isAvailable: true } });
+      }
+
       const [created] = await db.select().from(posMenuItems).where(eq(posMenuItems.id, newId)).limit(1);
       return created;
     }),
@@ -355,6 +494,18 @@ export const menuRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       if (input.ids.length === 0) return { success: true };
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const assigned = await db.select().from(posBranchMenuItems)
+          .where(and(inArray(posBranchMenuItems.menuItemId, input.ids), eq(posBranchMenuItems.branchId, ctx.staff.currentBranchId)));
+        if (assigned.length !== input.ids.length) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "One or more menu items do not belong to your branch" });
+        }
+      }
+
       await db.update(posMenuItems)
         .set({ isArchived: true, isActive: false })
         .where(inArray(posMenuItems.id, input.ids));
@@ -368,11 +519,26 @@ export const menuRouter = router({
       isAvailable: z.boolean(),
       priceOverride: z.string().optional().nullable(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const targetBranchId = ctx.staff.role === "super_admin" ? input.branchId : ctx.staff.currentBranchId;
+      if (!targetBranchId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+      }
+
+      if (ctx.staff.role !== "super_admin") {
+        const [exists] = await db.select().from(posBranchMenuItems)
+          .where(and(eq(posBranchMenuItems.menuItemId, input.menuItemId), eq(posBranchMenuItems.branchId, targetBranchId)))
+          .limit(1);
+        if (!exists) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Menu item not assigned to your branch" });
+        }
+      }
+
       await db.insert(posBranchMenuItems).values({
-        branchId: input.branchId,
+        branchId: targetBranchId,
         menuItemId: input.menuItemId,
         isAvailable: input.isAvailable,
         priceOverride: input.priceOverride ?? undefined,
@@ -384,9 +550,22 @@ export const menuRouter = router({
 
   linkOptionGroups: staffAdminProcedure
     .input(z.object({ menuItemId: z.number().int(), optionGroupIds: z.array(z.number().int()) }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [isAssigned] = await db.select().from(posBranchMenuItems)
+          .where(and(eq(posBranchMenuItems.menuItemId, input.menuItemId), eq(posBranchMenuItems.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!isAssigned) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Menu item not assigned to your branch" });
+        }
+      }
+
       await db.delete(posMenuItemOptionGroups).where(eq(posMenuItemOptionGroups.menuItemId, input.menuItemId));
       if (input.optionGroupIds.length > 0) {
         await db.insert(posMenuItemOptionGroups).values(
@@ -410,6 +589,20 @@ export const menuRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        if (input.menuItemIds.length > 0) {
+          const assigned = await db.select().from(posBranchMenuItems)
+            .where(and(inArray(posBranchMenuItems.menuItemId, input.menuItemIds), eq(posBranchMenuItems.branchId, ctx.staff.currentBranchId)));
+          if (assigned.length !== input.menuItemIds.length) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "One or more menu items do not belong to your branch" });
+          }
+        }
+      }
+
       let updated = 0;
       for (const id of input.menuItemIds) {
         await db.update(posMenuItems).set({ sopId: input.sopId as any })
@@ -429,10 +622,11 @@ export const menuRouter = router({
   // List menu items currently linked to a given SOP (for the SOP detail page)
   listBySop: staffProcedure
     .input(z.object({ sopId: z.number().int() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return [];
-      return await db.select({
+
+      let rows = await db.select({
         id: posMenuItems.id,
         sku: posMenuItems.sku,
         name: posMenuItems.name,
@@ -440,7 +634,18 @@ export const menuRouter = router({
         categoryId: posMenuItems.categoryId,
         basePrice: posMenuItems.basePrice,
         imageUrl: posMenuItems.imageUrl,
+        sopId: posMenuItems.sopId,
       }).from(posMenuItems).where(eq(posMenuItems.sopId, input.sopId));
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) return [];
+        const branchMenus = await db.select().from(posBranchMenuItems)
+          .where(eq(posBranchMenuItems.branchId, ctx.staff.currentBranchId));
+        const availableIds = new Set(branchMenus.filter(bm => bm.isAvailable !== false).map(bm => bm.menuItemId));
+        rows = rows.filter((m) => availableIds.has(m.id));
+      }
+
+      return rows;
     }),
 
   setRecipe: staffAdminProcedure
@@ -453,9 +658,22 @@ export const menuRouter = router({
         notes: z.string().optional(),
       })),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [isAssigned] = await db.select().from(posBranchMenuItems)
+          .where(and(eq(posBranchMenuItems.menuItemId, input.menuItemId), eq(posBranchMenuItems.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!isAssigned) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Menu item not assigned to your branch" });
+        }
+      }
+
       await db.delete(posRecipeIngredients).where(eq(posRecipeIngredients.menuItemId, input.menuItemId));
       if (input.ingredients.length > 0) {
         await db.insert(posRecipeIngredients).values(

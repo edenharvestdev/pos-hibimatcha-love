@@ -58,11 +58,16 @@ export const staffRouter = router({
 
       if (input?.status) rows = rows.filter((s) => s.status === input.status);
       if (input?.role) rows = rows.filter((s) => s.role === input.role);
-      if (input?.branchId && ctx.staff.role !== "super_admin") {
+
+      const activeBranchId = ctx.staff.role === "super_admin" ? input?.branchId : ctx.staff.currentBranchId;
+
+      if (activeBranchId) {
         const branchStaff = await db.select({ staffId: staffBranches.staffId })
-          .from(staffBranches).where(eq(staffBranches.branchId, input.branchId));
+          .from(staffBranches).where(eq(staffBranches.branchId, activeBranchId));
         const ids = branchStaff.map((b) => b.staffId);
         rows = rows.filter((s) => ids.includes(s.id));
+      } else if (ctx.staff.role !== "super_admin") {
+        return [];
       }
 
       return rows;
@@ -70,9 +75,21 @@ export const staffRouter = router({
 
   getById: staffAdminProcedure
     .input(z.object({ id: z.number().int() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [hasBranch] = await db.select().from(staffBranches)
+          .where(and(eq(staffBranches.staffId, input.id), eq(staffBranches.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!hasBranch) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Staff does not belong to your branch" });
+        }
+      }
 
       const [member] = await db.select({
         id: staff.id,
@@ -109,8 +126,27 @@ export const staffRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      const targetBranchId = ctx.staff.role === "super_admin" ? input.primaryBranchId : ctx.staff.currentBranchId;
+      if (ctx.staff.role !== "super_admin" && !ctx.staff.currentBranchId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+      }
+
       const allStaff = await db.select({ id: staff.id }).from(staff);
-      const code = input.employeeCode || generateEmployeeCode(allStaff.length);
+      let code = input.employeeCode;
+      if (!code) {
+        let count = allStaff.length;
+        let isUnique = false;
+        while (!isUnique) {
+          const checkCode = generateEmployeeCode(count);
+          const [existing] = await db.select({ id: staff.id }).from(staff).where(eq(staff.employeeCode, checkCode));
+          if (!existing) {
+            code = checkCode;
+            isUnique = true;
+          } else {
+            count++;
+          }
+        }
+      }
 
       const [result] = await db.insert(staff).values({
         employeeCode: code,
@@ -120,8 +156,8 @@ export const staffRouter = router({
         lastNameThai: input.lastNameThai,
         email: input.email,
         phone: input.phone,
-        role: input.role ?? "staff",
-        primaryBranchId: input.primaryBranchId,
+        role: ctx.staff.role === "super_admin" ? (input.role ?? "staff") : (input.role === "super_admin" ? "staff" : (input.role ?? "staff")),
+        primaryBranchId: targetBranchId,
         employmentType: input.employmentType ?? "full-time",
         hireDate: input.hireDate as any,
         status: "active",
@@ -133,10 +169,10 @@ export const staffRouter = router({
 
       const id = (result as any).insertId as number;
 
-      if (input.primaryBranchId) {
+      if (targetBranchId) {
         await db.insert(staffBranches).values({
           staffId: id,
-          branchId: input.primaryBranchId,
+          branchId: targetBranchId,
           isPrimary: true,
         }).onDuplicateKeyUpdate({ set: { isPrimary: true } });
       }
@@ -154,6 +190,24 @@ export const staffRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, password, pin, ...data } = input;
 
+      const [targetStaff] = await db.select().from(staff).where(eq(staff.id, id)).limit(1);
+      if (!targetStaff) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [hasBranch] = await db.select().from(staffBranches)
+          .where(and(eq(staffBranches.staffId, id), eq(staffBranches.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!hasBranch) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Staff does not belong to your branch" });
+        }
+        if (targetStaff.role === "super_admin" || data.role === "super_admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Cannot modify super_admin role" });
+        }
+      }
+
       const updateData: Record<string, unknown> = { ...data };
       if (password) updateData.passwordHash = hashPassword(password);
       if (pin) updateData.pinHash = hashPin(pin);
@@ -169,6 +223,25 @@ export const staffRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [targetStaff] = await db.select().from(staff).where(eq(staff.id, input.id)).limit(1);
+      if (!targetStaff) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [hasBranch] = await db.select().from(staffBranches)
+          .where(and(eq(staffBranches.staffId, input.id), eq(staffBranches.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!hasBranch) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Staff does not belong to your branch" });
+        }
+        if (targetStaff.role === "super_admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Cannot archive a super_admin" });
+        }
+      }
+
       await db.update(staff).set({ status: "inactive" }).where(eq(staff.id, input.id));
       await logAudit({ staff: ctx.staff, action: "archive", entity: "staff", entityId: input.id });
       return { success: true };
@@ -179,6 +252,19 @@ export const staffRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [hasBranch] = await db.select().from(staffBranches)
+          .where(and(eq(staffBranches.staffId, input.id), eq(staffBranches.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!hasBranch) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Staff does not belong to your branch" });
+        }
+      }
+
       await db.update(staff).set({ pinHash: hashPin(input.newPin) }).where(eq(staff.id, input.id));
       await logAudit({ staff: ctx.staff, action: "reset_pin", entity: "staff", entityId: input.id });
       return { success: true, newPin: input.newPin };
@@ -187,9 +273,22 @@ export const staffRouter = router({
   // Return hasPin status for getById
   getByIdWithPinStatus: staffAdminProcedure
     .input(z.object({ id: z.number().int() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [hasBranch] = await db.select().from(staffBranches)
+          .where(and(eq(staffBranches.staffId, input.id), eq(staffBranches.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!hasBranch) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Staff does not belong to your branch" });
+        }
+      }
+
       const [member] = await db.select({
         id: staff.id,
         pinHash: staff.pinHash,
@@ -202,6 +301,19 @@ export const staffRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [hasBranch] = await db.select().from(staffBranches)
+          .where(and(eq(staffBranches.staffId, input.id), eq(staffBranches.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!hasBranch) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Staff does not belong to your branch" });
+        }
+      }
+
       await db.update(staff).set({ passwordHash: hashPassword(input.newPassword) }).where(eq(staff.id, input.id));
       return { success: true };
     }),
@@ -211,6 +323,21 @@ export const staffRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [hasBranch] = await db.select().from(staffBranches)
+          .where(and(eq(staffBranches.staffId, input.staffId), eq(staffBranches.branchId, ctx.staff.currentBranchId)))
+          .limit(1);
+        if (!hasBranch) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Staff does not belong to your branch" });
+        }
+        if (input.branchIds.length !== 1 || input.branchIds[0] !== ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You can only assign staff to your own branch" });
+        }
+      }
 
       // Remove existing and re-add
       await db.delete(staffBranches).where(eq(staffBranches.staffId, input.staffId));

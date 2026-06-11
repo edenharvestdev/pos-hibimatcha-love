@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import QRCode from "qrcode";
 import { EmptyCart,IconBookmark,IconBowl,IconBox,IconBrand,IconCake,IconCards,IconCheck,IconChevLeft,IconChevRight,IconClock,IconCoin,IconCupHot,IconCupIced,IconDiscount,IconEdit,IconExport,IconEye,IconGrid,IconHeart,IconImport,IconLeaf,IconList,IconMore,IconMoreV,IconLogout,IconPlus,IconPrint,IconQR,IconReceipt,IconRefresh,IconSettings,IconShare,IconTrash,IconWallet,IconWhisk } from "@/icons";
-import { useApp,Drawer,Field,Select,Toggle,Checkbox,SearchInput,TopActionBar,BulkActionBar,Placeholder,CountUp } from "@/components";
+import { useApp,Drawer,Field,Select,Toggle,Checkbox,SearchInput,TopActionBar,BulkActionBar,Placeholder,CountUp,Modal } from "@/components";
 import { Numpad } from "@/components/Numpad";
 import { Logo } from "@/components/Shell";
 import { trpc } from "@/lib/trpc";
@@ -1866,11 +1866,19 @@ const OptionSheet = ({ item, onClose, onAdd, editingItem = null }) => {
 
 // ----- Payment -----
 export const PagePayment = () => {
-  const { navigate, t } = useApp();
+  const { navigate, t, branch } = useApp();
   const queryClient = useQueryClient();
   const [method, setMethod] = useState(null);
   const [cash, setCash] = useState(0);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  // Dynamic parameter states for reference and slip
+  const [refNum, setRefNum] = useState("");
+  const [slipUrl, setSlipUrl] = useState("");
+
+  // Manager PIN Authorization states
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [managerPin, setManagerPin] = useState("");
 
   // Split Payment states
   const [splitEnabled, setSplitEnabled] = useState(false);
@@ -1885,9 +1893,38 @@ export const PagePayment = () => {
     { id: Number(orderId) },
     { enabled: !!orderId && !isNaN(Number(orderId)) }
   );
-  const { data: methods = [] } = trpc.payments.listMethods.useQuery({ activeOnly: true }, { staleTime: 5000, refetchOnWindowFocus: true });
+
+  const session = getSession();
+  const currentBranchId = session?.currentBranchId || 1;
+  const currentRole = session?.role || 'staff';
+
+  // Fetch branch-specific payment methods configuration
+  const { data: branchMethods = [] } = trpc.enterprise.getBranchPaymentMethods.useQuery(
+    { branchId: Number(currentBranchId) },
+    { staleTime: 5000, refetchOnWindowFocus: true }
+  );
+
+  // Filter payment methods based on isActive, isEnabledForBranch, and roleAvailability
+  const methods = useMemo(() => {
+    return branchMethods.filter((m) => {
+      if (m.isActive === false) return false;
+      if (!m.isEnabledForBranch) return false;
+      if (m.roleAvailability && m.roleAvailability.length > 0) {
+        if (!m.roleAvailability.includes(currentRole)) return false;
+      }
+      return true;
+    });
+  }, [branchMethods, currentRole]);
+
+  // Fetch member profile details to calculate loyalty points balance
+  const memberId = order?.memberId;
+  const { data: orderMember } = trpc.members.findById.useQuery(
+    { id: Number(memberId) },
+    { enabled: !!memberId && !isNaN(Number(memberId)) }
+  );
+
   const networkPrintReceipt = trpc.printing.autoPrintOnPaid.useMutation();
-  const addPayment = trpc.orders.addPayment.useMutation();
+  const processSplitPayment = trpc.enterprise.processSplitPayment.useMutation();
 
   const total = Number(order?.totalAmount ?? 0);
   const splitTotalPaid = splitPayments.reduce((acc, curr) => acc + curr.amount, 0);
@@ -1901,65 +1938,92 @@ export const PagePayment = () => {
   }, [method, splitEnabled, splitPayments]);
 
   const isConfirmDisabled = (() => {
+    if (processSplitPayment.isPending) return true;
     if (splitEnabled) {
-      return splitTotalPaid < total || addPayment.isPending;
+      return splitTotalPaid < total;
     }
-    if (!method || !orderId || addPayment.isPending) return true;
-    const m = methods.find((x) => x.code === method);
-    if (!m) return true;
-    if (m.type === 'cash') {
+    if (!method || !orderId) return true;
+    const mObj = methods.find((x) => x.code === method);
+    if (!mObj) return true;
+
+    // Cash check
+    if (mObj.type === 'cash') {
       return cash < total;
     }
-    if (m.type === 'qr') {
+    // QR check
+    if (mObj.type === 'qr') {
       return !paymentSuccess;
+    }
+    // Reference check
+    if (mObj.requiresReference && !refNum) return true;
+    // Slip upload check
+    if (mObj.requiresSlipUpload && !slipUrl) return true;
+    // Loyalty point check
+    if (mObj.type === 'loyalty') {
+      if (!orderMember) return true;
+      const pointsNeeded = total / (Number(branch?.loyaltyRedeemRate ?? 1.0));
+      if (orderMember.points < pointsNeeded) return true;
     }
     return false;
   })();
 
   const confirmPayment = async () => {
+    // 1. PIN verification check
+    const requiresPin = splitEnabled
+      ? splitPayments.some(sp => {
+          const mObj = methods.find(m => m.id === sp.methodId);
+          return mObj?.requiresManagerPin;
+        })
+      : (() => {
+          const mObj = methods.find(m => m.code === method);
+          return mObj?.requiresManagerPin;
+        })();
+
+    if (requiresPin && !managerPin) {
+      setShowPinModal(true);
+      return;
+    }
+
+    await submitPayment(managerPin);
+  };
+
+  const submitPayment = async (enteredPin) => {
     if (!orderId) { alert('No order selected'); return; }
     const auto = getAutomation();
     const sess = getSession();
     const branchId = sess?.currentBranchId || 1;
 
     try {
+      let paymentsPayload = [];
+
       if (splitEnabled) {
-        // Sequentially execute all payment transactions
-        for (let i = 0; i < splitPayments.length; i++) {
-          const isLast = i === splitPayments.length - 1;
-          const p = splitPayments[i];
-          await addPayment.mutateAsync({
-            orderId: Number(orderId),
-            paymentMethodId: p.methodId,
-            amount: String(p.amount),
-            reference: p.reference,
-            autoComplete: isLast ? auto.autoCompleteOrderOnPayment : false,
-            autoSyncSheet: isLast ? auto.autoGoogleSheetSync : false,
-          });
-        }
+        paymentsPayload = splitPayments.map(p => ({
+          paymentMethodId: p.methodId,
+          amount: String(p.amount),
+          referenceNumber: p.referenceNumber,
+          slipImageUrl: p.slipImageUrl,
+        }));
       } else {
-        const m = methods.find((x) => x.code === method);
-        if (!m) { alert('Select a payment method'); return; }
-        if (m.type === 'qr' && !paymentSuccess) {
+        const mObj = methods.find((x) => x.code === method);
+        if (!mObj) { alert('Select a payment method'); return; }
+        if (mObj.type === 'qr' && !paymentSuccess) {
           alert('Please scan the QR code and complete the payment first.');
           return;
         }
 
-        let ref;
-        if (m.type === 'cash') ref = `Cash received: ฿${cash || total}`;
-        else if (m.type === 'card') ref = `EDC approval: pending`;
-        else if (m.type === 'transfer') ref = `Bank ref: pending`;
-        else if (m.type === 'voucher') ref = `Voucher code: pending`;
-
-        await addPayment.mutateAsync({
-          orderId: Number(orderId),
-          paymentMethodId: m.id,
+        paymentsPayload = [{
+          paymentMethodId: mObj.id,
           amount: String(total),
-          reference: ref,
-          autoComplete: auto.autoCompleteOrderOnPayment,
-          autoSyncSheet: auto.autoGoogleSheetSync,
-        });
+          referenceNumber: refNum || undefined,
+          slipImageUrl: slipUrl || undefined,
+        }];
       }
+
+      await processSplitPayment.mutateAsync({
+        orderId: Number(orderId),
+        managerPin: enteredPin || undefined,
+        payments: paymentsPayload,
+      });
 
       // Network auto-print / open drawer trigger
       try {
@@ -1984,6 +2048,20 @@ export const PagePayment = () => {
       alert(e.message);
     }
   };
+
+  const isAddSplitDisabled = (() => {
+    if (!method || splitAmount <= 0 || splitAmount > splitRemaining) return true;
+    const sel = methods.find(x => x.code === method);
+    if (!sel) return true;
+    if (sel.requiresReference && !refNum) return true;
+    if (sel.requiresSlipUpload && !slipUrl) return true;
+    if (sel.type === 'loyalty') {
+      if (!orderMember) return true;
+      const pointsNeeded = splitAmount / (Number(branch?.loyaltyRedeemRate ?? 1.0));
+      if (orderMember.points < pointsNeeded) return true;
+    }
+    return false;
+  })();
 
   return (
     <div style={{ padding: 32, maxWidth: 920, margin: '0 auto', minHeight: 'calc(100vh - 56px)' }}>
@@ -2016,6 +2094,8 @@ export const PagePayment = () => {
           setSplitEnabled(v);
           setSplitPayments([]);
           setMethod(null);
+          setRefNum('');
+          setSlipUrl('');
         }}/>
       </div>
 
@@ -2027,7 +2107,7 @@ export const PagePayment = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>เลือกประเภทการชำระ</label>
-                <select value={method || ''} onChange={e => setMethod(e.target.value || null)} className="input">
+                <select value={method || ''} onChange={e => { setMethod(e.target.value || null); setRefNum(''); setSlipUrl(''); }} className="input">
                   <option value="">เลือกวิธีชำระ...</option>
                   {methods.map(m => (
                     <option key={m.id} value={m.code}>{m.name}</option>
@@ -2044,6 +2124,57 @@ export const PagePayment = () => {
                 />
               </div>
             </div>
+
+            {method && (() => {
+              const sel = methods.find(x => x.code === method);
+              if (!sel) return null;
+              
+              const pointsNeeded = sel.type === 'loyalty' ? (splitAmount / (Number(branch?.loyaltyRedeemRate ?? 1.0))) : 0;
+              const hasInsufficientPoints = sel.type === 'loyalty' && (!orderMember || orderMember.points < pointsNeeded);
+
+              return (
+                <div style={{ marginTop: 12, borderTop: '1px dashed var(--border-default)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+                  {sel.type === 'loyalty' && (
+                    <div style={{ padding: 12, borderRadius: 6, background: hasInsufficientPoints ? 'rgba(239,68,68,0.06)' : 'var(--matcha-50)', border: '1px solid ' + (hasInsufficientPoints ? 'rgba(239,68,68,0.2)' : 'var(--matcha-200)') }}>
+                      {!orderMember ? (
+                        <div style={{ color: 'var(--danger)', fontSize: 13, fontWeight: 500 }}>⚠️ วิธีการชำระเงินนี้ต้องเลือกสมาชิก (Loyalty points require a member profile)</div>
+                      ) : (
+                        <div style={{ fontSize: 13 }}>
+                          <div>สมาชิก: <strong>{orderMember.firstName ? `${orderMember.firstName} ${orderMember.lastName || ''}` : orderMember.phone}</strong></div>
+                          <div>คะแนนสะสม: <strong className="tabular">{orderMember.points} คะแนน</strong></div>
+                          <div>คะแนนที่ต้องใช้: <strong className="tabular">{pointsNeeded.toFixed(1)} คะแนน</strong> (อัตรา {Number(branch?.loyaltyRedeemRate ?? 1.0)} ฿/คะแนน)</div>
+                          {hasInsufficientPoints && (
+                            <div style={{ color: 'var(--danger)', marginTop: 4, fontWeight: 600 }}>⚠️ คะแนนสะสมไม่เพียงพอ</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {sel.requiresReference && (
+                    <Field label="หมายเลขอ้างอิงการชำระเงิน / Authorization Code" required>
+                      <input 
+                        className="input" 
+                        value={refNum} 
+                        onChange={(e) => setRefNum(e.target.value)} 
+                        placeholder="กรอกหมายเลขอ้างอิง"
+                      />
+                    </Field>
+                  )}
+
+                  {sel.requiresSlipUpload && (
+                    <Field label="ลิงก์รูปภาพสลิปการโอนเงิน (Slip Image URL)" required>
+                      <input 
+                        className="input" 
+                        value={slipUrl} 
+                        onChange={(e) => setSlipUrl(e.target.value)} 
+                        placeholder="กรอก URL สลิป หรืออ้างอิงสลิป"
+                      />
+                    </Field>
+                  )}
+                </div>
+              );
+            })()}
             
             <button 
               className="btn btn-secondary" 
@@ -2060,12 +2191,16 @@ export const PagePayment = () => {
                     code: sel.code,
                     name: sel.name,
                     amount: splitAmount,
-                    reference: `Split payment: ${sel.name} - ฿${splitAmount}`
+                    referenceNumber: sel.requiresReference ? refNum : undefined,
+                    slipImageUrl: sel.requiresSlipUpload ? slipUrl : undefined,
+                    reference: `Split payment: ${sel.name} - ฿${splitAmount} ${refNum ? `(Ref: ${refNum})` : ''}`
                   }
                 ]);
                 setMethod(null);
+                setRefNum('');
+                setSlipUrl('');
               }}
-              disabled={splitRemaining <= 0}
+              disabled={isAddSplitDisabled}
             >
               ➕ บันทึกส่วนแบ่งจ่าย
             </button>
@@ -2078,6 +2213,8 @@ export const PagePayment = () => {
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-muted)', marginBottom: 6, borderRadius: 6, alignItems: 'center' }}>
                   <div>
                     <span style={{ fontWeight: 600 }}>{p.name}</span>
+                    {p.referenceNumber && <div className="muted" style={{ fontSize: 11 }}>Ref: {p.referenceNumber}</div>}
+                    {p.slipImageUrl && <div className="muted" style={{ fontSize: 11 }}>Slip: {p.slipImageUrl}</div>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     <span style={{ fontWeight: 700 }} className="tabular">฿{p.amount.toLocaleString()}</span>
@@ -2116,7 +2253,7 @@ export const PagePayment = () => {
           {/* Methods */}
           {/* Group payment methods by type */}
           {['cash', 'qr', 'card', 'transfer', 'voucher', 'loyalty', 'billing', 'credit', 'delivery_platform'].map((groupType) => {
-            const groupMethods = methods.filter((m) => m.type === groupType && m.isActive !== false);
+            const groupMethods = methods.filter((m) => m.type === groupType);
             if (groupMethods.length === 0) return null;
             const groupLabel = {
               cash: '💵 Cash',
@@ -2137,7 +2274,7 @@ export const PagePayment = () => {
                     const I = m.type === 'cash' ? IconCoin : m.type === 'qr' ? IconQR : m.type === 'card' ? IconWallet : (m.type === 'delivery_platform' ? IconLeaf : IconDiscount);
                     const active = method === m.code;
                     return (
-                      <button key={m.id} onClick={() => setMethod(m.code)} style={{
+                      <button key={m.id} onClick={() => { setMethod(m.code); setRefNum(''); setSlipUrl(''); }} style={{
                         padding: 14,
                         background: active ? 'var(--matcha-50)' : 'var(--bg-surface)',
                         border: '1.5px solid ' + (active ? 'var(--matcha-600)' : 'var(--border-default)'),
@@ -2166,7 +2303,8 @@ export const PagePayment = () => {
           {/* Method config — match by type */}
           {(() => {
             const sel = methods.find((m) => m.code === method);
-            const type = sel?.type;
+            if (!sel) return null;
+            const type = sel.type;
             return <>
               {type === 'cash' && (
                 <div className="card anim-fade" style={{ padding: 24 }}>
@@ -2241,7 +2379,7 @@ export const PagePayment = () => {
               {type === 'transfer' && (
                 <div className="card anim-fade" style={{ padding: 24 }}>
                   <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>Bank Transfer</div>
-                  <div style={{ padding: 14, background: 'var(--bg-muted)', borderRadius: 'var(--r-default)' }}>
+                  <div style={{ padding: 14, background: 'var(--bg-muted)', borderRadius: 'var(--r-default)', marginBottom: 16 }}>
                     <div className="mono" style={{ fontSize: 13, lineHeight: 1.7 }}>
                       <div><strong>Bank:</strong> SCB</div>
                       <div><strong>Account:</strong> 123-4-56789-0</div>
@@ -2249,20 +2387,80 @@ export const PagePayment = () => {
                       <div><strong>Amount:</strong> ฿{total.toLocaleString()}</div>
                     </div>
                   </div>
-                  <div style={{ marginTop: 14 }}>
-                    <Field label="Transfer reference / slip number">
-                      <input className="input" placeholder="Last 4 digits of slip or ref number"/>
-                    </Field>
-                  </div>
                 </div>
               )}
               {type === 'voucher' && (
                 <div className="card anim-fade" style={{ padding: 24 }}>
                   <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>{sel.name}</div>
-                  <Field label="Voucher code" required>
-                    <input className="input" placeholder="Enter voucher code or scan QR"/>
-                  </Field>
-                  <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>The voucher's value will be deducted from the total. If voucher value is greater, remaining will need another payment.</div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>The voucher's value will be deducted from the total. If voucher value is greater, remaining will need another payment.</div>
+                </div>
+              )}
+              {type === 'loyalty' && (
+                <div className="card anim-fade" style={{ padding: 24 }}>
+                  <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>⭐ {sel.name}</div>
+                  {!orderMember ? (
+                    <div style={{ color: 'var(--danger)', padding: 12, background: 'rgba(239,68,68,0.06)', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)', fontWeight: 500 }}>
+                      ⚠️ วิธีการชำระเงินนี้ต้องเลือกสมาชิก (Loyalty points require a member profile)
+                      <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>กรุณาเลือกหรือสมัครสมาชิกในหน้าคำสั่งซื้อก่อนชำระเงิน</div>
+                    </div>
+                  ) : (() => {
+                    const pointsNeeded = total / (Number(branch?.loyaltyRedeemRate ?? 1.0));
+                    const hasInsufficient = orderMember.points < pointsNeeded;
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{ padding: 16, background: 'var(--bg-muted)', borderRadius: 'var(--r-default)', border: '1px solid var(--border-default)' }}>
+                          <div>สมาชิก: <strong>{orderMember.firstName ? `${orderMember.firstName} ${orderMember.lastName || ''}` : orderMember.phone}</strong></div>
+                          <div>คะแนนสะสมที่มี: <strong className="tabular">{orderMember.points} คะแนน</strong></div>
+                          <div style={{ marginTop: 6, borderTop: '1px solid var(--border-default)', paddingTop: 6 }}>
+                            คะแนนที่ต้องชำระ: <strong className="tabular">{pointsNeeded.toFixed(1)} คะแนน</strong>
+                          </div>
+                        </div>
+                        {hasInsufficient && (
+                          <div style={{ color: 'var(--danger)', fontWeight: 600, padding: 10, background: 'rgba(239,68,68,0.06)', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)' }}>
+                            ⚠️ คะแนนสะสมไม่เพียงพอสำหรับการชำระเงินรายการนี้
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+              {['billing', 'credit'].includes(type) && (
+                <div className="card anim-fade" style={{ padding: 24 }}>
+                  <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>🏢 {sel.name}</div>
+                  <div style={{ padding: 16, background: 'var(--matcha-50)', borderRadius: 'var(--r-default)', color: 'var(--matcha-800)', fontSize: 13, fontWeight: 500 }}>
+                    บัญชีคู่ค้า / วงเงินล่วงหน้า (Corporate Billing / Franchise Credit)
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 400 }}>
+                      ยอดชำระนี้จะถูกตั้งค้างชำระในบัญชีลูกหนี้การค้า (Accounts Receivable) ของลูกค้าในระบบโดยอัตโนมัติ
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Dynamic references and slip uploads */}
+              {sel && (sel.requiresReference || sel.requiresSlipUpload) && (
+                <div className="card anim-fade" style={{ padding: 24, marginTop: 16 }}>
+                  <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>ข้อมูลอ้างอิงการชำระเงิน (Reference / Slip Details)</div>
+                  {sel.requiresReference && (
+                    <Field label="เลขที่อ้างอิง / Authorization Code" required>
+                      <input 
+                        className="input" 
+                        value={refNum} 
+                        onChange={(e) => setRefNum(e.target.value)} 
+                        placeholder="กรอกหมายเลขอ้างอิงเพื่อใช้ตรวจสอบภายหลัง"
+                      />
+                    </Field>
+                  )}
+                  {sel.requiresSlipUpload && (
+                    <Field label="ลิงก์รูปสลิปการโอนเงิน (Slip Image URL)" required>
+                      <input 
+                        className="input" 
+                        value={slipUrl} 
+                        onChange={(e) => setSlipUrl(e.target.value)} 
+                        placeholder="กรอก URL สลิป หรือใช้วิธีอัพโหลด"
+                      />
+                    </Field>
+                  )}
                 </div>
               )}
             </>;
@@ -2279,9 +2477,39 @@ export const PagePayment = () => {
           disabled={isConfirmDisabled}
           style={{ flex: 2 }}
         >
-          {addPayment.isPending ? `${t('loading')}` : <>{t('payment.pay')} · ฿{total.toLocaleString()} <IconCheck size={16}/></>}
+          {processSplitPayment.isPending ? `${t('loading')}` : <>{t('payment.pay')} · ฿{total.toLocaleString()} <IconCheck size={16}/></>}
         </button>
       </div>
+
+      {/* Modal: Manager security PIN verification */}
+      <Modal 
+        open={showPinModal} 
+        onClose={() => { setShowPinModal(false); setManagerPin(""); }}
+        title="Manager PIN Authorization"
+        footer={<>
+          <button className="btn btn-secondary" onClick={() => { setShowPinModal(false); setManagerPin(""); }}>Cancel</button>
+          <button className="btn btn-primary" disabled={managerPin.length !== 4} onClick={async () => {
+            const pinToSubmit = managerPin;
+            setShowPinModal(false);
+            setManagerPin("");
+            await submitPayment(pinToSubmit);
+          }}>Confirm PIN & Pay</button>
+        </>}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            This checkout transaction requires Manager or Admin authorization. Please enter the 4-digit security PIN.
+          </p>
+          <input
+            type="password"
+            maxLength={4}
+            className="input"
+            style={{ fontSize: 28, letterSpacing: '0.8em', textAlign: 'center', fontWeight: 600 }}
+            value={managerPin}
+            onChange={(e) => setManagerPin(e.target.value)}
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -17,8 +17,42 @@ export const branchSettingsRouter = router({
       const [settings] = await db.select().from(posBranchPaymentSettings)
         .where(eq(posBranchPaymentSettings.branchId, input.branchId)).limit(1);
 
-      return settings || null;
+      if (settings) {
+        return { ...settings, isCustom: true };
+      }
+
+      // Fallback to HQ/House settings
+      const [hq] = await db.select().from(branches).where(eq(branches.branchType, "hq")).limit(1);
+      if (hq && hq.id !== input.branchId) {
+        const [hqSettings] = await db.select().from(posBranchPaymentSettings)
+          .where(eq(posBranchPaymentSettings.branchId, hq.id)).limit(1);
+        if (hqSettings) {
+          return { ...hqSettings, isCustom: false };
+        }
+      }
+
+      return null;
     }),
+
+  deletePaymentSettings: staffAdminProcedure
+    .input(z.object({ branchId: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      await db.delete(posBranchPaymentSettings)
+        .where(eq(posBranchPaymentSettings.branchId, input.branchId));
+
+      await logAudit({
+        staff: ctx.staff,
+        action: "delete_payment_settings",
+        entity: "branch_payment_settings",
+        entityId: input.branchId,
+      });
+
+      return { success: true };
+    }),
+
 
   upsertPaymentSettings: staffAdminProcedure
     .input(z.object({

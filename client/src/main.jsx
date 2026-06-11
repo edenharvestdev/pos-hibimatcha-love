@@ -5,6 +5,7 @@ import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import App from "./App.jsx";
 import "./styles/tokens.css";
+import "./index.css";
 import { trpc } from "./lib/trpc";
 import { getToken } from "./lib/authStore";
 

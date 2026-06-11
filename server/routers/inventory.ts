@@ -68,7 +68,7 @@ export const inventoryRouter = router({
       sourceFlag: z.string().optional(),
       includeArchived: z.boolean().optional(),
     }).optional())
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return [];
 
@@ -85,11 +85,22 @@ export const inventoryRouter = router({
         );
       }
 
-      if (input?.branchId) {
+      const activeBranchId = ctx.staff.role === "super_admin" ? input?.branchId : ctx.staff.currentBranchId;
+
+      if (activeBranchId) {
         const stocks = await db.select().from(posBranchInventoryStock)
-          .where(eq(posBranchInventoryStock.branchId, input.branchId));
+          .where(eq(posBranchInventoryStock.branchId, activeBranchId));
         const stockMap = new Map(stocks.map((s) => [s.inventoryItemId, s]));
-        return rows.map((item) => ({ ...item, stock: stockMap.get(item.id) ?? null }));
+        
+        if (ctx.staff.role !== "super_admin") {
+          return rows
+            .filter((item) => stockMap.has(item.id))
+            .map((item) => ({ ...item, stock: stockMap.get(item.id) ?? null }));
+        } else {
+          return rows.map((item) => ({ ...item, stock: stockMap.get(item.id) ?? null }));
+        }
+      } else if (ctx.staff.role !== "super_admin") {
+        return [];
       }
 
       return rows;
@@ -97,17 +108,33 @@ export const inventoryRouter = router({
 
   getItemById: staffProcedure
     .input(z.object({ id: z.number().int(), branchId: z.number().int().optional() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const targetBranchId = ctx.staff.role === "super_admin" ? input.branchId : ctx.staff.currentBranchId;
+      if (ctx.staff.role !== "super_admin") {
+        if (!targetBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [hasStock] = await db.select().from(posBranchInventoryStock)
+          .where(and(
+            eq(posBranchInventoryStock.inventoryItemId, input.id),
+            eq(posBranchInventoryStock.branchId, targetBranchId)
+          )).limit(1);
+        if (!hasStock) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Inventory item not assigned to your branch" });
+        }
+      }
+
       const [item] = await db.select().from(posInventoryItems).where(eq(posInventoryItems.id, input.id)).limit(1);
       if (!item) throw new TRPCError({ code: "NOT_FOUND" });
 
       let stock = null;
-      if (input.branchId) {
+      if (targetBranchId) {
         const [s] = await db.select().from(posBranchInventoryStock)
           .where(and(
-            eq(posBranchInventoryStock.branchId, input.branchId),
+            eq(posBranchInventoryStock.branchId, targetBranchId),
             eq(posBranchInventoryStock.inventoryItemId, input.id)
           )).limit(1);
         stock = s ?? null;
@@ -144,6 +171,16 @@ export const inventoryRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [result] = await db.insert(posInventoryItems).values(input as any);
       const id = (result as any).insertId as number;
+
+      const targetBranchId = ctx.staff.role === "super_admin" ? ctx.staff.currentBranchId : ctx.staff.currentBranchId;
+      if (targetBranchId) {
+        await db.insert(posBranchInventoryStock).values({
+          branchId: targetBranchId,
+          inventoryItemId: id,
+          currentStock: "0",
+        }).onDuplicateKeyUpdate({ set: { currentStock: "0" } });
+      }
+
       const [created] = await db.select().from(posInventoryItems).where(eq(posInventoryItems.id, id)).limit(1);
       await logAudit({ staff: ctx.staff, action: "create", entity: "pos_inventory_items", entityId: id });
       return created;
@@ -155,6 +192,21 @@ export const inventoryRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...data } = input;
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [hasStock] = await db.select().from(posBranchInventoryStock)
+          .where(and(
+            eq(posBranchInventoryStock.inventoryItemId, id),
+            eq(posBranchInventoryStock.branchId, ctx.staff.currentBranchId)
+          )).limit(1);
+        if (!hasStock) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Inventory item not assigned to your branch" });
+        }
+      }
+
       await db.update(posInventoryItems).set(data as any).where(eq(posInventoryItems.id, id));
       const [updated] = await db.select().from(posInventoryItems).where(eq(posInventoryItems.id, id)).limit(1);
       await logAudit({ staff: ctx.staff, action: "update", entity: "pos_inventory_items", entityId: id });
@@ -166,6 +218,21 @@ export const inventoryRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [hasStock] = await db.select().from(posBranchInventoryStock)
+          .where(and(
+            eq(posBranchInventoryStock.inventoryItemId, input.id),
+            eq(posBranchInventoryStock.branchId, ctx.staff.currentBranchId)
+          )).limit(1);
+        if (!hasStock) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Inventory item not assigned to your branch" });
+        }
+      }
+
       await db.update(posInventoryItems).set({ isArchived: true, isActive: false }).where(eq(posInventoryItems.id, input.id));
       await logAudit({ staff: ctx.staff, action: "archive", entity: "pos_inventory_items", entityId: input.id });
       return { success: true };
@@ -174,12 +241,29 @@ export const inventoryRouter = router({
   // ── Stock ────────────────────────────────────────────────────────────────
   getStock: staffProcedure
     .input(z.object({ branchId: z.number().int(), itemId: z.number().int() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const targetBranchId = ctx.staff.role === "super_admin" ? input.branchId : ctx.staff.currentBranchId;
+      if (!targetBranchId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+      }
+
+      if (ctx.staff.role !== "super_admin") {
+        const [hasStock] = await db.select().from(posBranchInventoryStock)
+          .where(and(
+            eq(posBranchInventoryStock.inventoryItemId, input.itemId),
+            eq(posBranchInventoryStock.branchId, targetBranchId)
+          )).limit(1);
+        if (!hasStock) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Inventory item not assigned to your branch" });
+        }
+      }
+
       const [row] = await db.select().from(posBranchInventoryStock)
         .where(and(
-          eq(posBranchInventoryStock.branchId, input.branchId),
+          eq(posBranchInventoryStock.branchId, targetBranchId),
           eq(posBranchInventoryStock.inventoryItemId, input.itemId)
         )).limit(1);
       return row ?? null;
@@ -191,12 +275,15 @@ export const inventoryRouter = router({
       lowStockOnly: z.boolean().optional(),
       search: z.string().optional(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return [];
 
+      const targetBranchId = ctx.staff.role === "super_admin" ? input.branchId : ctx.staff.currentBranchId;
+      if (!targetBranchId) return [];
+
       const stocks = await db.select().from(posBranchInventoryStock)
-        .where(eq(posBranchInventoryStock.branchId, input.branchId));
+        .where(eq(posBranchInventoryStock.branchId, targetBranchId));
       const items = await db.select().from(posInventoryItems).where(eq(posInventoryItems.isActive, true));
       const itemMap = new Map(items.map((i) => [i.id, i]));
 
@@ -234,8 +321,24 @@ export const inventoryRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      const targetBranchId = ctx.staff.role === "super_admin" ? input.branchId : ctx.staff.currentBranchId;
+      if (!targetBranchId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+      }
+
+      if (ctx.staff.role !== "super_admin") {
+        const [hasStock] = await db.select().from(posBranchInventoryStock)
+          .where(and(
+            eq(posBranchInventoryStock.inventoryItemId, input.itemId),
+            eq(posBranchInventoryStock.branchId, targetBranchId)
+          )).limit(1);
+        if (!hasStock) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Inventory item not assigned to your branch" });
+        }
+      }
+
       await db.insert(posBranchInventoryStock).values({
-        branchId: input.branchId,
+        branchId: targetBranchId,
         inventoryItemId: input.itemId,
         currentStock: String(input.quantity),
       }).onDuplicateKeyUpdate({
@@ -246,7 +349,7 @@ export const inventoryRouter = router({
       });
 
       await db.insert(posInventoryMovements).values({
-        branchId: input.branchId,
+        branchId: targetBranchId,
         inventoryItemId: input.itemId,
         movementType: "adjusted",
         quantity: String(input.quantity),
@@ -276,11 +379,26 @@ export const inventoryRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      const targetBranchId = ctx.staff.role === "super_admin" ? input.branchId : ctx.staff.currentBranchId;
+      if (!targetBranchId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+      }
+
       for (const item of input.items) {
-        // Get current stock and average cost for Weighted Average Cost calculation
+        if (ctx.staff.role !== "super_admin") {
+          const [hasStock] = await db.select().from(posBranchInventoryStock)
+            .where(and(
+              eq(posBranchInventoryStock.inventoryItemId, item.inventoryItemId),
+              eq(posBranchInventoryStock.branchId, targetBranchId)
+            )).limit(1);
+          if (!hasStock) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Inventory item not assigned to your branch" });
+          }
+        }
+
         const [existingStock] = await db.select().from(posBranchInventoryStock)
           .where(and(
-            eq(posBranchInventoryStock.branchId, input.branchId),
+            eq(posBranchInventoryStock.branchId, targetBranchId),
             eq(posBranchInventoryStock.inventoryItemId, item.inventoryItemId)
           )).limit(1);
 
@@ -289,7 +407,6 @@ export const inventoryRouter = router({
         const newQty = item.quantity;
         const newCost = item.costPerUnit ?? 0;
 
-        // Weighted Average Cost = (existing_value + new_value) / (existing_qty + new_qty)
         let newAvgCost = currentAvgCost;
         if (newCost > 0) {
           const existingValue = currentQty * currentAvgCost;
@@ -302,7 +419,7 @@ export const inventoryRouter = router({
         const totalStockValue = totalQtyAfter * newAvgCost;
 
         await db.insert(posBranchInventoryStock).values({
-          branchId: input.branchId,
+          branchId: targetBranchId,
           inventoryItemId: item.inventoryItemId,
           currentStock: String(newQty),
           averageCost: String(newAvgCost.toFixed(4)),
@@ -319,7 +436,7 @@ export const inventoryRouter = router({
 
         const itemTotalCost = newQty * newCost;
         await db.insert(posInventoryMovements).values({
-          branchId: input.branchId,
+          branchId: targetBranchId,
           inventoryItemId: item.inventoryItemId,
           movementType: "received",
           quantity: String(item.quantity),
@@ -347,12 +464,29 @@ export const inventoryRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const targetBranchId = ctx.staff.role === "super_admin" ? input.branchId : ctx.staff.currentBranchId;
+      if (!targetBranchId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+      }
+
       const variances: Array<{ inventoryItemId: number; expected: number; counted: number; variance: number }> = [];
 
       for (const count of input.counts) {
+        if (ctx.staff.role !== "super_admin") {
+          const [hasStock] = await db.select().from(posBranchInventoryStock)
+            .where(and(
+              eq(posBranchInventoryStock.inventoryItemId, count.inventoryItemId),
+              eq(posBranchInventoryStock.branchId, targetBranchId)
+            )).limit(1);
+          if (!hasStock) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Inventory item not assigned to your branch" });
+          }
+        }
+
         const [existing] = await db.select().from(posBranchInventoryStock)
           .where(and(
-            eq(posBranchInventoryStock.branchId, input.branchId),
+            eq(posBranchInventoryStock.branchId, targetBranchId),
             eq(posBranchInventoryStock.inventoryItemId, count.inventoryItemId)
           )).limit(1);
 
@@ -364,7 +498,7 @@ export const inventoryRouter = router({
         }
 
         await db.insert(posBranchInventoryStock).values({
-          branchId: input.branchId,
+          branchId: targetBranchId,
           inventoryItemId: count.inventoryItemId,
           currentStock: String(count.countedQuantity),
           lastCountedAt: new Date(),
@@ -374,7 +508,7 @@ export const inventoryRouter = router({
 
         if (Math.abs(variance) > 0.001) {
           await db.insert(posInventoryMovements).values({
-            branchId: input.branchId,
+            branchId: targetBranchId,
             inventoryItemId: count.inventoryItemId,
             movementType: "adjusted",
             quantity: String(variance),
@@ -396,12 +530,15 @@ export const inventoryRouter = router({
       dateTo: z.string().optional(),
       type: z.string().optional(),
     }).optional())
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return [];
 
+      const targetBranchId = ctx.staff.role === "super_admin" ? input?.branchId : ctx.staff.currentBranchId;
+      if (!targetBranchId && ctx.staff.role !== "super_admin") return [];
+
       let rows = await db.select().from(posInventoryMovements);
-      if (input?.branchId) rows = rows.filter((m) => m.branchId === input.branchId);
+      if (targetBranchId) rows = rows.filter((m) => m.branchId === targetBranchId);
       if (input?.itemId) rows = rows.filter((m) => m.inventoryItemId === input.itemId);
       if (input?.type) rows = rows.filter((m) => m.movementType === input.type);
       if (input?.dateFrom) rows = rows.filter((m) => m.createdAt && m.createdAt >= new Date(input.dateFrom!));
@@ -410,10 +547,6 @@ export const inventoryRouter = router({
       return rows.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
     }),
 
-  // ── Inter-branch transfer ──────────────────────────────────────────────────
-  // Hibi House (or any branch with stock) sends items to another branch.
-  // Creates a `transferred_out` movement at source + `transferred_in` at destination,
-  // adjusts both branch stock rows, ensures destination has a stock record.
   transferStock: staffAdminProcedure
     .input(z.object({
       fromBranchId: z.number().int(),
@@ -429,6 +562,11 @@ export const inventoryRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (ctx.staff.role !== "super_admin" && input.fromBranchId !== ctx.staff.currentBranchId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You can only transfer stock from your own branch" });
+      }
+
       if (input.fromBranchId === input.toBranchId)
         throw new TRPCError({ code: "BAD_REQUEST", message: "Source and destination branch must differ" });
 
@@ -437,7 +575,6 @@ export const inventoryRouter = router({
         const qty = Number(it.quantity);
         if (qty <= 0) continue;
 
-        // 1) Check source stock
         const [srcStock] = await db.select().from(posBranchInventoryStock)
           .where(and(
             eq(posBranchInventoryStock.branchId, input.fromBranchId),
@@ -451,7 +588,6 @@ export const inventoryRouter = router({
           });
         }
 
-        // 2) Deduct source
         await db.update(posBranchInventoryStock).set({
           currentStock: sql`${posBranchInventoryStock.currentStock} - ${qty}`,
         }).where(and(
@@ -459,7 +595,6 @@ export const inventoryRouter = router({
           eq(posBranchInventoryStock.inventoryItemId, it.inventoryItemId),
         ));
 
-        // 3) Add to destination (create row if missing)
         await db.insert(posBranchInventoryStock).values({
           branchId: input.toBranchId,
           inventoryItemId: it.inventoryItemId,
@@ -469,7 +604,6 @@ export const inventoryRouter = router({
           currentStock: sql`${posBranchInventoryStock.currentStock} + ${qty}`,
         } });
 
-        // 4) Record both movement rows
         const [outRes] = await db.insert(posInventoryMovements).values({
           branchId: input.fromBranchId,
           inventoryItemId: it.inventoryItemId,
@@ -504,17 +638,21 @@ export const inventoryRouter = router({
       return { success: true, movementIds };
     }),
 
-  // ── Stock Value Summary ─────────────────────────────────────────────────────
   stockValueSummary: staffProcedure
     .input(z.object({
       branchId: z.number().int(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return { totalValue: 0, totalItems: 0, bySource: [] };
 
+      const targetBranchId = ctx.staff.role === "super_admin" ? input.branchId : ctx.staff.currentBranchId;
+      if (!targetBranchId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+      }
+
       const stocks = await db.select().from(posBranchInventoryStock)
-        .where(eq(posBranchInventoryStock.branchId, input.branchId));
+        .where(eq(posBranchInventoryStock.branchId, targetBranchId));
       const items = await db.select().from(posInventoryItems).where(eq(posInventoryItems.isActive, true));
       const itemMap = new Map(items.map((i) => [i.id, i]));
 
@@ -528,7 +666,6 @@ export const inventoryRouter = router({
 
         const qty = Number(s.currentStock ?? 0);
         const avgCost = Number(s.averageCost ?? 0);
-        // Use averageCost if available, otherwise fallback to item's costPerUnit
         const effectiveCost = avgCost > 0 ? avgCost : Number(item.costPerUnit ?? 0);
         const value = qty * effectiveCost;
 
@@ -550,13 +687,11 @@ export const inventoryRouter = router({
       return { totalValue, totalItems, bySource };
     }),
 
-  // ── Delete ────────────────────────────────────────────────────────────
   deleteCategory: staffAdminProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Soft delete - set isActive = false
       await db.update(posInventoryCategories).set({ isActive: false } as any).where(eq(posInventoryCategories.id, input.id));
       await logAudit({ staff: ctx.staff, action: "inventory.deleteCategory", entity: "inventoryCategory", entityId: input.id });
       return { success: true };
@@ -567,7 +702,21 @@ export const inventoryRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Archive (hide) the item — set isArchived = true so it no longer appears in listItems
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [hasStock] = await db.select().from(posBranchInventoryStock)
+          .where(and(
+            eq(posBranchInventoryStock.inventoryItemId, input.id),
+            eq(posBranchInventoryStock.branchId, ctx.staff.currentBranchId)
+          )).limit(1);
+        if (!hasStock) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Inventory item not assigned to your branch" });
+        }
+      }
+
       await db.update(posInventoryItems).set({ isArchived: true, isActive: false } as any).where(eq(posInventoryItems.id, input.id));
       await logAudit({ staff: ctx.staff, action: "inventory.archiveItem", entity: "inventoryItem", entityId: input.id });
       return { success: true };
@@ -578,11 +727,23 @@ export const inventoryRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Remove all branch stock rows first to avoid FK constraint
+
+      if (ctx.staff.role !== "super_admin") {
+        if (!ctx.staff.currentBranchId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
+        }
+        const [hasStock] = await db.select().from(posBranchInventoryStock)
+          .where(and(
+            eq(posBranchInventoryStock.inventoryItemId, input.id),
+            eq(posBranchInventoryStock.branchId, ctx.staff.currentBranchId)
+          )).limit(1);
+        if (!hasStock) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Inventory item not assigned to your branch" });
+        }
+      }
+
       await db.delete(posBranchInventoryStock).where(eq(posBranchInventoryStock.inventoryItemId, input.id));
-      // Remove any recipe ingredient references
       await db.delete(posRecipeIngredients).where(eq(posRecipeIngredients.inventoryItemId, input.id));
-      // Hard delete the item row itself
       await db.delete(posInventoryItems).where(eq(posInventoryItems.id, input.id));
       await logAudit({ staff: ctx.staff, action: "inventory.hardDeleteItem", entity: "inventoryItem", entityId: input.id });
       return { success: true };

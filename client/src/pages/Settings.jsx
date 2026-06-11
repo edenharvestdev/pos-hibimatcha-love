@@ -3,7 +3,7 @@
 // ============================================
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { EmptyZen,IconBell,IconBook,IconBox,IconBrand,IconBuilding,IconChevRight,IconExport,IconGlobe,IconGrid,IconInfo,IconLock,IconPhone,IconPrint,IconQR,IconReceipt,IconScanner,IconShare,IconSun,IconUser,IconWallet } from "@/icons";
+import { EmptyZen,IconBell,IconBook,IconBox,IconBrand,IconBuilding,IconCheckCircle,IconWarning,IconChevRight,IconExport,IconGlobe,IconGrid,IconInfo,IconLock,IconPhone,IconPrint,IconQR,IconReceipt,IconScanner,IconShare,IconSun,IconUser,IconWallet } from "@/icons";
 const ICON_MAP = { IconBell,IconBook,IconBox,IconBrand,IconBuilding,IconGlobe,IconGrid,IconInfo,IconLock,IconPhone,IconPrint,IconQR,IconReceipt,IconScanner,IconShare,IconSun,IconUser,IconWallet };
 import { useApp,Drawer,Field,Select,Toggle,Checkbox,EmptyState,SectionHeader,Avatar } from "@/components";
 import { Logo } from "@/components/Shell";
@@ -857,12 +857,21 @@ const SettingRow = ({ label, desc, children }) => (
 const SettingsPayment = () => {
   const { branch } = useApp();
   const session = getSession();
-  const branchId = branch?.id || session?.currentBranchId;
+  
+  // Find the HQ branch ID to know if we are at HQ
+  const { data: myBranches = [] } = trpc.branches.getMyBranches.useQuery(undefined, { enabled: !!session });
+  const hqBranch = myBranches.find(b => b.branchType === 'hq');
+  
+  const selectedBranchId = branch?.id || session?.currentBranchId || 1;
+  const isHQ = selectedBranchId === hqBranch?.id || branch?.type === 'HQ' || branch?.id === null;
+  const branchDisplayName = branch?.name || (isHQ ? 'Hibi House (HQ)' : 'Branch');
+
   const { data: settings, isLoading, refetch } = trpc.branchSettings.getPaymentSettings.useQuery(
-    { branchId: branchId ?? 0 },
-    { enabled: !!branchId }
+    { branchId: selectedBranchId ?? 0 },
+    { enabled: !!selectedBranchId }
   );
   const saveMut = trpc.branchSettings.upsertPaymentSettings.useMutation({ onSuccess: () => refetch() });
+  const deleteMut = trpc.branchSettings.deletePaymentSettings.useMutation({ onSuccess: () => refetch() });
 
   const [promptpayId, setPromptpayId] = useState('');
   const [promptpayName, setPromptpayName] = useState('');
@@ -873,16 +882,32 @@ const SettingsPayment = () => {
       setPromptpayId(settings.promptpayId || '');
       setPromptpayName(settings.promptpayName || '');
       setPromptpayType(settings.promptpayType || 'phone');
+    } else {
+      setPromptpayId('');
+      setPromptpayName('');
+      setPromptpayType('phone');
     }
   }, [settings]);
 
   const handleSave = async () => {
-    if (!branchId) { alert('No branch selected'); return; }
+    if (!selectedBranchId) { alert('No branch selected'); return; }
     try {
-      await saveMut.mutateAsync({ branchId, promptpayId, promptpayName, promptpayType });
+      await saveMut.mutateAsync({ branchId: selectedBranchId, promptpayId, promptpayName, promptpayType });
       alert('Saved!');
     } catch (e) {
       alert('Failed: ' + (e.message || 'Unknown'));
+    }
+  };
+
+  const handleRevert = async () => {
+    if (!selectedBranchId) return;
+    if (confirm('คุณต้องการยกเลิกการตั้งค่าเฉพาะสาขานี้ และกลับไปใช้การตั้งค่าเริ่มต้นของสำนักงานใหญ่ใช่หรือไม่? (Revert to HQ defaults?)')) {
+      try {
+        await deleteMut.mutateAsync({ branchId: selectedBranchId });
+        alert('คืนค่าเริ่มต้นเรียบร้อยแล้ว!');
+      } catch (e) {
+        alert('Revert failed: ' + (e.message || 'Unknown'));
+      }
     }
   };
 
@@ -890,7 +915,33 @@ const SettingsPayment = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <SectionHeader title="PromptPay QR" desc="Configure PromptPay for this branch to generate real QR codes at checkout"/>
+      {/* Banner/status for non-HQ branch */}
+      {!isHQ && settings && !settings.isCustom && (
+        <div className="card" style={{ padding: 16, background: 'rgba(76, 111, 76, 0.08)', border: '1px solid var(--matcha-200)', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ color: 'var(--matcha-600)' }}><IconBuilding size={20}/></span>
+          <div style={{ fontSize: 13, color: 'var(--matcha-800)', flex: 1 }}>
+            <strong>ใช้การตั้งค่าเริ่มต้นจากสำนักงานใหญ่ (HQ)</strong>
+            <br/>สาขา {branchDisplayName} กำลังใช้การตั้งค่าของ Hibi House ร่วมกัน หากแก้ไขและบันทึกจะแยกการตั้งค่าเฉพาะของสาขาตัวเลือกนี้ออกไป
+          </div>
+        </div>
+      )}
+
+      {!isHQ && settings && settings.isCustom && (
+        <div className="card" style={{ padding: 16, background: 'var(--bg-muted)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ color: 'var(--matcha-600)' }}><IconCheckCircle size={20}/></span>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              <strong>การตั้งค่าเฉพาะของสาขา {branchDisplayName}</strong>
+              <br/>ค่าด้านล่างถูกปรับปรุงแยกต่างหากเฉพาะสาขานี้เท่านั้น
+            </div>
+          </div>
+          <button className="btn btn-secondary btn-sm" style={{ color: 'var(--danger)', background: 'var(--bg-surface)' }} onClick={handleRevert} disabled={deleteMut.isPending}>
+            {deleteMut.isPending ? 'Resetting…' : 'คืนค่าเริ่มต้นจาก HQ'}
+          </button>
+        </div>
+      )}
+
+      <SectionHeader title="PromptPay QR" desc={`Configure PromptPay for ${branchDisplayName} to generate real QR codes at checkout`}/>
       <div className="card" style={{ padding: 24 }}>
         <div style={{ display: 'grid', gap: 16 }}>
           <Field label="PromptPay Type">
@@ -943,12 +994,21 @@ const SettingsPayment = () => {
 const SettingsReceipt = () => {
   const { branch } = useApp();
   const session = getSession();
-  const branchId = branch?.id || session?.currentBranchId;
+  
+  // Find the HQ branch ID to know if we are at HQ
+  const { data: myBranches = [] } = trpc.branches.getMyBranches.useQuery(undefined, { enabled: !!session });
+  const hqBranch = myBranches.find(b => b.branchType === 'hq');
+  
+  const selectedBranchId = branch?.id || session?.currentBranchId || 1;
+  const isHQ = selectedBranchId === hqBranch?.id || branch?.type === 'HQ' || branch?.id === null;
+  const branchDisplayName = branch?.name || (isHQ ? 'Hibi House (HQ)' : 'Branch');
+
   const { data: settings, isLoading, refetch } = trpc.branchSettings.getPaymentSettings.useQuery(
-    { branchId: branchId ?? 0 },
-    { enabled: !!branchId }
+    { branchId: selectedBranchId ?? 0 },
+    { enabled: !!selectedBranchId }
   );
   const saveMut = trpc.branchSettings.upsertPaymentSettings.useMutation({ onSuccess: () => refetch() });
+  const deleteMut = trpc.branchSettings.deletePaymentSettings.useMutation({ onSuccess: () => refetch() });
 
   const [receiptHeader, setReceiptHeader] = useState('');
   const [receiptFooter, setReceiptFooter] = useState('');
@@ -963,16 +1023,34 @@ const SettingsReceipt = () => {
       setShowLogo(settings.showLogo !== false);
       setShowQr(settings.showQr !== false);
       setPaperWidth(settings.paperWidth || '80');
+    } else {
+      setReceiptHeader('');
+      setReceiptFooter('');
+      setShowLogo(true);
+      setShowQr(true);
+      setPaperWidth('80');
     }
   }, [settings]);
 
   const handleSave = async () => {
-    if (!branchId) { alert('No branch selected'); return; }
+    if (!selectedBranchId) { alert('No branch selected'); return; }
     try {
-      await saveMut.mutateAsync({ branchId, receiptHeader, receiptFooter, showLogo, showQr, paperWidth });
+      await saveMut.mutateAsync({ branchId: selectedBranchId, receiptHeader, receiptFooter, showLogo, showQr, paperWidth });
       alert('Saved!');
     } catch (e) {
       alert('Failed: ' + (e.message || 'Unknown'));
+    }
+  };
+
+  const handleRevert = async () => {
+    if (!selectedBranchId) return;
+    if (confirm('คุณต้องการยกเลิกการตั้งค่าเฉพาะสาขานี้ และกลับไปใช้การตั้งค่าเริ่มต้นของสำนักงานใหญ่ใช่หรือไม่? (Revert to HQ defaults?)')) {
+      try {
+        await deleteMut.mutateAsync({ branchId: selectedBranchId });
+        alert('คืนค่าเริ่มต้นเรียบร้อยแล้ว!');
+      } catch (e) {
+        alert('Revert failed: ' + (e.message || 'Unknown'));
+      }
     }
   };
 
@@ -980,7 +1058,33 @@ const SettingsReceipt = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <SectionHeader title="Receipt Layout" desc="Customize what appears on printed receipts"/>
+      {/* Banner/status for non-HQ branch */}
+      {!isHQ && settings && !settings.isCustom && (
+        <div className="card" style={{ padding: 16, background: 'rgba(76, 111, 76, 0.08)', border: '1px solid var(--matcha-200)', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ color: 'var(--matcha-600)' }}><IconBuilding size={20}/></span>
+          <div style={{ fontSize: 13, color: 'var(--matcha-800)', flex: 1 }}>
+            <strong>ใช้การตั้งค่าเริ่มต้นจากสำนักงานใหญ่ (HQ)</strong>
+            <br/>สาขา {branchDisplayName} กำลังใช้การตั้งค่าของ Hibi House ร่วมกัน หากแก้ไขและบันทึกจะแยกการตั้งค่าเฉพาะของสาขาตัวเลือกนี้ออกไป
+          </div>
+        </div>
+      )}
+
+      {!isHQ && settings && settings.isCustom && (
+        <div className="card" style={{ padding: 16, background: 'var(--bg-muted)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ color: 'var(--matcha-600)' }}><IconCheckCircle size={20}/></span>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              <strong>การตั้งค่าเฉพาะของสาขา {branchDisplayName}</strong>
+              <br/>ค่าด้านล่างถูกปรับปรุงแยกต่างหากเฉพาะสาขานี้เท่านั้น
+            </div>
+          </div>
+          <button className="btn btn-secondary btn-sm" style={{ color: 'var(--danger)', background: 'var(--bg-surface)' }} onClick={handleRevert} disabled={deleteMut.isPending}>
+            {deleteMut.isPending ? 'Resetting…' : 'คืนค่าเริ่มต้นจาก HQ'}
+          </button>
+        </div>
+      )}
+
+      <SectionHeader title="Receipt Layout" desc={`Customize what appears on printed receipts for ${branchDisplayName}`}/>
       <div className="card" style={{ padding: 24 }}>
         <div style={{ display: 'grid', gap: 16 }}>
           <Field label="Paper Width">

@@ -56,6 +56,24 @@ function verifyOtp(phone: string, code: string): boolean {
 }
 
 export const membersRouter = router({
+  findById: staffProcedure
+    .input(z.object({ id: z.number().int() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [member] = await db.select().from(members).where(eq(members.id, input.id)).limit(1);
+      if (!member) return null;
+
+      const history = await db.select().from(memberPoints).where(eq(memberPoints.memberId, member.id));
+      const points = history.reduce((acc, p) => {
+        if (p.type === "earn" || p.type === "adjust") return acc + Number(p.points);
+        if (p.type === "redeem" || p.type === "expire") return acc - Number(p.points);
+        return acc;
+      }, 0);
+
+      return { ...member, points: Math.max(0, points) };
+    }),
+
   // ── Find Member by Phone (Cashier POS) ─────────────────────────────────────
   findByPhone: staffProcedure
     .input(z.object({ phone: z.string() }))
