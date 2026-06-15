@@ -13,6 +13,7 @@ import {
   EmptyState,
   TopActionBar,
   useHashRoute,
+  WelcomeLoading,
 } from "@/components";
 import { AppLayout } from "@/components/Shell";
 import * as authStoreRef from "@/lib/authStore";
@@ -494,6 +495,7 @@ const RealtimeSync = ({ branchId }) => {
 };
 
 const App = () => {
+  const [isBooting, setIsBooting] = useState(true);
   const [route, setRoute] = useHashRoute();
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('hibi-theme');
@@ -628,6 +630,7 @@ const App = () => {
   return (
     <AppCtx.Provider value={ctx}>
       <ToastProvider>
+        {isBooting && <WelcomeLoading onComplete={() => setIsBooting(false)} />}
         <RealtimeSync branchId={branch?.id}/>
         <AppLayout>
           <Router route={route}/>

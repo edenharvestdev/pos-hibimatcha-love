@@ -25,13 +25,38 @@ export const Icon = ({ children, size = 20, stroke = 1.5, className = "", style 
   </svg>
 );
 
-// Brand mark — minimal whisk + bowl
+// Brand mark — rabbit + whisk + bowl
 export const IconBrand = (p) => (
-  <Icon {...p}>
-    <path d="M4 14c0 3.5 3.5 6 8 6s8-2.5 8-6" />
-    <path d="M3 14h18" />
-    <path d="M9 4v8M12 3v9M15 4v8" />
-    <path d="M9 4q1.5-1 3 0t3 0" opacity=".6"/>
+  <Icon {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
+    {/* Rabbit Ear Left */}
+    <path d="M6 10C5.2 6.5 6.2 3.5 7.2 5.2c.8 1.4.6 3.2.4 4.8" fill="currentColor" opacity="0.25" />
+    <path d="M6 10C5.2 6.5 6.2 3.5 7.2 5.2c.8 1.4.6 3.2.4 4.8" />
+    {/* Rabbit Ear Right */}
+    <path d="M8.2 10c.2-4 1.8-5.8 2.5-4 0 1.4-.7 3.2-1.4 4" fill="currentColor" opacity="0.25" />
+    <path d="M8.2 10c.2-4 1.8-5.8 2.5-4 0 1.4-.7 3.2-1.4 4" />
+    {/* Rabbit Body */}
+    <path d="M8.2 10c-2.5 0-3.8 2.8-3.4 5.6.8 3.6 4.8 3.6 6 1.6.8-1.2.6-3-.4-4.4-.8-1-1.6-2.8-2.4-2.8" fill="currentColor" opacity="0.25" />
+    <path d="M8.2 10c-2.5 0-3.8 2.8-3.4 5.6.8 3.6 4.8 3.6 6 1.6.8-1.2.6-3-.4-4.4-.8-1-1.6-2.8-2.4-2.8z" />
+    {/* Leaf inside body */}
+    <path d="M6 14.5c-.6.6-.8 1.8 0 2.4.6.6 1.8 0 2.4-.6-.6-.6-1.8-.6-2.4-1.8z" fill="var(--background)" stroke="none" />
+    {/* Smiling Eyes */}
+    <path d="M5.8 12.6a.8.8 0 0 1 .6-.2" strokeWidth={1.8} />
+    <path d="M7.8 12.6a.8.8 0 0 1 .6-.2" strokeWidth={1.8} />
+    <circle cx="7.0" cy="13.8" r="0.6" fill="currentColor" stroke="none" />
+
+    {/* Whisk (Chasen) */}
+    <rect x="12.5" y="8" width="1.8" height="4.5" rx="0.4" fill="currentColor" opacity="0.25" />
+    <rect x="12.5" y="8" width="1.8" height="4.5" rx="0.4" />
+    <path d="M11.6 12.5h3.6" />
+    <path d="M12.5 12.5c-1.2 2-1.2 4.4.4 6 .4.4.8.4 1.2 0 1.6-1.6 1.6-4 .4-6" fill="currentColor" opacity="0.25" />
+    <path d="M12.5 12.5c-1.2 2-1.2 4.4.4 6M14.3 12.5c1.2 2 1.2 4.4-.4 6" />
+    <path d="M13.4 12.5v5.5" />
+
+    {/* Bowl (Chawan) */}
+    <path d="M16.5 13.5c-.2 2 .4 3.6 1.2 4h2.4c.8-.4 1.4-2 1.2-4H16.5z" fill="currentColor" opacity="0.25" />
+    <path d="M16.5 13.5c-.2 2 .4 3.6 1.2 4.4h2.4c.8-.8 1.4-2.4 1.2-4.4" />
+    <path d="M17.7 17.9h2.4" />
+    <path d="M16.7 15.1h5" strokeWidth={0.8} opacity={0.8} />
   </Icon>
 );
 
