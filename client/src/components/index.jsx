@@ -489,5 +489,5 @@ export const useHashRoute = () => {
   return [route, (path) => { location.hash = path; }];
 };
 
-export { WelcomeLoading } from "./WelcomeLoading";
+
 
