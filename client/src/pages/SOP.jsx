@@ -1,21 +1,32 @@
 // ============================================
-// Page: sop
+// Page: sop (Redesigned & Polished UX)
 // ============================================
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { IconBell,IconBookmark,IconBox,IconCategories,IconCheck,IconCheckCircle,IconCheckList,IconChevRight,IconCommand,IconEdit,IconError,IconExport,IconImport,IconInfo,IconLeaf,IconList,IconMenu,IconPlus,IconSearch,IconWarning,IconWhisk,IconTrash,IconX,IconChevUp,IconChevDown } from "@/icons";
-import { useApp,Drawer,Select,Toggle,Checkbox,Tabs,TopActionBar,Placeholder,SectionHeader,Avatar,Sparkline } from "@/components";
+import { 
+  IconBell, IconBookmark, IconBox, IconCategories, IconCheck, IconCheckCircle, 
+  IconCheckList, IconChevRight, IconCommand, IconEdit, IconError, IconExport, 
+  IconImport, IconInfo, IconLeaf, IconList, IconMenu, IconPlus, IconSearch, 
+  IconWarning, IconWhisk, IconTrash, IconX, IconChevUp, IconChevDown,
+  IconBuilding, IconClock, IconCalendar, IconUser, IconUsers, IconStaff
+} from "@/icons";
+import { useApp, Drawer, Select, Toggle, Checkbox, Tabs, TopActionBar, Placeholder, SectionHeader, Avatar, Sparkline } from "@/components";
 import { trpc } from "@/lib/trpc";
 import { getSession } from "@/lib/authStore";
 import { getAutomation } from "@/lib/automationSettings";
 
 const Stat = ({ label, value, color }) => (
-  <div>
-    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
-    <div style={{ fontSize: 18, fontWeight: 600, color: color || 'var(--text-primary)', marginTop: 2 }}>{value}</div>
+  <div style={{
+    padding: '16px',
+    background: 'var(--bg-surface)',
+    borderRadius: 'var(--r-md)',
+    border: '1px solid var(--border-default)',
+    boxShadow: 'var(--shadow-xs)'
+  }}>
+    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{label}</div>
+    <div style={{ fontSize: 24, fontWeight: 700, color: color || 'var(--text-primary)', marginTop: 4 }}>{value}</div>
   </div>
 );
-
 
 // ----- SOP Library -----
 export const PageSOPLibrary = () => {
@@ -23,7 +34,8 @@ export const PageSOPLibrary = () => {
   const [search, setSearch] = useState('');
   const [activeCat, setActiveCat] = useState('all');
   const [activeTab, setActiveTab] = useState('library'); // 'library' | 'hq_audit'
-  // Detect whether we're in the staff-facing route (/sop) vs backoffice (/backoffice/sop)
+  const [searchFocused, setSearchFocused] = useState(false);
+
   const isStaffView = role === 'staff' || (route || '').startsWith('/sop');
   const detailPrefix = isStaffView ? '/sop' : '/backoffice/sop';
   const canWrite = role === 'super' || role === 'admin';
@@ -44,37 +56,49 @@ export const PageSOPLibrary = () => {
   const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories]);
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <div className="breadcrumb">Knowledge / SOP Library</div>
-        <div className="page-title-row">
+    <div className="page" style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: 28 }}>
+        <div className="breadcrumb" style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span>Knowledge</span> / <span style={{ color: 'var(--matcha-700)', fontWeight: 500 }}>SOP Library</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
           <div>
-            <h1 className="page-title">SOP Library</h1>
-            <p className="page-desc">{sops.length} SOPs · {categories.length} categories</p>
+            <h1 style={{ fontSize: 32, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>คู่มือการปฏิบัติงาน (SOP Library)</h1>
+            <p className="muted" style={{ fontSize: 14, marginTop: 4 }}>{sops.length} SOPs เอกสารแนะนำ · {categories.length} หมวดหมู่หลัก</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {canWrite && <button className="btn btn-primary" onClick={() => navigate('/backoffice/sop/new')}><IconPlus size={16}/> Write SOP</button>}
-            {isStaffView && <button className="btn btn-secondary" onClick={() => navigate('/sop/my-tasks')}><IconCheckList size={16}/> My Tasks</button>}
+            {canWrite && (
+              <button className="btn btn-primary" onClick={() => navigate('/backoffice/sop/new')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <IconPlus size={16}/> เขียนคู่มือ (Write SOP)
+              </button>
+            )}
+            {isStaffView && (
+              <button className="btn btn-secondary" onClick={() => navigate('/sop/my-tasks')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <IconCheckList size={16}/> งานของฉัน (My Tasks)
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {role === 'super' && (
-        <div style={{ display: 'flex', gap: 16, borderBottom: '1px solid var(--border-default)', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--border-default)', marginBottom: 24 }}>
           <button
             onClick={() => setActiveTab('library')}
             style={{
-              padding: '8px 16px',
+              padding: '12px 20px',
               fontSize: 14,
               fontWeight: 600,
-              color: activeTab === 'library' ? 'var(--matcha-600)' : 'var(--text-secondary)',
-              borderBottom: activeTab === 'library' ? '2px solid var(--matcha-600)' : '2px solid transparent',
+              color: activeTab === 'library' ? 'var(--matcha-700)' : 'var(--text-secondary)',
+              borderBottom: activeTab === 'library' ? '2.5px solid var(--matcha-600)' : '2.5px solid transparent',
               background: 'none',
               borderTop: 'none',
               borderLeft: 'none',
               borderRight: 'none',
               cursor: 'pointer',
               marginBottom: -1,
+              transition: 'all 200ms ease',
             }}
           >
             SOP Library
@@ -82,96 +106,210 @@ export const PageSOPLibrary = () => {
           <button
             onClick={() => setActiveTab('hq_audit')}
             style={{
-              padding: '8px 16px',
+              padding: '12px 20px',
               fontSize: 14,
               fontWeight: 600,
-              color: activeTab === 'hq_audit' ? 'var(--matcha-600)' : 'var(--text-secondary)',
-              borderBottom: activeTab === 'hq_audit' ? '2px solid var(--matcha-600)' : '2px solid transparent',
+              color: activeTab === 'hq_audit' ? 'var(--matcha-700)' : 'var(--text-secondary)',
+              borderBottom: activeTab === 'hq_audit' ? '2.5px solid var(--matcha-600)' : '2.5px solid transparent',
               background: 'none',
               borderTop: 'none',
               borderLeft: 'none',
               borderRight: 'none',
               cursor: 'pointer',
               marginBottom: -1,
+              transition: 'all 200ms ease',
             }}
           >
-            HQ Audit Dashboard
+            HQ Audit Dashboard (ประเมินสาขา)
           </button>
         </div>
       )}
 
       {activeTab === 'library' && (
         <>
-          <div className="card" style={{ padding: 6, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ paddingLeft: 16, color: 'var(--text-tertiary)' }}><IconSearch size={20}/></span>
-            <input className="input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search SOPs by title, content, tags…" style={{ border: 'none', boxShadow: 'none', height: 48, fontSize: 16, flex: 1, background: 'transparent' }}/>
+          {/* Search Box Panel */}
+          <div 
+            style={{ 
+              padding: '4px 8px', 
+              marginBottom: 20, 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 12,
+              background: 'var(--bg-surface)',
+              borderRadius: 'var(--r-lg)',
+              border: searchFocused ? '1px solid var(--matcha-500)' : '1px solid var(--border-default)',
+              boxShadow: searchFocused ? 'var(--shadow-md), var(--glow-soft)' : 'var(--shadow-xs)',
+              transition: 'all 240ms var(--ease-out-expo)',
+            }}
+          >
+            <span style={{ paddingLeft: 8, color: searchFocused ? 'var(--matcha-600)' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center' }}>
+              <IconSearch size={20}/>
+            </span>
+            <input 
+              className="input" 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              placeholder="ค้นหาคู่มือการชง ชื่อสูตร หรือคำสำคัญต่างๆ..." 
+              style={{ border: 'none', boxShadow: 'none', height: 44, fontSize: 15, flex: 1, background: 'transparent' }}
+            />
+            {search && (
+              <button 
+                onClick={() => setSearch('')} 
+                style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 8 }}
+              >
+                <IconX size={16} />
+              </button>
+            )}
           </div>
 
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflow: 'auto', paddingBottom: 4 }}>
-            <button onClick={() => setActiveCat('all')} className={activeCat === 'all' ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'} style={{ whiteSpace: 'nowrap' }}>All</button>
+          {/* Categories Horizontal Scroller */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 24, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'thin' }}>
+            <button 
+              onClick={() => setActiveCat('all')} 
+              className={activeCat === 'all' ? 'btn btn-primary' : 'btn btn-secondary'} 
+              style={{ whiteSpace: 'nowrap', borderRadius: 99, padding: '8px 16px', fontSize: 13 }}
+            >
+              ทั้งหมด (All)
+            </button>
             {categories.map((c) => (
-              <button key={c.id} onClick={() => setActiveCat(c.id)} className={activeCat === c.id ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'} style={{ whiteSpace: 'nowrap' }}>{c.name}</button>
+              <button 
+                key={c.id} 
+                onClick={() => setActiveCat(c.id)} 
+                className={activeCat === c.id ? 'btn btn-primary' : 'btn btn-secondary'} 
+                style={{ whiteSpace: 'nowrap', borderRadius: 99, padding: '8px 16px', fontSize: 13 }}
+              >
+                {c.name}
+              </button>
             ))}
           </div>
 
+          {/* Grid view */}
           {isLoading ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-              {[1,2,3].map((i) => <div key={i} className="card" style={{ height: 260, background: 'var(--bg-muted)', animation: 'pulse 1.5s ease-in-out infinite' }}/>)}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="card" style={{ height: 260, background: 'var(--bg-muted)', animation: 'pulse 1.5s ease-in-out infinite', border: '1px solid var(--border-subtle)' }}/>
+              ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-tertiary)' }}>
-              <IconBox size={36} style={{ opacity: 0.3 }}/>
-              <p style={{ marginTop: 12, fontWeight: 500 }}>No SOPs yet</p>
-              <p style={{ fontSize: 13 }}>{canWrite ? 'Create your first standard operating procedure.' : 'No SOPs have been published yet.'}</p>
-              {canWrite && <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/backoffice/sop/new')}><IconPlus size={14}/> Write SOP</button>}
+            <div style={{ textAlign: 'center', padding: '80px 0', background: 'var(--bg-surface)', border: '1px dashed var(--border-default)', borderRadius: 'var(--r-lg)' }}>
+              <IconBox size={44} style={{ opacity: 0.3, color: 'var(--text-tertiary)' }}/>
+              <p style={{ marginTop: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>ไม่พบข้อมูลคู่มือ</p>
+              <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>{canWrite ? 'เริ่มสร้างคู่มือฉบับแรกของคุณได้ทันที' : 'ยังไม่มีเอกสารคู่มือเผยแพร่ในระบบสำหรับหมวดหมู่นี้'}</p>
+              {canWrite && <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/backoffice/sop/new')}><IconPlus size={14}/> เขียนคู่มือ</button>}
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
               {filtered.map((s, i) => {
                 const catName = catMap.get(s.categoryId) ?? 'Uncategorized';
                 const author = s.authorStaffId ? `Staff #${s.authorStaffId}` : '—';
-                const date = s.publishedAt ? new Date(s.publishedAt).toLocaleDateString() : '—';
+                const date = s.publishedAt ? new Date(s.publishedAt).toLocaleDateString('th-TH') : '—';
                 return (
-                  <div key={s.id} className="card" style={{ overflow: 'hidden', position: 'relative', animation: `slideUp 360ms var(--ease-out-expo) ${i * 50}ms both`, transition: 'transform 240ms, box-shadow 240ms' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md), var(--glow-soft)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}>
-                    <div onClick={() => navigate(`${detailPrefix}/${s.id}`)} style={{ position: 'relative', cursor: 'pointer' }}>
-                      <Placeholder ratio="16/9" radius={0} label={catName}/>
+                  <div 
+                    key={s.id} 
+                    className="card" 
+                    style={{ 
+                      overflow: 'hidden', 
+                      position: 'relative', 
+                      border: '1px solid var(--border-default)',
+                      background: 'var(--bg-surface)',
+                      borderRadius: 'var(--r-lg)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '100%',
+                      animation: `slideUp 360ms var(--ease-out-expo) ${i * 40}ms both`, 
+                      transition: 'transform 240ms, box-shadow 240ms, border-color 240ms' 
+                    }}
+                    onMouseEnter={(e) => { 
+                      e.currentTarget.style.transform = 'translateY(-4px)'; 
+                      e.currentTarget.style.boxShadow = 'var(--shadow-md), var(--glow-soft)';
+                      e.currentTarget.style.borderColor = 'var(--matcha-300)';
+                    }}
+                    onMouseLeave={(e) => { 
+                      e.currentTarget.style.transform = 'none'; 
+                      e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; 
+                      e.currentTarget.style.borderColor = 'var(--border-default)';
+                    }}
+                  >
+                    <div onClick={() => navigate(`${detailPrefix}/${s.id}`)} style={{ position: 'relative', cursor: 'pointer', overflow: 'hidden', aspectRatio: '16/9', background: 'var(--bg-muted)' }}>
+                      {s.coverImageUrl ? (
+                        <img 
+                          src={s.coverImageUrl} 
+                          alt={s.title} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 400ms ease' }} 
+                          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.06)'} 
+                          onMouseLeave={(e) => e.currentTarget.style.transform = 'none'} 
+                        />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, var(--matcha-100), var(--matcha-200))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IconLeaf size={32} style={{ color: 'var(--matcha-600)', opacity: 0.5 }}/>
+                        </div>
+                      )}
+                      
+                      {/* Floating badglets */}
                       {s.status === 'draft' && (
-                        <span className="pill pill-warning" style={{ position: 'absolute', top: 10, left: 10, fontSize: 10 }}>DRAFT</span>
+                        <span className="pill pill-warning" style={{ position: 'absolute', top: 10, left: 10, fontSize: 10, fontWeight: 700 }}>DRAFT</span>
+                      )}
+                      {s.requiresAcknowledgment && (
+                        <span className="pill" style={{ position: 'absolute', top: 10, right: 10, fontSize: 9, background: 'var(--red-600)', color: 'white', border: 'none', fontWeight: 700, letterSpacing: '0.04em' }}>REQUIRED</span>
+                      )}
+                      {s.videoUrl && (
+                        <span className="pill" style={{ position: 'absolute', bottom: 10, right: 10, fontSize: 9, background: 'rgba(0,0,0,0.7)', color: 'white', border: 'none', fontWeight: 600 }}>🎥 VIDEO</span>
                       )}
                     </div>
+
                     {canWrite && (
                       <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4, zIndex: 2 }}>
                         <button
                           onClick={(e) => { e.stopPropagation(); navigate(`/backoffice/sop/new?id=${s.id}`); }}
                           className="btn btn-secondary btn-icon"
-                          style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.95)' }}
+                          style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.92)', boxShadow: 'var(--shadow-xs)' }}
                           title="Edit SOP"
-                        ><IconEdit size={12}/></button>
+                        ><IconEdit size={13}/></button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             if (window.confirm(`Archive "${s.title}"?`)) archiveSop.mutate({ id: s.id });
                           }}
                           className="btn btn-secondary btn-icon"
-                          style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.95)', color: 'var(--danger)' }}
+                          style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.92)', color: 'var(--danger)', boxShadow: 'var(--shadow-xs)' }}
                           title="Archive SOP"
-                        ><IconError size={12}/></button>
+                        ><IconTrash size={13}/></button>
                       </div>
                     )}
-                    <div onClick={() => navigate(`${detailPrefix}/${s.id}`)} style={{ padding: 18, cursor: 'pointer' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <span className="pill">{catName}</span>
+
+                    <div 
+                      onClick={() => navigate(`${detailPrefix}/${s.id}`)} 
+                      style={{ padding: '16px 18px', cursor: 'pointer', display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                          <span className="pill" style={{ background: 'var(--matcha-50)', color: 'var(--matcha-700)', border: 'none', fontWeight: 600, fontSize: 10 }}>{catName}</span>
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, lineHeight: 1.3 }}>{s.title}</div>
+                        {s.subtitle && (
+                          <div className="muted" style={{ fontSize: 12, lineHeight: 1.4, marginBottom: 16, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {s.subtitle}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>{s.title}</div>
-                      {s.subtitle && <div className="muted" style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{s.subtitle}</div>}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--text-tertiary)' }}>
-                        <Avatar name={author} size={20}/>
-                        <span>{author}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-subtle)', paddingTop: 12, marginTop: 'auto' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <IconStaff size={12}/>
+                          <span>{author}</span>
+                        </div>
                         <span>·</span>
-                        <span>{date}</span>
-                        {s.version && <><span>·</span><span>v{s.version}</span></>}
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <IconCalendar size={12}/>
+                          <span>{date}</span>
+                        </div>
+                        {s.version && (
+                          <>
+                            <span>·</span>
+                            <span>v{s.version}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -183,51 +321,61 @@ export const PageSOPLibrary = () => {
       )}
 
       {activeTab === 'hq_audit' && (
-        <div>
+        <div style={{ animation: 'fadeIn 240ms ease-out' }}>
           {complianceLoading ? (
-            <div style={{ textAlign: 'center', padding: 40 }} className="muted">Loading Compliance Audit Data...</div>
+            <div style={{ textAlign: 'center', padding: '60px 0' }} className="muted">กำลังโหลดรายงานการยอมรับคู่มือ...</div>
           ) : !complianceReport ? (
-            <div style={{ textAlign: 'center', padding: 40 }} className="muted">Failed to load compliance data.</div>
+            <div style={{ textAlign: 'center', padding: '60px 0' }} className="muted">ไม่สามารถดึงข้อมูลรายงานได้</div>
           ) : (
-            <div style={{ animation: 'fadeIn 240ms ease-out' }}>
+            <div>
               {/* Summary Stats cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
-                <div className="card" style={{ padding: 20 }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>OVERALL COMPLIANCE</div>
-                  <div style={{ fontSize: 36, fontWeight: 700, color: 'var(--matcha-700)', marginTop: 4 }}>{complianceReport.rate}%</div>
-                  <div style={{ height: 4, background: 'var(--bg-subtle)', borderRadius: 2, overflow: 'hidden', marginTop: 8 }}>
-                    <div style={{ width: `${complianceReport.rate}%`, height: '100%', background: 'var(--matcha-500)' }}/>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
+                <div style={{
+                  padding: '20px',
+                  background: 'var(--bg-surface)',
+                  borderRadius: 'var(--r-lg)',
+                  border: '1px solid var(--border-default)',
+                  boxShadow: 'var(--shadow-xs)'
+                }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: '0.06em' }}>OVERALL COMPLIANCE (อัตราการเข้าอ่าน)</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 8 }}>
+                    <span style={{ fontSize: 36, fontWeight: 800, color: 'var(--matcha-600)' }}>{complianceReport.rate}%</span>
+                  </div>
+                  <div style={{ height: 6, background: 'var(--bg-subtle)', borderRadius: 99, overflow: 'hidden', marginTop: 12 }}>
+                    <div style={{ width: `${complianceReport.rate}%`, height: '100%', background: 'linear-gradient(90deg, var(--matcha-500), var(--matcha-600))' }}/>
                   </div>
                 </div>
-                <div className="card" style={{ padding: 20 }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>TOTAL SOPS</div>
-                  <div style={{ fontSize: 36, fontWeight: 700, marginTop: 4 }}>{complianceReport.totalSops}</div>
-                </div>
-                <div className="card" style={{ padding: 20 }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>ACTIVE STAFF</div>
-                  <div style={{ fontSize: 36, fontWeight: 700, marginTop: 4 }}>{complianceReport.totalStaff}</div>
-                </div>
-                <div className="card" style={{ padding: 20 }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>ACKNOWLEDGED / PENDING</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, marginTop: 12 }}>
-                    <span style={{ color: 'var(--matcha-700)' }}>{complianceReport.acknowledged}</span> / <span style={{ color: 'var(--danger)' }}>{complianceReport.pending}</span>
+                <Stat label="Total Active SOPs" value={complianceReport.totalSops} />
+                <Stat label="Staff Members" value={complianceReport.totalStaff} />
+                <div style={{
+                  padding: '20px',
+                  background: 'var(--bg-surface)',
+                  borderRadius: 'var(--r-lg)',
+                  border: '1px solid var(--border-default)',
+                  boxShadow: 'var(--shadow-xs)'
+                }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: '0.06em' }}>ACKNOWLEDGED / PENDING</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, marginTop: 14, display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ color: 'var(--matcha-600)' }}>{complianceReport.acknowledged}</span>
+                    <span style={{ fontSize: 14, color: 'var(--text-quaternary)' }}>/</span>
+                    <span style={{ color: 'var(--danger)' }}>{complianceReport.pending}</span>
                   </div>
                 </div>
               </div>
 
               {/* Compliance Matrix Table */}
-              <div className="card" style={{ padding: 24, overflowX: 'auto' }}>
-                <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>Acknowledgment Compliance Matrix</div>
+              <div className="card" style={{ padding: 24, overflowX: 'auto', border: '1px solid var(--border-default)', borderRadius: 'var(--r-lg)', background: 'var(--bg-surface)' }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>ตารางการยืนยันการรับทราบข้อมูลคู่มือ (Acknowledgment Compliance Matrix)</h3>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 600 }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
-                      <th style={{ padding: '12px 8px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)' }}>Staff Member</th>
+                    <tr style={{ borderBottom: '2px solid var(--border-default)' }}>
+                      <th style={{ padding: '12px 8px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)' }}>พนักงาน (Staff)</th>
                       {complianceReport.items.map((it) => (
-                        <th key={it.sop.id} style={{ padding: '12px 8px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={it.sop.title}>
+                        <th key={it.sop.id} style={{ padding: '12px 8px', fontWeight: 600, fontSize: 12, color: 'var(--text-secondary)', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={it.sop.title}>
                           {it.sop.title}
                         </th>
                       ))}
-                      <th style={{ padding: '12px 8px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)', textAlign: 'right' }}>Progress</th>
+                      <th style={{ padding: '12px 8px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)', textAlign: 'right' }}>ความคืบหน้า (Progress)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -240,19 +388,19 @@ export const PageSOPLibrary = () => {
                       return (
                         <tr key={st.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 150ms' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                           <td style={{ padding: '14px 8px', fontSize: 13, fontWeight: 500 }}>
-                            <div>{st.firstName} {st.lastName}</div>
-                            <div className="muted" style={{ fontSize: 11 }}>Code: {st.employeeCode || '#'+st.id}</div>
+                            <div style={{ color: 'var(--text-primary)' }}>{st.firstName} {st.lastName}</div>
+                            <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>รหัสพนักงาน: {st.employeeCode || '#'+st.id}</div>
                           </td>
                           {requiredSops.map((sop) => {
                             const hasAck = staffAcks.some((a) => a.sopId === sop.id);
                             return (
                               <td key={sop.id} style={{ padding: '14px 8px' }}>
                                 {hasAck ? (
-                                  <span style={{ color: 'var(--matcha-600)', display: 'inline-flex', alignItems: 'center' }} title="Acknowledged">
+                                  <span style={{ color: 'var(--matcha-600)', display: 'inline-flex', alignItems: 'center' }} title="ยืนยันแล้ว">
                                     <IconCheckCircle size={18} />
                                   </span>
                                 ) : (
-                                  <span style={{ color: 'var(--text-quaternary)', display: 'inline-flex', alignItems: 'center' }} title="Pending acknowledgment">
+                                  <span style={{ color: 'var(--text-quaternary)', display: 'inline-flex', alignItems: 'center' }} title="ยังไม่ยืนยัน">
                                     <IconError size={18} />
                                   </span>
                                 )}
@@ -260,9 +408,9 @@ export const PageSOPLibrary = () => {
                             );
                           })}
                           <td style={{ padding: '14px 8px', fontSize: 13, fontWeight: 600, textAlign: 'right' }}>
-                            <span style={{ color: pct === 100 ? 'var(--matcha-700)' : 'var(--text-secondary)' }}>
+                            <div style={{ color: pct === 100 ? 'var(--matcha-700)' : 'var(--text-secondary)' }}>
                               {ackedCount}/{requiredSops.length} ({pct}%)
-                            </span>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -278,9 +426,7 @@ export const PageSOPLibrary = () => {
   );
 };
 
-// ----- SOP Detail (reading) -----
-// Drawer that lets an admin link an SOP to a set of menu items.
-// Reads current linked items + lets you toggle each menu item by checkbox.
+// ----- Drawer to link SOP to menu items -----
 const SopLinkMenuDrawer = ({ open, onClose, sopId, sopTitle }) => {
   const { data: allMenu = [] } = trpc.menu.list.useQuery({}, { staleTime: 5000, refetchOnWindowFocus: true, enabled: open });
   const { data: linkedItems = [], refetch } = trpc.menu.listBySop.useQuery(
@@ -293,7 +439,6 @@ const SopLinkMenuDrawer = ({ open, onClose, sopId, sopTitle }) => {
     onError: (e) => alert(e.message || 'Link failed'),
   });
 
-  // Reset selection when opening with current linked items
   useEffect(() => {
     if (open) {
       setSelected(new Set(linkedItems.map((it) => it.id)));
@@ -316,7 +461,7 @@ const SopLinkMenuDrawer = ({ open, onClose, sopId, sopTitle }) => {
     const toLink = Array.from(selected).filter((id) => !currentlyLinked.has(id));
     const toUnlink = Array.from(currentlyLinked).filter((id) => !selected.has(id));
     if (toLink.length === 0 && toUnlink.length === 0) { onClose(); return; }
-    // Two calls: link + unlink
+    
     const tasks = [];
     if (toLink.length > 0) tasks.push(linkMut.mutateAsync({ sopId, menuItemIds: toLink }));
     if (toUnlink.length > 0) tasks.push(linkMut.mutateAsync({ sopId: null, menuItemIds: toUnlink }));
@@ -327,31 +472,33 @@ const SopLinkMenuDrawer = ({ open, onClose, sopId, sopTitle }) => {
     <Drawer
       open={open}
       onClose={onClose}
-      title="Link SOP to menu items"
+      title="เชื่อมโยง SOP กับเมนูขาย (Link to Menu)"
       subtitle={sopTitle}
       width={560}
-      footer={<>
-        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+      footer={<div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, width: '100%' }}>
+        <button className="btn btn-ghost" onClick={onClose}>ยกเลิก</button>
         <button className="btn btn-primary" onClick={save} disabled={linkMut.isPending}>
-          {linkMut.isPending ? 'Saving…' : `Save (${selected.size} item${selected.size === 1 ? '' : 's'})`}
+          {linkMut.isPending ? 'กำลังบันทึก…' : `บันทึกลิงก์ (${selected.size} รายการ)`}
         </button>
-      </>}
+      </div>}
     >
-      <div style={{ padding: 12, background: 'var(--matcha-50)', borderRadius: 'var(--r-default)', fontSize: 13, color: 'var(--matcha-700)', marginBottom: 16 }}>
-        Picked menu items will show this SOP as "How to prepare" in the POS option sheet.
-        Each item can only link to one SOP.
+      <div style={{ padding: '12px 16px', background: 'var(--matcha-50)', borderRadius: 'var(--r-md)', fontSize: 13, color: 'var(--matcha-700)', marginBottom: 16, lineHeight: 1.5 }}>
+        💡 เมนูที่คุณเลือกจะแสดงคู่มือการชงนี้ที่หน้าแคชเชียร์ (POS Option Sheet) ทันที เพื่อให้พนักงานกดเปิดอ่านสูตรชงได้ง่าย
       </div>
-      <input
-        className="input"
-        placeholder="Search menu items…"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        style={{ marginBottom: 12 }}
-      />
-      <div className="card" style={{ padding: 0, overflow: 'auto', maxHeight: 460 }}>
+      <div style={{ position: 'relative', marginBottom: 12 }}>
+        <input
+          className="input"
+          placeholder="ค้นหาเมนูอาหาร/เครื่องดื่ม หรือ SKU..."
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          style={{ paddingLeft: 36 }}
+        />
+        <span style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-tertiary)' }}><IconSearch size={16}/></span>
+      </div>
+      <div className="card" style={{ padding: 0, overflowY: 'auto', maxHeight: 420, border: '1px solid var(--border-default)' }}>
         {filtered.length === 0 ? (
-          <div className="muted" style={{ padding: 20, textAlign: 'center', fontSize: 13 }}>
-            {allMenu.length === 0 ? 'No menu items yet.' : 'No matches for that search.'}
+          <div className="muted" style={{ padding: 30, textAlign: 'center', fontSize: 13 }}>
+            {allMenu.length === 0 ? 'ยังไม่มีรายการสินค้าในเมนู' : 'ไม่พบชื่อเมนูที่ตรงกับการค้นหา'}
           </div>
         ) : filtered.map((it, i) => {
           const on = selected.has(it.id);
@@ -364,12 +511,13 @@ const SopLinkMenuDrawer = ({ open, onClose, sopId, sopTitle }) => {
                 padding: '12px 16px', cursor: 'pointer',
                 borderTop: i === 0 ? 'none' : '1px solid var(--border-default)',
                 background: on ? 'var(--matcha-50)' : 'transparent',
+                transition: 'background 150ms ease'
               }}
             >
               <Checkbox checked={on} onChange={() => {}}/>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 500, fontSize: 14 }}>{it.name}</div>
-                <div className="muted" style={{ fontSize: 11 }}>{it.sku} · ฿{it.basePrice}</div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: on ? 'var(--matcha-900)' : 'var(--text-primary)' }}>{it.name}</div>
+                <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>SKU: {it.sku} · ฿{it.basePrice}</div>
               </div>
             </div>
           );
@@ -379,6 +527,7 @@ const SopLinkMenuDrawer = ({ open, onClose, sopId, sopTitle }) => {
   );
 };
 
+// Helper for YouTube embeds
 const getYoutubeEmbedUrl = (url) => {
   if (!url) return null;
   try {
@@ -391,7 +540,7 @@ const getYoutubeEmbedUrl = (url) => {
   return null;
 };
 
-// ----- Drawer to request a branch-specific variant of a master SOP -----
+// ----- Drawer to request a branch-specific variant -----
 const SopVariantRequestDrawer = ({ open, onClose, sop, branchId, onSuccess }) => {
   const [blocks, setBlocks] = useState([]);
   const [reason, setReason] = useState('');
@@ -399,7 +548,7 @@ const SopVariantRequestDrawer = ({ open, onClose, sop, branchId, onSuccess }) =>
 
   const requestVariant = trpc.sop.requestVariant.useMutation({
     onSuccess: () => {
-      alert('ส่งคำขอปรับปรุงสูตรเฉพาะสาขาเรียบร้อยแล้ว! (Variant request submitted!)');
+      alert('ส่งคำขอปรับปรุงสูตรเฉพาะสาขาเรียบร้อยแล้ว! รอการตรวจสอบจาก HQ');
       onSuccess?.();
       onClose();
     },
@@ -420,7 +569,7 @@ const SopVariantRequestDrawer = ({ open, onClose, sop, branchId, onSuccess }) =>
   }, [open, sop]);
 
   const save = () => {
-    if (!reason.trim()) { alert('กรุณาระบุเหตุผลในการปรับปรุงสูตร (Reason is required)'); return; }
+    if (!reason.trim()) { alert('กรุณาระบุเหตุผลในการขอสูตรพิเศษประจำสาขา'); return; }
     requestVariant.mutate({
       masterSopId: sop.id,
       proposedContent: blocks,
@@ -433,54 +582,59 @@ const SopVariantRequestDrawer = ({ open, onClose, sop, branchId, onSuccess }) =>
     <Drawer
       open={open}
       onClose={onClose}
-      title="ขอปรับปรุงสูตรเฉพาะสาขา (Request Branch Variant)"
+      title="ขอปรับปรุงสูตรเฉพาะสาขา (Branch Variant Request)"
       subtitle={sop?.title}
       width={640}
-      footer={<>
-        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+      footer={<div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, width: '100%' }}>
+        <button className="btn btn-ghost" onClick={onClose}>ยกเลิก</button>
         <button className="btn btn-primary" onClick={save} disabled={requestVariant.isPending}>
-          {requestVariant.isPending ? 'Submitting…' : 'ส่งคำขออนุมัติ (Submit Request)'}
+          {requestVariant.isPending ? 'กำลังส่งคำขอ…' : 'ส่งคำขออนุมัติไปยังสำนักงานใหญ่'}
         </button>
-      </>}
+      </div>}
     >
-      <div style={{ padding: 12, background: 'rgba(217, 119, 6, 0.08)', border: '1px solid var(--warning)', borderRadius: 'var(--r-default)', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-        <strong>คำชี้แจง:</strong> การขอปรับปรุงสูตรจะถูกส่งไปยังสำนักงานใหญ่ (HQ) เพื่อตรวจสอบและอนุมัติ เมื่อได้รับการอนุมัติแล้ว สาขาของคุณจะแสดงวิธีปฏิบัติตามสูตรนี้ทันที
+      <div style={{ padding: '12px 16px', background: 'rgba(217, 119, 6, 0.08)', border: '1px solid var(--warning)', borderRadius: 'var(--r-md)', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.5 }}>
+        ⚠️ <strong>คำชี้แจง:</strong> การปรับแต่งขั้นตอนการทำนี้จะมีผลเฉพาะสาขาของคุณเท่านั้น และจะต้องรอให้ผู้ตรวจการสำนักงานใหญ่ (HQ) ตรวจสอบและกดอนุมัติก่อนจึงจะเริ่มใช้จริงได้
       </div>
 
-      <div style={{ display: 'grid', gap: 16, marginBottom: 20 }}>
-        <Field label="เหตุผลที่ขอปรับปรุงสูตร (Reason for variant)" required>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>เหตุผลในการปรับปรุงสูตร (จำเป็นต้องระบุ) *</label>
           <textarea
             className="input"
             rows={2}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="ตัวอย่างเช่น: สาขาใช้วัตถุดิบทดแทนเนื่องจากขนส่งเข้าไม่ถึง / เปลี่ยนแปลงปริมาณน้ำแข็งตามเครื่องสไลด์ไอศกรีม..."
+            placeholder="อธิบายเหตุผล เช่น: ปรับให้เหมาะกับกำลังวัตต์เครื่องปั่นของสาขา / ใช้วัตถุดิบทดแทนชั่วคราว..."
+            style={{ fontSize: 13 }}
           />
-        </Field>
+        </div>
 
-        <Field label="สรุปการเปลี่ยนแปลง (Summary of changes)">
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>สรุปสั้นๆ เกี่ยวกับการเปลี่ยนสูตร</label>
           <input
             className="input"
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
-            placeholder="เช่น: ปรับปริมาณผงมัทฉะจาก 4g เป็น 5g"
+            placeholder="เช่น: เปลี่ยนอัตราส่วนไซรัปเป็น 5ml แทน 10ml"
+            style={{ fontSize: 13 }}
           />
-        </Field>
+        </div>
       </div>
 
-      <div className="t-caption" style={{ marginBottom: 10 }}>แก้ไขเนื้อหาขั้นตอน (Customize Content Steps)</div>
-      <div style={{ display: 'grid', gap: 12, maxHeight: 400, overflowY: 'auto', padding: 4, marginBottom: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10, borderBottom: '1px solid var(--border-default)', paddingBottom: 8 }}>ปรับเปลี่ยนขั้นตอนการทำ (Customize Steps)</div>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 340, overflowY: 'auto', padding: 4, marginBottom: 16 }}>
         {blocks.map((block, idx) => (
           <div key={idx} style={{ padding: 14, background: 'var(--bg-muted)', borderRadius: 'var(--r-md)', border: '1px solid var(--border-default)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span className="pill" style={{ textTransform: 'uppercase', fontSize: 10, fontWeight: 600 }}>{block.type}</span>
+              <span className="pill" style={{ textTransform: 'uppercase', fontSize: 10, fontWeight: 700, background: 'var(--bg-surface)' }}>{block.type}</span>
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
-                style={{ padding: 0, height: 'auto', color: 'var(--red-600)', minWidth: 'auto' }}
+                style={{ padding: '2px 8px', height: 'auto', color: 'var(--red-600)', minWidth: 'auto', fontSize: 11 }}
                 onClick={() => setBlocks(prev => prev.filter((_, i) => i !== idx))}
               >
-                ลบขั้นตอน
+                ลบขั้นตอนนี้
               </button>
             </div>
             {block.type === 'list' ? (
@@ -493,7 +647,8 @@ const SopVariantRequestDrawer = ({ open, onClose, sop, branchId, onSuccess }) =>
                   next[idx] = { ...next[idx], items: e.target.value.split('\n') };
                   setBlocks(next);
                 }}
-                placeholder="รายการข้อความ (หนึ่งรายการต่อบรรทัด)..."
+                placeholder="รายละเอียดขั้นตอนย่อย (1 รายการต่อบรรทัด)..."
+                style={{ fontSize: 13 }}
               />
             ) : (
               <textarea
@@ -505,7 +660,8 @@ const SopVariantRequestDrawer = ({ open, onClose, sop, branchId, onSuccess }) =>
                   next[idx] = { ...next[idx], text: e.target.value };
                   setBlocks(next);
                 }}
-                placeholder="เนื้อหารายละเอียดขั้นตอน..."
+                placeholder="ระบุคำอธิบายขั้นตอนการชง..."
+                style={{ fontSize: 13 }}
               />
             )}
           </div>
@@ -513,23 +669,26 @@ const SopVariantRequestDrawer = ({ open, onClose, sop, branchId, onSuccess }) =>
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setBlocks(prev => [...prev, { type: 'heading', text: '' }])}>+ เพิ่มหัวข้อย่อย (Heading)</button>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setBlocks(prev => [...prev, { type: 'paragraph', text: '' }])}>+ เพิ่มย่อหน้า (Paragraph)</button>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setBlocks(prev => [...prev, { type: 'list', items: [''] }])}>+ เพิ่มรายการข้อ (List)</button>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setBlocks(prev => [...prev, { type: 'callout', text: '' }])}>+ เพิ่มกล่องเตือน (Callout)</button>
+        <button type="button" className="btn btn-secondary btn-sm" style={{ fontSize: 11 }} onClick={() => setBlocks(prev => [...prev, { type: 'heading', text: '' }])}>+ หัวข้อ (Heading)</button>
+        <button type="button" className="btn btn-secondary btn-sm" style={{ fontSize: 11 }} onClick={() => setBlocks(prev => [...prev, { type: 'paragraph', text: '' }])}>+ ย่อหน้า (Paragraph)</button>
+        <button type="button" className="btn btn-secondary btn-sm" style={{ fontSize: 11 }} onClick={() => setBlocks(prev => [...prev, { type: 'list', items: [''] }])}>+ รายการ (List)</button>
+        <button type="button" className="btn btn-secondary btn-sm" style={{ fontSize: 11 }} onClick={() => setBlocks(prev => [...prev, { type: 'callout', text: '' }])}>+ กล่องข้อความเตือน (Callout)</button>
       </div>
     </Drawer>
   );
 };
 
+// ----- SOP Detail (reading) -----
 export const PageSOPDetail = () => {
   const { navigate, route, branch, role, lang } = useApp();
   const [acked, setAcked] = useState(false);
   const [autoAckTriggered, setAutoAckTriggered] = useState(false);
   const [linkMenuOpen, setLinkMenuOpen] = useState(false);
   const [variantRequestOpen, setVariantRequestOpen] = useState(false);
+  const [viewMode, setViewMode] = useState('doc'); // 'doc' | 'step'
+  const [currentStepIdx, setCurrentStepIdx] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState(new Set());
 
-  // Extract SOP id from route like /backoffice/sop/42 or /sop/42
   const sopId = useMemo(() => {
     const path = (route || '').split('?')[0];
     const m = path.match(/\/sop\/(\d+)/);
@@ -546,6 +705,11 @@ export const PageSOPDetail = () => {
     { enabled: !!branch?.id, staleTime: 5000 }
   );
 
+  const { data: acks = [] } = trpc.sop.listAcknowledgments.useQuery(
+    { sopId: sopId ?? 0 },
+    { enabled: !!sopId }
+  );
+
   const pendingRequest = useMemo(() => {
     if (!sop) return null;
     const targetSopId = sop.masterSopId || sop.id;
@@ -557,11 +721,83 @@ export const PageSOPDetail = () => {
     onError: (e) => alert(e.message),
   });
 
+  useEffect(() => {
+    const session = getSession();
+    if (acks.length > 0 && session?.id) {
+      setAcked(acks.some((a) => a.staffId === session.id));
+    }
+  }, [acks]);
+
+  const steps = useMemo(() => {
+    if (!sop?.content) return [];
+    let contentList = [];
+    if (typeof sop.content === 'string') {
+      try {
+        contentList = JSON.parse(sop.content);
+      } catch (e) {
+        return [{ section: 'บทนำ / Introduction', type: 'paragraph', content: sop.content }];
+      }
+    } else if (Array.isArray(sop.content)) {
+      contentList = sop.content;
+    }
+
+    let currentSection = "ขั้นตอนการเตรียมตัว";
+    const flatSteps = [];
+
+    contentList.forEach((block) => {
+      if (block.type === 'heading') {
+        currentSection = block.text;
+      } else if (block.type === 'paragraph') {
+        flatSteps.push({
+          section: currentSection,
+          type: 'paragraph',
+          content: block.text
+        });
+      } else if (block.type === 'list' && Array.isArray(block.items)) {
+        block.items.forEach((item) => {
+          if (item && item.trim()) {
+            flatSteps.push({
+              section: currentSection,
+              type: 'list_item',
+              content: item
+            });
+          }
+        });
+      } else if (block.type === 'callout') {
+        flatSteps.push({
+          section: currentSection,
+          type: 'callout',
+          content: block.text
+        });
+      }
+    });
+
+    return flatSteps;
+  }, [sop?.content]);
+
+  const toggleStepCompleted = (idx) => {
+    setCompletedSteps(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  const myAck = useMemo(() => {
+    const session = getSession();
+    return acks.find(a => a.staffId === session?.id);
+  }, [acks]);
+
+  const ackedTimeStr = myAck?.acknowledgedAt 
+    ? new Date(myAck.acknowledgedAt).toLocaleString('th-TH') 
+    : new Date().toLocaleString('th-TH');
+
   const archiveSop = trpc.sop.archive.useMutation();
 
   const handleRevertToMaster = async () => {
     if (!sop) return;
-    if (confirm('คุณต้องการยกเลิกวิธีปฏิบัติเฉพาะสาขานี้ และกลับไปใช้สูตรหลักร่วมกันใช่หรือไม่? (Revert to HQ master SOP?)')) {
+    if (confirm('คุณต้องการยกเลิกวิธีปฏิบัติเฉพาะสาขานี้ และกลับไปใช้สูตรหลักร่วมกันใช่หรือไม่?')) {
       try {
         await archiveSop.mutateAsync({ id: sop.id });
         alert('กลับไปใช้สูตรหลักเรียบร้อยแล้ว!');
@@ -572,8 +808,6 @@ export const PageSOPDetail = () => {
     }
   };
 
-  // Automation: auto-acknowledge — gated by Settings → Automation toggle.
-  // Manual Acknowledge button always works as fallback.
   useEffect(() => {
     if (!getAutomation().autoAcknowledgeSOP) return;
     if (!sop?.id || !sop?.requiresAcknowledgment || acked) return;
@@ -592,75 +826,191 @@ export const PageSOPDetail = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, [sop?.id, sop?.requiresAcknowledgment, acked, autoAckTriggered]);
 
-  const updated = sop?.updatedAt ? new Date(sop.updatedAt).toLocaleDateString() : '—';
+  const updated = sop?.updatedAt ? new Date(sop.updatedAt).toLocaleDateString('th-TH') : '—';
 
-  if (!sopId) return <div style={{ padding: 40, textAlign: 'center' }} className="muted">No SOP specified</div>;
-  if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }} className="muted">Loading SOP…</div>;
-  if (!sop) return <div style={{ padding: 40, textAlign: 'center' }} className="muted">SOP not found</div>;
+  if (!sopId) return <div style={{ padding: 60, textAlign: 'center' }} className="muted">ไม่ได้กำหนดไอดีของ SOP</div>;
+  if (isLoading) return <div style={{ padding: 60, textAlign: 'center' }} className="muted">กำลังโหลดขั้นตอนการทำคู่มือ…</div>;
+  if (!sop) return <div style={{ padding: 60, textAlign: 'center' }} className="muted">ไม่พบข้อมูลคู่มือ SOP นี้ในระบบ</div>;
+
+  const renderStepMode = () => {
+    if (steps.length === 0) {
+      return (
+        <div className="card" style={{ padding: 48, textAlign: 'center', maxWidth: 600, margin: '40px auto', border: '1px solid var(--border-default)' }}>
+          <p className="muted">คู่มือฉบับนี้ยังไม่มีการจัดรูปแบบขั้นตอนชงแบบสไลด์</p>
+          <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={() => setViewMode('doc')}>กลับไปอ่านเอกสารเต็ม</button>
+        </div>
+      );
+    }
+
+    const currentStep = steps[currentStepIdx];
+    const progressPct = Math.round(((currentStepIdx + 1) / steps.length) * 100);
+
+    return (
+      <div style={{ maxWidth: 800, margin: '20px auto', padding: '0 20px 80px' }}>
+        <div 
+          className="card" 
+          style={{ 
+            padding: 32, 
+            background: 'var(--bg-surface)', 
+            boxShadow: 'var(--shadow-lg), var(--glow-soft)', 
+            borderRadius: 'var(--r-lg)', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: 28, 
+            minHeight: 420, 
+            justifyContent: 'space-between', 
+            border: '1px solid var(--matcha-200)',
+            position: 'relative'
+          }}
+        >
+          {/* Header */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span className="pill" style={{ textTransform: 'uppercase', fontWeight: 700, fontSize: 10, background: 'var(--matcha-50)', color: 'var(--matcha-700)', border: 'none' }}>
+                📂 {currentStep.section || 'วิธีการทำเครื่องดื่ม'}
+              </span>
+              <span className="muted" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                ขั้นตอนที่ {currentStepIdx + 1} จาก {steps.length} ({progressPct}%)
+              </span>
+            </div>
+            {/* Progress Bar */}
+            <div style={{ height: 6, background: 'var(--bg-subtle)', borderRadius: 99, overflow: 'hidden' }}>
+              <div style={{ width: `${progressPct}%`, height: '100%', background: 'linear-gradient(90deg, var(--matcha-500), var(--matcha-700))', transition: 'width 250ms ease' }}/>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '24px 10px' }}>
+            {currentStep.type === 'callout' && (
+              <div style={{ color: 'var(--warning)', marginBottom: 20, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
+                <IconWarning size={28} />
+                <strong style={{ fontSize: 18, color: 'var(--warning)' }}>ระวัง / WARNING</strong>
+              </div>
+            )}
+            
+            <div style={{ 
+              fontSize: 24, 
+              fontWeight: 700, 
+              color: currentStep.type === 'callout' ? 'var(--warning)' : 'var(--text-primary)', 
+              lineHeight: 1.6, 
+              maxWidth: 640,
+              textAlign: 'center'
+            }}>
+              {currentStep.content}
+            </div>
+
+            {currentStep.type === 'list_item' && (
+              <label 
+                style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: 12, 
+                  marginTop: 32, 
+                  cursor: 'pointer', 
+                  padding: '10px 24px', 
+                  background: completedSteps.has(currentStepIdx) ? 'var(--matcha-50)' : 'var(--bg-muted)', 
+                  borderRadius: 99, 
+                  border: '1px solid ' + (completedSteps.has(currentStepIdx) ? 'var(--matcha-300)' : 'var(--border-default)'), 
+                  userSelect: 'none',
+                  transition: 'all 200ms ease'
+                }}
+              >
+                <Checkbox checked={completedSteps.has(currentStepIdx)} onChange={() => toggleStepCompleted(currentStepIdx)} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: completedSteps.has(currentStepIdx) ? 'var(--matcha-800)' : 'var(--text-secondary)' }}>
+                  {completedSteps.has(currentStepIdx) ? '✓ ดำเนินการแล้ว (Done)' : 'มาร์กว่าทำแล้ว (Mark as done)'}
+                </span>
+              </label>
+            )}
+          </div>
+
+          {/* Controls */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, borderTop: '1px solid var(--border-default)', paddingTop: 20 }}>
+            <button
+              className="btn btn-secondary btn-lg"
+              onClick={() => setCurrentStepIdx(prev => Math.max(0, prev - 1))}
+              disabled={currentStepIdx === 0}
+              style={{ flex: 1, height: 48, fontSize: 15, fontWeight: 600 }}
+            >
+              ย้อนกลับ (Back)
+            </button>
+            <button
+              className="btn btn-primary btn-lg"
+              onClick={() => {
+                if (currentStepIdx < steps.length - 1) {
+                  setCurrentStepIdx(prev => prev + 1);
+                } else {
+                  acknowledge.mutate({ sopId: sop.id });
+                  alert('อ่านขั้นตอนการปฏิบัติเรียบร้อยแล้ว! ขอบคุณพนักงานทุกท่านที่รักษาระดับการชงสินค้า');
+                  setViewMode('doc');
+                }
+              }}
+              style={{ 
+                flex: 2, 
+                height: 48, 
+                fontSize: 15, 
+                fontWeight: 600,
+                background: currentStepIdx === steps.length - 1 ? 'var(--matcha-700)' : 'var(--matcha-600)' 
+              }}
+            >
+              {currentStepIdx === steps.length - 1 ? 'เสร็จสิ้น & บันทึกอ่านสำเร็จ (Finish)' : 'ขั้นตอนต่อไป (Next) →'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div style={{ position: 'relative' }}>
-      {/* Hero */}
-      <div style={{ position: 'relative', height: 280, overflow: 'hidden' }}>
+    <div style={{ position: 'relative', background: 'var(--bg-surface)' }}>
+      {/* Hero Header Banner */}
+      <div style={{ position: 'relative', height: 320, overflow: 'hidden' }}>
         {sop.coverImageUrl ? (
           <img src={sop.coverImageUrl} alt={sop.title} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}/>
         ) : (
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, var(--matcha-600), var(--matcha-800))' }}/>
         )}
-        <div style={{ position: 'absolute', inset: 0, opacity: 0.3, background: 'radial-gradient(circle at 30% 40%, var(--matcha-400), transparent 50%), radial-gradient(circle at 70% 70%, var(--gold), transparent 50%)' }}/>
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.4))' }}/>
+        {/* Colorful Gradients Overlay */}
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.35, background: 'radial-gradient(circle at 15% 30%, var(--matcha-400), transparent 45%), radial-gradient(circle at 85% 70%, var(--gold), transparent 50%)' }}/>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.65))' }}/>
+        
         <div style={{ position: 'relative', maxWidth: 1200, margin: '0 auto', padding: '32px 40px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', color: 'white' }}>
-          <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8 }}>Knowledge / SOP Library</div>
-          <div className="t-display" style={{ fontWeight: 600, maxWidth: 800 }}>{sop.title}</div>
-          {sop.subtitle && <div style={{ marginTop: 12, fontSize: 16, opacity: 0.85, maxWidth: 640 }}>{sop.subtitle}</div>}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 20, fontSize: 13, opacity: 0.85, flexWrap: 'wrap' }}>
-            <span>Version {sop.version ?? 1}</span>
+          <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8, fontWeight: 500, letterSpacing: '0.04em' }}>KNOWLEDGE / SOP LIBRARY</div>
+          <h1 style={{ fontSize: 36, fontWeight: 800, textShadow: '0 2px 4px rgba(0,0,0,0.3)', margin: 0, lineHeight: 1.2 }}>{sop.title}</h1>
+          {sop.subtitle && <p style={{ marginTop: 8, fontSize: 16, opacity: 0.9, fontWeight: 400, maxWidth: 700 }}>{sop.subtitle}</p>}
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 20, fontSize: 12, opacity: 0.9, flexWrap: 'wrap' }}>
+            <span className="pill" style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', fontWeight: 600 }}>เวอร์ชัน {sop.version ?? 1}</span>
             <span>·</span>
-            <span>Updated {updated}</span>
+            <span>แก้ไขล่าสุดเมื่อ {updated}</span>
             <span>·</span>
-            <span>{sop.status}</span>
-            {sop.requiresAcknowledgment && (
-              <>
-                <span>·</span>
+            <span style={{ textTransform: 'uppercase', fontWeight: 700 }}>{sop.status}</span>
+            
+            {/* Mode switch */}
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+              <button
+                onClick={() => setViewMode(viewMode === 'doc' ? 'step' : 'doc')}
+                className="btn btn-primary btn-sm"
+                style={{ background: 'var(--gold-600)', border: 'none', fontWeight: 700, borderRadius: 99, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                {viewMode === 'doc' ? <><IconCommand size={14}/> เปิดอ่านแบบการ์ดสไลด์</> : <><IconList size={14}/> เปิดอ่านคู่มือตัวเต็ม</>}
+              </button>
+              
+              {sop.requiresAcknowledgment && (
                 <button
                   onClick={() => acknowledge.mutate({ sopId: sop.id })}
                   disabled={acked || acknowledge.isPending}
                   className="btn btn-primary btn-sm"
-                  style={{ background: acked ? 'var(--matcha-700)' : undefined }}
+                  style={{ background: acked ? 'var(--matcha-700)' : undefined, border: 'none', fontWeight: 700, borderRadius: 99 }}
                 >
-                  {acked ? <><IconCheck size={14}/> Acknowledged</> : (acknowledge.isPending ? 'Acknowledging…' : 'Acknowledge')}
+                  {acked ? <><IconCheck size={14}/> ยอมรับและเข้าใจแล้ว</> : (acknowledge.isPending ? 'กำลังยืนยัน…' : 'กดยืนยันการรับทราบ')}
                 </button>
-              </>
-            )}
-            {(getSession()?.role === 'super_admin' || getSession()?.role === 'staff_admin') && (
-              <>
-                <span>·</span>
-                <button
-                  onClick={() => setLinkMenuOpen(true)}
-                  className="btn btn-secondary btn-sm"
-                  title="Link this SOP to menu items so baristas see it on POS"
-                >
-                  <IconMenu size={14}/> Push to POS menu
-                </button>
-              </>
-            )}
-            {sop.branchId === null && sop.allowBranchVariants && branch?.id && (role === 'staff_admin' || role === 'admin' || role === 'super_admin') && (
-              <>
-                <span>·</span>
-                <button
-                  onClick={() => setVariantRequestOpen(true)}
-                  className="btn btn-secondary btn-sm"
-                  title="Request a branch-specific variant of this SOP"
-                >
-                  <IconEdit size={14}/> Request Branch Variant
-                </button>
-              </>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Link-to-menu drawer */}
+      {/* Overlays Drawers */}
       <SopLinkMenuDrawer
         open={linkMenuOpen}
         onClose={() => setLinkMenuOpen(false)}
@@ -668,7 +1018,6 @@ export const PageSOPDetail = () => {
         sopTitle={sop.title}
       />
 
-      {/* Variant request drawer */}
       <SopVariantRequestDrawer
         open={variantRequestOpen}
         onClose={() => setVariantRequestOpen(false)}
@@ -677,24 +1026,24 @@ export const PageSOPDetail = () => {
         onSuccess={() => { refetch(); refetchVariants(); }}
       />
 
-      {/* Banner/status for branch overrides */}
+      {/* Override Info bar */}
       {sop.branchId !== null && sop.masterSopId !== null && (
-        <div style={{ maxWidth: 1200, margin: '20px auto 0', padding: '0 40px' }}>
-          <div className="card" style={{ padding: 16, background: 'rgba(76, 111, 76, 0.08)', border: '1px solid var(--matcha-200)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ maxWidth: 1200, margin: '20px auto 0', padding: '0 20px' }}>
+          <div style={{ padding: '16px 20px', background: 'rgba(76, 111, 76, 0.06)', border: '1px solid var(--matcha-300)', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ color: 'var(--matcha-600)' }}><IconBuilding size={20}/></span>
-              <div style={{ fontSize: 13, color: 'var(--matcha-800)' }}>
-                <strong>นี่คือวิธีปฏิบัติเฉพาะสาขาที่ถูกปรับปรุงแยกต่างหาก (Branch Override)</strong>
-                <br/>สาขานี้กำลังใช้เวอร์ชันที่ปรับแต่งเองแยกจากสูตรหลักของสำนักงานใหญ่
+              <div style={{ fontSize: 13, color: 'var(--matcha-900)' }}>
+                <strong>สูตรและขั้นตอนถูกปรับแต่งเฉพาะสาขา (Branch Override)</strong>
+                <br/>สาขานี้กำลังใช้สูตรชงที่ผ่านการปรับเปลี่ยนเฉพาะกิจ เพื่อความคล่องตัวในงานสาขา
               </div>
             </div>
             {branch?.id && (role === 'staff_admin' || role === 'admin' || role === 'super_admin') && (
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn btn-secondary btn-sm" onClick={() => setVariantRequestOpen(true)} style={{ background: 'var(--bg-surface)' }}>
-                  <IconEdit size={12}/> {lang === 'th' ? 'แก้ไขวิธีปฏิบัติ' : 'Edit Variant'}
+                  <IconEdit size={12}/> แก้ไขสูตรสาขา
                 </button>
                 <button className="btn btn-secondary btn-sm" style={{ color: 'var(--danger)', background: 'var(--bg-surface)' }} onClick={handleRevertToMaster} disabled={archiveSop.isPending}>
-                  {archiveSop.isPending ? 'Reverting…' : 'กลับไปใช้สูตรหลัก (Revert to Master)'}
+                  {archiveSop.isPending ? 'กำลังเปลี่ยน…' : 'กลับไปใช้สูตรหลักสำนักงานใหญ่'}
                 </button>
               </div>
             )}
@@ -702,161 +1051,223 @@ export const PageSOPDetail = () => {
         </div>
       )}
 
-      {/* Banner/status for pending requests */}
+      {/* Pending status warning */}
       {pendingRequest && (
-        <div style={{ maxWidth: 1200, margin: '20px auto 0', padding: '0 40px' }}>
-          <div className="card" style={{ padding: 16, background: 'rgba(217, 119, 6, 0.08)', border: '1px solid var(--warning)', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ color: 'var(--warning)' }}><IconWarning size={20}/></span>
+        <div style={{ maxWidth: 1200, margin: '20px auto 0', padding: '0 20px' }}>
+          <div style={{ padding: '16px 20px', background: 'rgba(217, 119, 6, 0.08)', border: '1px solid var(--warning)', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ color: 'var(--warning)' }}><IconWarning size={22}/></span>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-              <strong>อยู่ระหว่างการตรวจสอบคำขอปรับปรุงสูตรเฉพาะสาขา (Pending Review)</strong>
-              <br/>คำขอปรับปรุงเฉพาะสาขาของคุณถูกส่งไปยังสำนักงานใหญ่แล้วและรออนุมัติ: <em>"{pendingRequest.changeReason}"</em>
+              <strong>อยู่ระหว่างการตรวจสอบสูตรสาขา (Pending Review)</strong>
+              <br/>ข้อเสนอขอปรับปรุงสูตรชงพิเศษสาขากำลังอยู่ในห้องตรวจสอบคิวโดยสำนักงานใหญ่: <em>"{pendingRequest.changeReason}"</em>
             </div>
           </div>
         </div>
       )}
 
-      <div style={{ maxWidth: 1200, margin: '-40px auto 0', padding: '0 40px 80px', position: 'relative', display: 'grid', gridTemplateColumns: '200px minmax(0, 1fr) 240px', gap: 32 }} className="sop-grid">
-        {/* TOC */}
-        <aside style={{ position: 'sticky', top: 80, alignSelf: 'flex-start' }} className="sop-aside">
-          <div className="t-caption" style={{ marginBottom: 12 }}>Contents</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {[
-              { l: 'Introduction', active: true },
-              { l: 'Equipment & ingredients' },
-              { l: 'Step-by-step', sub: ['Sift', 'Add water', 'Whisk', 'Serve'] },
-              { l: 'Common mistakes' },
-              { l: 'Pro tips' },
-              { l: 'FAQ' },
-            ].map((it, i) => (
-              <div key={it.l}>
-                <a href="#" style={{ display: 'block', padding: '6px 10px', fontSize: 13, fontWeight: it.active ? 500 : 400, color: it.active ? 'var(--matcha-700)' : 'var(--text-secondary)', background: it.active ? 'var(--matcha-50)' : 'transparent', borderRadius: 6, borderLeft: '2px solid ' + (it.active ? 'var(--matcha-600)' : 'transparent') }}>{it.l}</a>
-                {it.sub && it.sub.map((s) => <a key={s} href="#" style={{ display: 'block', padding: '4px 10px 4px 22px', fontSize: 12, color: 'var(--text-tertiary)' }}>{s}</a>)}
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 16, fontSize: 11, color: 'var(--text-tertiary)' }}>
-            <div style={{ marginBottom: 4 }}>Reading progress · 32%</div>
-            <div style={{ height: 3, background: 'var(--bg-subtle)', borderRadius: 2, overflow: 'hidden' }}>
-              <div style={{ width: '32%', height: '100%', background: 'var(--matcha-500)' }}/>
+      {/* Render Main Detail views */}
+      {viewMode === 'step' ? (
+        renderStepMode()
+      ) : (
+        <div style={{ maxWidth: 1200, margin: '24px auto 0', padding: '0 20px 80px', display: 'grid', gridTemplateColumns: '220px minmax(0, 1fr) 260px', gap: 32 }} className="sop-grid">
+          
+          {/* TOC sidebar */}
+          <aside style={{ position: 'sticky', top: 90, alignSelf: 'flex-start' }} className="sop-aside">
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em', marginBottom: 12 }}>เนื้อหาการชง</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, borderLeft: '1.5px solid var(--border-default)' }}>
+              {[
+                { l: '1. อุปกรณ์ & วัตถุดิบ', active: true },
+                { l: '2. อัตราส่วนผสมสูตร' },
+                { l: '3. ลำดับขั้นตอนการชง' },
+                { l: '4. ข้อเสนอแนะ / ข้อควรระวัง' },
+              ].map((it, i) => (
+                <a 
+                  key={it.l} 
+                  href="#" 
+                  style={{ 
+                    display: 'block', 
+                    padding: '8px 14px', 
+                    fontSize: 13, 
+                    fontWeight: it.active ? 600 : 400, 
+                    color: it.active ? 'var(--matcha-700)' : 'var(--text-secondary)', 
+                    background: it.active ? 'var(--matcha-50)' : 'transparent', 
+                    borderLeft: '2px solid ' + (it.active ? 'var(--matcha-600)' : 'transparent'),
+                    marginLeft: -1.5,
+                    transition: 'all 150ms ease'
+                  }}
+                >
+                  {it.l}
+                </a>
+              ))}
             </div>
-          </div>
-        </aside>
+            <div style={{ marginTop: 24, fontSize: 11, color: 'var(--text-tertiary)' }}>
+              <div style={{ marginBottom: 6, fontWeight: 500 }}>ความคืบหน้าการอ่าน · 100%</div>
+              <div style={{ height: 4, background: 'var(--bg-subtle)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '100%', background: 'var(--matcha-500)' }}/>
+              </div>
+            </div>
+          </aside>
 
-        {/* Content */}
-        <article className="card" style={{ padding: 48, fontSize: 16, lineHeight: 1.8, color: 'var(--text-primary)', maxWidth: 780, justifySelf: 'center' }}>
-          {sop.videoUrl && (
-            <div style={{ marginBottom: 24, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-default)', background: 'black' }}>
-              {(() => {
-                const ytUrl = getYoutubeEmbedUrl(sop.videoUrl);
-                if (ytUrl) {
+          {/* Main content article */}
+          <article 
+            className="card" 
+            style={{ 
+              padding: '36px 40px', 
+              fontSize: 15, 
+              lineHeight: 1.8, 
+              color: 'var(--text-primary)', 
+              maxWidth: 760, 
+              justifySelf: 'stretch',
+              border: '1px solid var(--border-default)',
+              boxShadow: 'var(--shadow-xs)'
+            }}
+          >
+            {sop.videoUrl && (
+              <div style={{ marginBottom: 28, borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border-default)', background: 'black', boxShadow: 'var(--shadow-sm)' }}>
+                {(() => {
+                  const ytUrl = getYoutubeEmbedUrl(sop.videoUrl);
+                  if (ytUrl) {
+                    return (
+                      <iframe
+                        width="100%"
+                        height="380"
+                        src={ytUrl}
+                        title="SOP Video Tutorial"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        style={{ display: 'block' }}
+                      />
+                    );
+                  }
                   return (
-                    <iframe
-                      width="100%"
-                      height="360"
-                      src={ytUrl}
-                      title="SOP Video Tutorial"
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                      style={{ display: 'block' }}
+                    <video
+                      src={sop.videoUrl}
+                      controls
+                      style={{ width: '100%', display: 'block', maxHeight: 400 }}
                     />
                   );
-                }
-                return (
-                  <video
-                    src={sop.videoUrl}
-                    controls
-                    style={{ width: '100%', display: 'block', maxHeight: 400 }}
-                  />
-                );
-              })()}
-            </div>
-          )}
-          {(() => {
-            const c = sop.content;
-            if (!c) {
-              return <p style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>No content yet.</p>;
-            }
-            if (typeof c === 'string') {
-              return <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>{c}</div>;
-            }
-            if (Array.isArray(c)) {
-              return c.map((block, i) => (
-                <div key={i} style={{ marginBottom: 16 }}>
-                  {block.type === 'heading' && <h2 style={{ fontSize: 24, fontWeight: 600, margin: '24px 0 12px' }}>{block.text}</h2>}
-                  {block.type === 'paragraph' && <p style={{ color: 'var(--text-secondary)' }}>{block.text}</p>}
-                  {block.type === 'list' && block.items && (
-                    <ul style={{ paddingLeft: 24, color: 'var(--text-secondary)' }}>
-                      {block.items.map((it, j) => <li key={j}>{it}</li>)}
-                    </ul>
-                  )}
-                  {block.type === 'callout' && (
-                    <div style={{ background: 'var(--matcha-50)', border: '1px solid var(--matcha-200)', borderRadius: 'var(--r-md)', padding: '14px 18px', margin: '16px 0', display: 'flex', gap: 12 }}>
-                      <span style={{ color: 'var(--matcha-700)' }}><IconInfo size={20}/></span>
-                      <div style={{ fontSize: 14, color: 'var(--matcha-900)' }}>{block.text}</div>
-                    </div>
-                  )}
-                </div>
-              ));
-            }
-            // Fallback: render as JSON
-            return <pre style={{ background: 'var(--bg-muted)', padding: 16, borderRadius: 8, fontSize: 13, overflow: 'auto' }}>{JSON.stringify(c, null, 2)}</pre>;
-          })()}
-        </article>
-
-        {/* Right rail */}
-        <aside style={{ position: 'sticky', top: 80, alignSelf: 'flex-start' }} className="sop-aside">
-          <div className="t-caption" style={{ marginBottom: 12 }}>Related</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-            {['Ice-cold matcha 101', 'Hojicha brewing basics', 'Latte art for matcha'].map((r) => (
-              <a key={r} href="#" className="card" style={{ padding: 12, display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
-                <IconLeaf size={16} style={{ color: 'var(--matcha-600)' }}/>
-                {r}
-              </a>
-            ))}
-          </div>
-          <div className="t-caption" style={{ marginBottom: 12 }}>Acknowledged by</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: -8 }}>
-            {['Aoi T.', 'Ken M.', 'Mai S.', 'Ren K.', 'Hana Y.', '+6'].map((n, i) => (
-              <div key={n} style={{ marginLeft: i === 0 ? 0 : -6, position: 'relative', zIndex: 6 - i }}>
-                {i < 5 ? <Avatar name={n} size={26}/> : (
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--bg-muted)', border: '2px solid var(--bg-surface)', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 500, color: 'var(--text-secondary)' }}>{n}</div>
-                )}
+                })()}
               </div>
-            ))}
-          </div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>11 of 13 staff complete</div>
-        </aside>
-      </div>
+            )}
+            
+            {(() => {
+              const c = sop.content;
+              if (!c) {
+                return <p style={{ color: 'var(--text-tertiary)', fontStyle: 'italic', textAlign: 'center', padding: 20 }}>ไม่มีข้อมูลขั้นตอนการทำสำหรับคู่มือนี้</p>;
+              }
+              if (typeof c === 'string') {
+                return <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>{c}</div>;
+              }
+              if (Array.isArray(c)) {
+                return c.map((block, i) => (
+                  <div key={i} style={{ marginBottom: 20 }}>
+                    {block.type === 'heading' && <h2 style={{ fontSize: 20, fontWeight: 700, margin: '28px 0 12px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6 }}>{block.text}</h2>}
+                    {block.type === 'paragraph' && <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>{block.text}</p>}
+                    {block.type === 'list' && block.items && (
+                      <ul style={{ paddingLeft: 20, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {block.items.map((it, j) => <li key={j} style={{ listStyleType: 'decimal' }}>{it}</li>)}
+                      </ul>
+                    )}
+                    {block.type === 'callout' && (
+                      <div style={{ background: 'var(--matcha-50)', borderLeft: '4px solid var(--matcha-500)', borderRadius: 'var(--r-md)', padding: '16px 20px', margin: '20px 0', display: 'flex', gap: 12 }}>
+                        <span style={{ color: 'var(--matcha-700)', display: 'flex', alignItems: 'center' }}><IconInfo size={20}/></span>
+                        <div style={{ fontSize: 13.5, color: 'var(--matcha-900)', fontWeight: 500 }}>{block.text}</div>
+                      </div>
+                    )}
+                  </div>
+                ));
+              }
+              return <pre style={{ background: 'var(--bg-muted)', padding: 16, borderRadius: 8, fontSize: 13, overflow: 'auto' }}>{JSON.stringify(c, null, 2)}</pre>;
+            })()}
+          </article>
 
-      {/* Sticky ack bar */}
-      <div className="glass" style={{
-        position: 'sticky', bottom: 0, zIndex: 30,
-        padding: '14px 40px',
-        borderTop: '1px solid var(--border-default)',
-        display: 'flex', alignItems: 'center', gap: 16,
-      }}>
-        {acked ? (
-          <>
-            <span style={{ color: 'var(--matcha-600)' }}><IconCheckCircle size={20}/></span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 500 }}>Acknowledged on Mar 6, 2026 · 14:32</div>
-              <div className="muted" style={{ fontSize: 12 }}>11 of 13 staff complete</div>
+          {/* Right sidebar tags */}
+          <aside style={{ position: 'sticky', top: 90, alignSelf: 'flex-start' }} className="sop-aside">
+            {role === 'super' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>ผู้เขียน / แอดมินจัดการ</div>
+                <button className="btn btn-secondary btn-sm" onClick={() => setLinkMenuOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'center' }}>
+                  <IconMenu size={14}/> เชื่อมหน้าเมนูขาย POS
+                </button>
+              </div>
+            )}
+
+            {sop.branchId === null && sop.allowBranchVariants && branch?.id && (role === 'staff_admin' || role === 'admin' || role === 'super_admin') && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>ปรับแต่งสาขา</div>
+                <button className="btn btn-secondary btn-sm" onClick={() => setVariantRequestOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'center' }}>
+                  <IconEdit size={14}/> ขอปรับสูตรเฉพาะสาขา
+                </button>
+              </div>
+            )}
+
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em', marginBottom: 12 }}>พนักงานที่อ่านแล้ว</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
+              {acks.slice(0, 5).map((a, i) => (
+                <div key={a.id} style={{ position: 'relative' }}>
+                  <Avatar name={`${a.firstName || 'Staff'} ${a.lastName || ''}`} size={28}/>
+                </div>
+              ))}
+              {acks.length > 5 && (
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--bg-muted)', border: '2.5px solid var(--bg-surface)', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                  +{acks.length - 5}
+                </div>
+              )}
             </div>
-            <button className="btn btn-secondary btn-sm">View activity</button>
-          </>
-        ) : (
-          <>
-            <div style={{ flex: 1, fontSize: 14 }}>I have read and understood this SOP.</div>
-            <button className="btn btn-primary" onClick={() => setAcked(true)}><IconCheck size={16}/> Acknowledge</button>
-          </>
-        )}
-      </div>
+            <div className="muted" style={{ fontSize: 12 }}>อ่านแล้ว {acks.length} จากพนักงานทั้งหมด</div>
+          </aside>
+
+        </div>
+      )}
+
+      {/* Floating Ack bottom bar in doc mode */}
+      {viewMode === 'doc' && (
+        <div 
+          style={{
+            position: 'sticky', 
+            bottom: 0, 
+            zIndex: 30,
+            padding: '16px 32px',
+            borderTop: '1px solid var(--border-default)',
+            background: 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(16px)',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            gap: 16,
+            borderRadius: 'var(--r-md) var(--r-md) 0 0',
+            boxShadow: '0 -4px 12px rgba(0,0,0,0.03)'
+          }}
+        >
+          {acked ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ color: 'var(--matcha-600)' }}><IconCheckCircle size={22}/></span>
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>ฉันรับทราบและทำความเข้าใจเนื้อหาคู่นี้เรียบร้อยแล้ว</div>
+                  <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>บันทึกยืนยันเมื่อเวลา {ackedTimeStr}</div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>เมื่อพนักงานอ่านวิธีปฏิบัตินี้เรียบร้อยแล้ว กรุณากดยืนยันการอ่าน</div>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => acknowledge.mutate({ sopId: sop.id })}
+                style={{ background: 'var(--matcha-600)', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+              >
+                <IconCheck size={16}/> ฉันอ่านและเข้าใจแล้ว (Acknowledge)
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <style>{`
         @media (max-width: 1100px) {
-          .sop-grid { grid-template-columns: 1fr !important; padding: 0 20px 60px !important; }
-          .sop-aside { position: static !important; }
+          .sop-grid { grid-template-columns: 1fr !important; padding: 0 10px 60px !important; gap: 20px !important; }
+          .sop-aside { display: none !important; }
         }
       `}</style>
     </div>
@@ -865,133 +1276,42 @@ export const PageSOPDetail = () => {
 
 // ----- SOP Templates -----
 const templateMatchaLatte = [
-  {
-    "type": "heading",
-    "text": "อุปกรณ์ที่ต้องใช้ชงมัทฉะ"
-  },
-  {
-    "type": "list",
-    "items": [
-      "แปรงตีชา Chasen (ไม้ไผ่)",
-      "ถ้วยชงชา Chawan",
-      "ช้อนตักชา Chashaku",
-      "เครื่องชั่งดิจิทัล (ทศนิยม 1 ตำแหน่ง)",
-      "ที่ร่อนผงชา"
-    ]
-  },
-  {
-    "type": "heading",
-    "text": "ส่วนผสมและสัดส่วน"
-  },
-  {
-    "type": "list",
-    "items": [
-      "ผงมัทฉะ Hibi Premium Match 4 กรัม",
-      "น้ำร้อน (อุณหภูมิ 80 องศาเซลเซียส) 40 มิลลิลิตร",
-      "นมสดแช่เย็นจัด 120 มิลลิลิตร",
-      "น้ำเชื่อมปลอก 10 มิลลิลิตร (หากสั่งหวานปกติ)"
-    ]
-  },
-  {
-    "type": "heading",
-    "text": "ขั้นตอนการปรุงปฏิบัติงาน"
-  },
-  {
-    "type": "list",
-    "items": [
-      "ร่อนผงมัทฉะ 4 กรัมลงในถ้วย Chawan เพื่อไม่ให้ผงชาจับตัวเป็นก้อน",
-      "เทน้ำร้อน 80 องศาลงไป 40 มิลลิลิตร",
-      "ใช้แปรง Chasen ตีชาด้วยการขยับข้อมือเป็นรูปตัว W อย่างรวดเร็วประมาณ 15-20 วินาทีจนเกิดฟองเนียนละเอียด (Microfoam)",
-      "เติมนมสดเย็นและน้ำเชื่อมลงในแก้วเสิร์ฟ จากนั้นค่อยๆ เทน้ำมัทฉะที่ตีเสร็จแล้วราดด้านบนให้เกิดชั้นสีที่สวยงาม"
-    ]
-  },
-  {
-    "type": "callout",
-    "text": "ข้อควรระวัง: ห้ามใช้น้ำเดือดจัด 100 องศามาชงมัทฉะเด็ดขาด เพราะจะทำให้ชามีรสขมฝาดและสูญเสียกลิ่นหอมธรรมชาติ"
-  }
+  { "type": "heading", "text": "อุปกรณ์ที่ต้องเตรียมชง" },
+  { "type": "list", "items": ["แปรงไม้ไผ่ตีมัทฉะ (Chasen)", "ถ้วยกระเบื้องตีชา (Chawan)", "ช้อนตักมัทฉะ (Chashaku)", "ตาชั่งดิจิทัล", "ที่ร่อนผงมัทฉะตะแกรงตาถี่"] },
+  { "type": "heading", "text": "ส่วนผสมและอัตราส่วน" },
+  { "type": "list", "items": ["ผงมัทฉะ Hibi Premium Matcha 4.0 กรัม", "น้ำอุ่น (อุณหภูมิ 80°C) 40 มิลลิลิตร", "นมสดพาสเจอร์ไรส์แช่เย็น 120 มิลลิลิตร", "น้ำเชื่อมใสสูตรปกติ 10 มิลลิลิตร (กรณีสั่งระดับหวานปกติ)"] },
+  { "type": "heading", "text": "ขั้นตอนการปรุงเครื่องดื่ม" },
+  { "type": "list", "items": ["ตักผงมัทฉะ 4g ลงที่ร่อนชา ร่อนผงลงในถ้วย Chawan เพื่อสลายก้อนผงมัทฉะ", "ตวงน้ำร้อนอุณหภูมิ 80 องศาเซลเซียสเทลงในถ้วย Chawan 40ml", "ใช้แปรง Chasen ตีชาด้วยทิศทางรูปตัว W อย่างรวดเร็วประมาณ 20 วินาทีให้ชาแตกตัวจนผงขึ้นฟองนุ่มละเอียด", "ตวงนมสดเย็นและน้ำเชื่อมเทใส่แก้วเสิร์ฟ นำน้ำชาที่ตีละลายเสร็จแล้ว ค่อยๆ รินราดหน้าลงไปเป็นชั้นท็อปเพื่อความสวยงามแยกสี"] },
+  { "type": "callout", "text": "ระวัง: ห้ามใช้น้ำเดือด 100°C ในการชงโดยเด็ดขาด เพราะจะส่งผลให้รสชาติมัทฉะขมฝาดมากและทำลายกลิ่นมัทฉะธรรมชาติ" }
 ];
 
 const templateOpening = [
-  {
-    "type": "heading",
-    "text": "เช็คลิสต์เตรียมความพร้อมก่อนเปิดร้าน (07:30 - 08:00 น.)"
-  },
-  {
-    "type": "heading",
-    "text": "1. การเตรียมระบบและเครื่อง POS"
-  },
-  {
-    "type": "list",
-    "items": [
-      "เปิดเครื่อง POS และลิ้นชักเก็บเงิน",
-      "ตรวจสอบระบบอินเทอร์เน็ตและเครื่องพิมพ์ใบเสร็จ (ทดสอบพิมพ์ Test Slip)",
-      "นับเงินทอนตั้งต้นเข้าระบบจำนวน 3,000 บาท ถ้วน"
-    ]
-  },
-  {
-    "type": "heading",
-    "text": "2. การเตรียมวัตถุดิบและอุปกรณ์บาร์"
-  },
-  {
-    "type": "list",
-    "items": [
-      "เช็คอุณหภูมิตู้เย็นเก็บนมสดและวัตถุดิบแช่เย็น (ต้องอยู่ระหว่าง 2 - 4 องศาเซลเซียส)",
-      "เติมนมสด ขนมเค้ก และไซรัปในชั้นวางบาร์ตามหลัก FIFO (มาก่อนใช้ก่อน)",
-      "เปิดเครื่องทำน้ำแข็งและทำความสะอาดที่ตักน้ำแข็ง"
-    ]
-  },
-  {
-    "type": "callout",
-    "text": "สำคัญ: หากพบวัตถุดิบหมดอายุหรือไม่ได้มาตรฐาน ให้รีบลงบันทึกในใบตัดจ่าย Inventory ทันทีและแจ้งผู้จัดการร้าน"
-  }
+  { "type": "heading", "text": "เช็คลิสต์เปิดร้านประจำวัน (07:30 - 08:00)" },
+  { "type": "heading", "text": "1. การเปิดระบบขายและเงินสดทอน" },
+  { "type": "list", "items": ["เปิดสวิตช์เครื่อง POS ตรวจสอบไฟและสาย LAN", "ทดสอบเครื่องพิมพ์ใบเสร็จโดยกด Feed กระดาษ", "นับเงินทอนตั้งต้นในลิ้นชัก POS ยอดรวม 3,000 บาท ถ้วน"] },
+  { "type": "heading", "text": "2. การเตรียมความพร้อมหน้าบาร์วัตถุดิบ" },
+  { "type": "list", "items": ["ตรวจสอบอุณหภูมิตู้เย็น (ต้องอยู่ที่ 2°C - 4°C)", "ตวงเตรียมน้ำแข็งใส่ถังเก็บบาร์ชง เช็ดหน้าเคาน์เตอร์ทำความสะอาดให้แห้ง", "จัดเรียงนมและไซรัปตามอายุ FIFO (ขวดแกะใช้ก่อนจัดเรียงแถวแรก)"] },
+  { "type": "callout", "text": "สำคัญ: หากพบปัญหาเครื่อง POS เสียเปิดไม่ติด ให้รีบแจ้งวิศวกรผู้จัดการและโทรหาทีมแอดมินทันทีเพื่อแก้ไข" }
 ];
 
 const templateClosing = [
-  {
-    "type": "heading",
-    "text": "เช็คลิสต์การเคลียร์ยอดและทำความสะอาดร้านหลังปิดบริการ"
-  },
-  {
-    "type": "heading",
-    "text": "1. การปิดยอดการเงิน (Reconcile Cash & Sales)"
-  },
-  {
-    "type": "list",
-    "items": [
-      "กดพิมพ์รายงานปิดกะ (Shift Report) จาก POS",
-      "นับยอดเงินสดในลิ้นชักและเปรียบเทียบกับยอดขายในระบบ",
-      "ส่งยอดสรุปการเงินทาง Google Sheet และ LINE Group ของร้าน"
-    ]
-  },
-  {
-    "type": "heading",
-    "text": "2. การดูแลความสะอาดบาร์ชงและร้าน"
-  },
-  {
-    "type": "list",
-    "items": [
-      "ล้างทำความสะอาดอุปกรณ์ทุกชิ้น (แปรงไม้ไผ่ ถ้วยชงชา เครื่องชง) และผึ่งลมให้แห้ง",
-      "เช็ดทำความสะอาดหน้าบาร์ เครื่อง POS และเคลียร์ขยะออกจากร้าน",
-      "ตรวจสอบปลั๊กไฟ ปิดแอร์ และระบบไฟแสงสว่างทั้งหมดก่อนล็อคร้าน"
-    ]
-  },
-  {
-    "type": "callout",
-    "text": "คำเตือน: ห้ามแช่แปรง Chasen ไว้ในน้ำข้ามคืนเด็ดขาด เพราะจะทำให้ไม้ไผ่ขึ้นราและชำรุดเสียหายได้ง่าย"
-  }
+  { "type": "heading", "text": "เช็คลิสต์สรุปยอดและปิดร้านบาร์มัทฉะ" },
+  { "type": "heading", "text": "1. การปิดยอดการเงินแคชเชียร์" },
+  { "type": "list", "items": ["กดปิดกะในระบบ POS สั่งสรุปยอดรายวัน (Shift Report)", "นับยอดเงินสดที่รับมาวันนี้ เปรียบเทียบกับยอดขายบนระบบ POS", "ถ่ายภาพสลิปยอดปิดกะและยอดเงินส่งรายงานใน LINE กลุ่มร้าน"] },
+  { "type": "heading", "text": "2. การทำความสะอาดอุปกรณ์และปิดระบบไฟ" },
+  { "type": "list", "items": ["ล้างแปรงชงชา Chasen และตากแห้งด้วยฐานรองเป่าลม ห้ามแช่จุ่มน้ำข้ามคืน", "ล้างและเช็ดโต๊ะบาร์ ตรวจสอบและเทน้ำทิ้งในถาดสแตนเลสเครื่องชง", "ปิดสวิตช์ไฟแอร์ เครื่องเสียง ปิดไฟร้านและทำการล็อคระบบความปลอดภัย"] },
+  { "type": "callout", "text": "ระวัง: แปรงไม้ไผ่ชงชาหากเปียกชื้นสะสมจะขึ้นราได้ง่าย ต้องเป่าลมแห้งและวางบนฐานกระเบื้องรูปกรวยเพื่อรักษารูปทรง" }
 ];
 
 const smartParseTextToBlocks = (text) => {
   const content = (text || '').trim();
   if (!content) return [{ type: 'paragraph', text: '' }];
 
-  // Try to parse as JSON array first
   try {
     const parsed = JSON.parse(content);
     if (Array.isArray(parsed)) return parsed;
   } catch (e) {}
 
-  // Plain text fallback parsing
   const lines = content.split('\n');
   const parsedBlocks = [];
   let currentList = null;
@@ -1006,7 +1326,6 @@ const smartParseTextToBlocks = (text) => {
       continue;
     }
 
-    // Check if list item
     const listMatch = trimmed.match(/^[-*•]\s+(.*)$/) || trimmed.match(/^\d+[\s.)-]+\s*(.*)$/);
     if (listMatch) {
       const itemText = listMatch[1];
@@ -1046,7 +1365,6 @@ export const PageSOPEditor = () => {
   const { navigate } = useApp();
   const session = getSession();
 
-  // Parse `?id=N` from hash for edit mode
   const editId = useMemo(() => {
     const hash = window.location.hash || '';
     const q = hash.split('?')[1];
@@ -1157,7 +1475,6 @@ export const PageSOPEditor = () => {
     }, 10);
   };
 
-  // Hydrate form when loading existing SOP
   useEffect(() => {
     if (existing) {
       setForm({
@@ -1177,7 +1494,6 @@ export const PageSOPEditor = () => {
       });
       setStatusLabel(existing.status === 'published' ? 'Published' : existing.status === 'archived' ? 'Archived' : 'Draft');
 
-      // Hydrate blocks if JSON content
       let initialBlocks = [];
       let mode = 'visual';
       if (existing.content) {
@@ -1218,9 +1534,7 @@ export const PageSOPEditor = () => {
     if (typeof form.content === 'string') {
       try {
         parsedContent = JSON.parse(form.content);
-      } catch (e) {
-        // Keep as string
-      }
+      } catch (e) {}
     }
     return {
       title: form.title.trim(),
@@ -1238,7 +1552,7 @@ export const PageSOPEditor = () => {
   };
 
   const handleSaveDraft = async () => {
-    if (!form.title.trim()) { alert('Please enter a title'); return; }
+    if (!form.title.trim()) { alert('กรุณากรอกหัวข้อ SOP'); return; }
     try {
       if (isEditMode) {
         await updateSop.mutateAsync({ id: editId, ...buildPayload() });
@@ -1255,8 +1569,8 @@ export const PageSOPEditor = () => {
   };
 
   const handlePublish = async () => {
-    if (!form.title.trim()) { alert('Please enter a title before publishing'); return; }
-    if (!window.confirm('Publish this SOP? It will be visible to all assigned staff.')) return;
+    if (!form.title.trim()) { alert('กรุณากรอกหัวข้อ SOP ก่อนบันทึกเผยแพร่จริง'); return; }
+    if (!window.confirm('คุณต้องการนำคู่มือ SOP นี้เผยแพร่ให้พนักงานและสาขาใช้จริงเลยใช่หรือไม่?')) return;
     try {
       let id = editId;
       if (!id) {
@@ -1287,51 +1601,66 @@ export const PageSOPEditor = () => {
   const removeTag = (t) => setForm({ ...form, tags: form.tags.filter((x) => x !== t) });
 
   if (loadingExisting) {
-    return <div style={{ padding: 60, textAlign: 'center' }} className="muted">Loading SOP…</div>;
+    return <div style={{ padding: 60, textAlign: 'center' }} className="muted">กำลังดึงข้อมูลคู่มือ SOP…</div>;
   }
 
   const statusPillClass = statusLabel === 'Published' ? 'pill-matcha' : statusLabel === 'Archived' ? '' : 'pill-warning';
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', minHeight: 'calc(100vh - 60px)' }} className="sop-editor-grid">
-      <div style={{ overflow: 'auto' }}>
-        <div style={{ padding: '16px 32px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-surface)', position: 'sticky', top: 0, zIndex: 5 }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/backoffice/sop')}>← Back</button>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', minHeight: 'calc(100vh - 60px)', background: 'var(--bg-surface)' }} className="sop-editor-grid">
+      <div style={{ overflowY: 'auto', borderRight: '1px solid var(--border-default)' }}>
+        
+        {/* Editor Controls Bar */}
+        <div style={{ padding: '12px 32px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-surface)', position: 'sticky', top: 0, zIndex: 5 }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/backoffice/sop')}>← กลับหน้าหลัก</button>
           <span className={'pill ' + statusPillClass}><span className="dot"/> {statusLabel}</span>
-          {savedAt && <span className="muted" style={{ fontSize: 12 }}>· Saved {new Date(savedAt).toLocaleTimeString()}</span>}
+          {savedAt && <span className="muted" style={{ fontSize: 12 }}>· บันทึกร่างเมื่อ {new Date(savedAt).toLocaleTimeString()}</span>}
           <div style={{ flex: 1 }}/>
-          <button className="btn btn-secondary btn-sm" onClick={handleSaveDraft} disabled={isSaving || isPublishing}>{isSaving ? 'Saving…' : 'Save Draft'}</button>
+          <button className="btn btn-secondary btn-sm" onClick={handleSaveDraft} disabled={isSaving || isPublishing}>{isSaving ? 'กำลังบันทึกร่าง…' : 'บันทึกแบบร่าง (Save)'}</button>
           {statusLabel !== 'Published' && (
-            <button className="btn btn-primary btn-sm" onClick={handlePublish} disabled={isSaving || isPublishing}>{isPublishing ? 'Publishing…' : 'Publish'}</button>
+            <button className="btn btn-primary btn-sm" onClick={handlePublish} disabled={isSaving || isPublishing}>{isPublishing ? 'กำลังเผยแพร่…' : 'เผยแพร่จริง (Publish)'}</button>
           )}
         </div>
-        <div style={{ maxWidth: 800, margin: '0 auto', padding: '60px 40px' }}>
-          <div style={{ height: 200, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg, var(--matcha-100), var(--matcha-300))', marginBottom: 32, display: 'grid', placeItems: 'center', color: 'var(--matcha-800)' }}>
-            <IconWhisk size={64}/>
+
+        {/* Visual Canvas */}
+        <div style={{ maxWidth: 780, margin: '0 auto', padding: '48px 32px' }}>
+          
+          {/* Header image cover placeholder */}
+          <div style={{ 
+            height: 180, 
+            borderRadius: 'var(--r-lg)', 
+            background: form.coverImageUrl ? `url(${form.coverImageUrl}) center/cover no-repeat` : 'linear-gradient(135deg, var(--matcha-100), var(--matcha-250))', 
+            marginBottom: 32, 
+            display: 'grid', 
+            placeItems: 'center', 
+            color: 'var(--matcha-800)',
+            border: '1px solid var(--border-default)'
+          }}>
+            {!form.coverImageUrl && <IconWhisk size={56} style={{ opacity: 0.65 }}/>}
           </div>
 
           <input
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder="Untitled SOP"
-            style={{ fontSize: 48, fontWeight: 700, letterSpacing: '-0.025em', margin: 0, outline: 'none', border: 'none', background: 'transparent', width: '100%', color: 'var(--text-primary)' }}
+            placeholder="ตั้งชื่อคู่มือปฏิบัติงาน (SOP Title)..."
+            style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.025em', margin: 0, outline: 'none', border: 'none', background: 'transparent', width: '100%', color: 'var(--text-primary)' }}
           />
           <input
             value={form.titleThai}
             onChange={(e) => setForm({ ...form, titleThai: e.target.value })}
-            placeholder="ชื่อภาษาไทย (optional)"
+            placeholder="ชื่อคู่มือภาษาไทยเพิ่มเติม..."
             style={{ fontSize: 18, margin: '8px 0 4px', outline: 'none', border: 'none', background: 'transparent', width: '100%', color: 'var(--text-secondary)' }}
           />
           <input
             value={form.subtitle}
             onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
-            placeholder="Short subtitle or summary"
+            placeholder="สรุปหรือคำอธิบายอย่างย่อ สำหรับใช้แสดงในแคตตาล็อกหน้าแรก..."
             className="muted"
-            style={{ fontSize: 20, lineHeight: 1.4, margin: '12px 0 32px', outline: 'none', border: 'none', background: 'transparent', width: '100%' }}
+            style={{ fontSize: 15, lineHeight: 1.4, margin: '12px 0 28px', outline: 'none', border: 'none', background: 'transparent', width: '100%' }}
           />
 
-          {/* Editor Mode Selector */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          {/* Toggle Editors Modes */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div style={{ display: 'inline-flex', background: 'var(--bg-muted)', borderRadius: 'var(--r-default)', padding: 3, gap: 2 }}>
               <button
                 type="button"
@@ -1345,11 +1674,15 @@ export const PageSOPEditor = () => {
                   background: editorMode === 'visual' ? 'var(--bg-surface)' : 'transparent',
                   color: editorMode === 'visual' ? 'var(--text-primary)' : 'var(--text-tertiary)',
                   boxShadow: editorMode === 'visual' ? 'var(--shadow-xs)' : 'none',
-                  padding: '4px 12px',
+                  padding: '5px 14px',
                   fontSize: 12,
+                  fontWeight: 600,
+                  border: 'none',
+                  borderRadius: 'var(--r-subtle)',
+                  cursor: 'pointer'
                 }}
               >
-                Visual Editor (ตัวสร้างบล็อก)
+                Visual Block Editor (แก้ไขแบบบล็อก)
               </button>
               <button
                 type="button"
@@ -1359,16 +1692,20 @@ export const PageSOPEditor = () => {
                   background: editorMode === 'code' ? 'var(--bg-surface)' : 'transparent',
                   color: editorMode === 'code' ? 'var(--text-primary)' : 'var(--text-tertiary)',
                   boxShadow: editorMode === 'code' ? 'var(--shadow-xs)' : 'none',
-                  padding: '4px 12px',
+                  padding: '5px 14px',
                   fontSize: 12,
+                  fontWeight: 600,
+                  border: 'none',
+                  borderRadius: 'var(--r-subtle)',
+                  cursor: 'pointer'
                 }}
               >
-                Raw Text / JSON (โค้ดดิบ)
+                Raw JSON Code (สำหรับแอดมินขั้นสูง)
               </button>
             </div>
           </div>
 
-          {/* Unified SOP Toolbar */}
+          {/* SOP Block Editor Toolbar */}
           <div
             className="glass"
             style={{
@@ -1379,50 +1716,51 @@ export const PageSOPEditor = () => {
               padding: '10px 16px',
               borderRadius: 'var(--r-md)',
               border: '1px solid var(--border-default)',
-              marginBottom: 20,
+              marginBottom: 24,
               background: 'var(--bg-surface)',
+              boxShadow: 'var(--shadow-xs)'
             }}
           >
-            {/* Left: Quick Actions */}
+            {/* Action buttons */}
             {editorMode === 'visual' ? (
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>แทรกบล็อก:</span>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>แทรกบล็อกใหม่:</span>
                 <button
                   type="button"
                   onClick={() => setBlocks([...blocks, { type: 'heading', text: '' }])}
                   className="btn btn-secondary btn-xs"
-                  style={{ fontSize: 11, padding: '4px 8px' }}
+                  style={{ fontSize: 11, padding: '4px 8px', borderRadius: 4 }}
                 >
-                  + Heading
+                  + หัวข้อหลัก (Heading)
                 </button>
                 <button
                   type="button"
                   onClick={() => setBlocks([...blocks, { type: 'paragraph', text: '' }])}
                   className="btn btn-secondary btn-xs"
-                  style={{ fontSize: 11, padding: '4px 8px' }}
+                  style={{ fontSize: 11, padding: '4px 8px', borderRadius: 4 }}
                 >
-                  + Paragraph
+                  + ย่อหน้าบรรทัด (Paragraph)
                 </button>
                 <button
                   type="button"
                   onClick={() => setBlocks([...blocks, { type: 'list', items: [''] }])}
                   className="btn btn-secondary btn-xs"
-                  style={{ fontSize: 11, padding: '4px 8px' }}
+                  style={{ fontSize: 11, padding: '4px 8px', borderRadius: 4 }}
                 >
-                  + List
+                  + รายการขั้นตอน (List)
                 </button>
                 <button
                   type="button"
                   onClick={() => setBlocks([...blocks, { type: 'callout', text: '' }])}
                   className="btn btn-secondary btn-xs"
-                  style={{ fontSize: 11, padding: '4px 8px' }}
+                  style={{ fontSize: 11, padding: '4px 8px', borderRadius: 4 }}
                 >
-                  + Callout
+                  + ข้อความระวัง (Callout)
                 </button>
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>แทรกโค้ดดิบ:</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>แทรกโค้ด:</span>
                 <button
                   type="button"
                   onClick={() => insertTextAtCursor(JSON.stringify({ type: 'heading', text: 'กรอกหัวข้อตรงนี้' }, null, 2) + ',\n')}
@@ -1433,7 +1771,7 @@ export const PageSOPEditor = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertTextAtCursor(JSON.stringify({ type: 'paragraph', text: 'กรอกเนื้อหาตรงนี้' }, null, 2) + ',\n')}
+                  onClick={() => insertTextAtCursor(JSON.stringify({ type: 'paragraph', text: 'กรอกเนื้อหาย่อหน้า' }, null, 2) + ',\n')}
                   className="btn btn-secondary btn-xs"
                   style={{ fontSize: 11, padding: '4px 8px' }}
                 >
@@ -1441,7 +1779,7 @@ export const PageSOPEditor = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertTextAtCursor(JSON.stringify({ type: 'list', items: ['รายการข้อที่ 1', 'รายการข้อที่ 2'] }, null, 2) + ',\n')}
+                  onClick={() => insertTextAtCursor(JSON.stringify({ type: 'list', items: ['ขั้นตอนข้อที่ 1', 'ขั้นตอนข้อที่ 2'] }, null, 2) + ',\n')}
                   className="btn btn-secondary btn-xs"
                   style={{ fontSize: 11, padding: '4px 8px' }}
                 >
@@ -1449,7 +1787,7 @@ export const PageSOPEditor = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertTextAtCursor(JSON.stringify({ type: 'callout', text: 'ข้อความเตือนหรือข้อเสนอแนะ' }, null, 2) + ',\n')}
+                  onClick={() => insertTextAtCursor(JSON.stringify({ type: 'callout', text: 'รายละเอียดข้อควรระวังหลัก' }, null, 2) + ',\n')}
                   className="btn btn-secondary btn-xs"
                   style={{ fontSize: 11, padding: '4px 8px' }}
                 >
@@ -1464,15 +1802,15 @@ export const PageSOPEditor = () => {
                     setBlocks(parsed);
                   }}
                   className="btn btn-secondary btn-xs"
-                  style={{ fontSize: 11, padding: '4px 8px', color: 'var(--matcha-700)' }}
-                  title="แปลงข้อความดิบหรือบทความให้เป็นโครงสร้าง JSON บล็อกที่ถูกต้อง"
+                  style={{ fontSize: 11, padding: '4px 8px', color: 'var(--matcha-700)', fontWeight: 600 }}
+                  title="ฟอร์แมตข้อมูลเป็นโครงสร้าง JSON อัตโนมัติ"
                 >
-                  ⚡ แปลงเป็น JSON บล็อก
+                  ⚡ แปลงฟอร์แมตเป็น JSON
                 </button>
               </div>
             )}
 
-            {/* Right: Templates Dropdown */}
+            {/* Templates Selector */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', position: 'relative' }}>
               <button
                 type="button"
@@ -1481,7 +1819,7 @@ export const PageSOPEditor = () => {
                 style={{ fontSize: 11, padding: '4px 10px', color: 'var(--matcha-700)', border: '1px solid var(--matcha-200)', display: 'flex', alignItems: 'center', gap: 4 }}
               >
                 <IconBookmark size={12} />
-                เลือกเทมเพลตคู่มือ (SOP Templates)
+                โหลดเทมเพลตคู่มือด่วน
                 <IconChevDown size={10} />
               </button>
 
@@ -1511,14 +1849,14 @@ export const PageSOPEditor = () => {
                   >
                     {[
                       { label: 'สูตรชงชา Matcha Latte', blocks: templateMatchaLatte },
-                      { label: 'ขั้นตอนการเปิดร้าน (Opening)', blocks: templateOpening },
-                      { label: 'ขั้นตอนการปิดร้าน (Closing)', blocks: templateClosing },
+                      { label: 'เช็คลิสต์เตรียมเปิดร้าน (Opening)', blocks: templateOpening },
+                      { label: 'ขั้นตอนเช็คบิลปิดร้าน (Closing)', blocks: templateClosing },
                     ].map((t) => (
                       <button
                         key={t.label}
                         type="button"
                         onClick={() => {
-                          if (window.confirm(`ต้องการใช้เทมเพลต "${t.label}" ใช่หรือไม่? เนื้อหาเดิมที่เขียนอยู่จะถูกแทนที่ทั้งหมด`)) {
+                          if (window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการเลือกใช้เทมเพลต "${t.label}"? การกระทำนี้จะลบข้อมูลที่เขียนทั้งหมดเพื่อแทนที่ใหม่`)) {
                             applyTemplate(t.blocks);
                             setTemplateDropdownOpen(false);
                           }
@@ -1546,6 +1884,7 @@ export const PageSOPEditor = () => {
             </div>
           </div>
 
+          {/* Visual editor list */}
           {editorMode === 'visual' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {blocks.map((block, idx) => {
@@ -1571,7 +1910,7 @@ export const PageSOPEditor = () => {
                       minHeight: '40px',
                     }}
                   >
-                    {/* Floating Controls on Left */}
+                    {/* Floating controls on left */}
                     <div
                       style={{
                         position: 'absolute',
@@ -1586,14 +1925,14 @@ export const PageSOPEditor = () => {
                         zIndex: 10,
                       }}
                     >
-                      {/* Block Type Dropdown */}
+                      {/* Block selector */}
                       <div style={{ position: 'relative' }}>
                         <button
                           type="button"
                           onClick={() => setActiveDropdownIdx(isDropdownOpen ? null : idx)}
                           className="btn btn-secondary btn-icon"
                           style={{ width: '26px', height: '26px', borderRadius: '50%', padding: 0 }}
-                          title="เปลี่ยนประเภทบล็อก"
+                          title="เปลี่ยนชนิดข้อมูลบล็อก"
                         >
                           {block.type === 'heading' && <span style={{ fontWeight: 'bold', fontSize: '10px' }}>H</span>}
                           {block.type === 'paragraph' && <span style={{ fontSize: '12px' }}>¶</span>}
@@ -1627,9 +1966,9 @@ export const PageSOPEditor = () => {
                             >
                               {[
                                 { value: 'paragraph', label: 'ย่อหน้า (Paragraph)', icon: '¶' },
-                                { value: 'heading', label: 'หัวข้อ (Heading)', icon: 'H' },
-                                { value: 'list', label: 'รายการข้อ (List)', icon: <IconList size={12} /> },
-                                { value: 'callout', label: 'กล่องเตือน (Callout)', icon: <IconInfo size={12} /> },
+                                { value: 'heading', label: 'หัวข้อใหญ่ (Heading)', icon: 'H' },
+                                { value: 'list', label: 'รายการชง (List)', icon: <IconList size={12} /> },
+                                { value: 'callout', label: 'กล่องคำเตือน (Callout)', icon: <IconInfo size={12} /> },
                               ].map((opt) => (
                                 <button
                                   key={opt.value}
@@ -1677,7 +2016,7 @@ export const PageSOPEditor = () => {
                         )}
                       </div>
 
-                      {/* Move Up */}
+                      {/* Up */}
                       <button
                         type="button"
                         disabled={idx === 0}
@@ -1690,12 +2029,12 @@ export const PageSOPEditor = () => {
                         }}
                         className="btn btn-secondary btn-icon"
                         style={{ width: '22px', height: '22px', borderRadius: '50%', padding: 0, opacity: idx === 0 ? 0.3 : 1 }}
-                        title="ย้ายขึ้น"
+                        title="เลื่อนขั้นตอนขึ้น"
                       >
                         <IconChevUp size={10} />
                       </button>
 
-                      {/* Move Down */}
+                      {/* Down */}
                       <button
                         type="button"
                         disabled={idx === blocks.length - 1}
@@ -1708,16 +2047,16 @@ export const PageSOPEditor = () => {
                         }}
                         className="btn btn-secondary btn-icon"
                         style={{ width: '22px', height: '22px', borderRadius: '50%', padding: 0, opacity: idx === blocks.length - 1 ? 0.3 : 1 }}
-                        title="ย้ายลง"
+                        title="เลื่อนขั้นตอนลง"
                       >
                         <IconChevDown size={10} />
                       </button>
 
-                      {/* Delete */}
+                      {/* Remove block */}
                       <button
                         type="button"
                         onClick={() => {
-                          if (window.confirm('ต้องการลบบล็อกนี้ใช่หรือไม่?')) {
+                          if (window.confirm('คุณต้องการลบบล็อกขั้นตอนนี้ใช่หรือไม่?')) {
                             setBlocks(blocks.filter((_, i) => i !== idx));
                           }
                         }}
@@ -1729,7 +2068,7 @@ export const PageSOPEditor = () => {
                       </button>
                     </div>
 
-                    {/* Block Content Inputs */}
+                    {/* Editor elements */}
                     <div style={{ paddingLeft: '4px' }}>
                       {block.type === 'heading' && (
                         <input
@@ -1740,10 +2079,10 @@ export const PageSOPEditor = () => {
                             next[idx] = { ...next[idx], text: e.target.value };
                             setBlocks(next);
                           }}
-                          placeholder="หัวข้อ (Heading)..."
+                          placeholder="หัวข้อย่อยใหม่ (เช่น อุปกรณ์ที่ต้องใช้ชง / อัตราส่วนผสม)..."
                           style={{
-                            fontSize: '24px',
-                            fontWeight: '600',
+                            fontSize: '20px',
+                            fontWeight: '700',
                             border: 'none',
                             background: 'transparent',
                             outline: 'none',
@@ -1768,10 +2107,10 @@ export const PageSOPEditor = () => {
                             e.target.style.height = 'auto';
                             e.target.style.height = e.target.scrollHeight + 'px';
                           }}
-                          placeholder="พิมพ์เนื้อหาย่อหน้าตรงนี้..."
+                          placeholder="เขียนเนื้อหาคู่มือรายละเอียดตรงนี้..."
                           rows={1}
                           style={{
-                            fontSize: '15px',
+                            fontSize: '14px',
                             lineHeight: '1.6',
                             border: 'none',
                             background: 'transparent',
@@ -1792,7 +2131,7 @@ export const PageSOPEditor = () => {
                           borderRadius: 'var(--r-md)',
                           padding: '12px 16px',
                           display: 'flex',
-                          gap: 12,
+                          gap: 10,
                           alignItems: 'flex-start',
                           width: '100%',
                           marginTop: '4px',
@@ -1811,10 +2150,10 @@ export const PageSOPEditor = () => {
                               e.target.style.height = 'auto';
                               e.target.style.height = e.target.scrollHeight + 'px';
                             }}
-                            placeholder="พิมพ์ข้อความแจ้งเตือนหรือข้อควรระวัง..."
+                            placeholder="กรอกข้อมูลแจ้งเตือน ข้อเสนอแนะ หรือข้อความสำคัญ..."
                             rows={1}
                             style={{
-                              fontSize: '14px',
+                              fontSize: '13.5px',
                               lineHeight: '1.5',
                               border: 'none',
                               background: 'transparent',
@@ -1824,6 +2163,7 @@ export const PageSOPEditor = () => {
                               padding: 0,
                               resize: 'none',
                               overflow: 'hidden',
+                              fontWeight: 500
                             }}
                           />
                         </div>
@@ -1833,7 +2173,7 @@ export const PageSOPEditor = () => {
                         <div data-block-idx={idx} style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: '4px' }}>
                           {(block.items || []).map((itemVal, itemIdx) => (
                             <div key={itemIdx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                              <span className="muted" style={{ fontSize: 13, minWidth: 20, textAlign: 'right', userSelect: 'none' }}>
+                              <span className="muted" style={{ fontSize: 13, minWidth: 20, textAlign: 'right', userSelect: 'none', fontWeight: 600 }}>
                                 {itemIdx + 1}.
                               </span>
                               <input
@@ -1847,7 +2187,7 @@ export const PageSOPEditor = () => {
                                   setBlocks(next);
                                 }}
                                 onKeyDown={(e) => handleListKeyDown(e, idx, itemIdx)}
-                                placeholder="รายละเอียดรายการ..."
+                                placeholder="กดปุ่ม Enter เพื่อเพิ่มรายการต่อไป..."
                                 style={{
                                   border: 'none',
                                   background: 'transparent',
@@ -1877,7 +2217,7 @@ export const PageSOPEditor = () => {
                                   opacity: isHovered ? 0.6 : 0,
                                   transition: 'opacity 150ms',
                                 }}
-                                title="ลบข้อนี้"
+                                title="ลบรายการนี้"
                               >
                                 ×
                               </button>
@@ -1897,9 +2237,9 @@ export const PageSOPEditor = () => {
                               }, 10);
                             }}
                             className="btn btn-ghost btn-sm"
-                            style={{ alignSelf: 'flex-start', color: 'var(--matcha-600)', fontSize: 12, padding: '2px 8px', marginTop: 2 }}
+                            style={{ alignSelf: 'flex-start', color: 'var(--matcha-600)', fontSize: 12, padding: '2px 8px', marginTop: 2, fontWeight: 600 }}
                           >
-                            + เพิ่มข้อใหม่
+                            + เพิ่มรายการย่อย
                           </button>
                         </div>
                       )}
@@ -1908,23 +2248,23 @@ export const PageSOPEditor = () => {
                 );
               })}
 
-              {/* Add Blocks Panel */}
+              {/* Add Blocks buttons */}
               <div style={{
                 display: 'flex',
                 gap: 12,
                 flexWrap: 'wrap',
                 marginTop: 24,
                 padding: '16px',
-                border: '1px dashed var(--border-default)',
+                border: '1.5px dashed var(--border-default)',
                 borderRadius: 'var(--r-md)',
                 justifyContent: 'center',
-                background: 'rgba(0,0,0,0.02)',
+                background: 'rgba(0,0,0,0.015)',
               }}>
-                <span style={{ fontSize: 13, color: 'var(--text-tertiary)', alignSelf: 'center', marginRight: 8 }}>+ เพิ่มบล็อกใหม่:</span>
+                <span style={{ fontSize: 12, color: 'var(--text-tertiary)', alignSelf: 'center', marginRight: 8, fontWeight: 500 }}>+ เพิ่มบล็อกใหม่:</span>
                 {[
-                  { type: 'heading', label: 'หัวข้อ (Heading)', defaultVal: { type: 'heading', text: '' } },
-                  { type: 'paragraph', label: 'ย่อหน้า (Paragraph)', defaultVal: { type: 'paragraph', text: '' } },
-                  { type: 'list', label: 'รายการข้อ (List)', defaultVal: { type: 'list', items: [''] } },
+                  { type: 'heading', label: 'หัวข้อย่อย (Heading)', defaultVal: { type: 'heading', text: '' } },
+                  { type: 'paragraph', label: 'ย่อหน้าข้อความ (Paragraph)', defaultVal: { type: 'paragraph', text: '' } },
+                  { type: 'list', label: 'รายการชง (List)', defaultVal: { type: 'list', items: [''] } },
                   { type: 'callout', label: 'กล่องเตือน (Callout)', defaultVal: { type: 'callout', text: '' } },
                 ].map((b) => (
                   <button
@@ -1932,7 +2272,7 @@ export const PageSOPEditor = () => {
                     type="button"
                     onClick={() => setBlocks([...blocks, b.defaultVal])}
                     className="btn btn-secondary btn-sm"
-                    style={{ background: 'var(--bg-surface)', fontSize: 12 }}
+                    style={{ background: 'var(--bg-surface)', fontSize: 12, borderRadius: 6 }}
                   >
                     {b.label}
                   </button>
@@ -1944,7 +2284,7 @@ export const PageSOPEditor = () => {
               ref={codeTextareaRef}
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
-              placeholder={`Start writing the SOP content here…\n\nYou can use plain text or JSON blocks like:\n\n[{ "type": "heading", "text": "Equipment" }, { "type": "list", "items": ["Chasen whisk", "Bowl"] }]`}
+              placeholder={`เริ่มเขียนเอกสารคู่มือที่นี่...\n\nคุณสามารถกรอกข้อความทั่วไป หรือโครงสร้าง JSON บล็อกได้ เช่น:\n\n[{ "type": "heading", "text": "อุปกรณ์ที่ใช้" }, { "type": "list", "items": ["แปรงชงชา", "ถ้วย Chawan"] }]`}
               style={{
                 width: '100%',
                 minHeight: 400,
@@ -1963,24 +2303,27 @@ export const PageSOPEditor = () => {
         </div>
       </div>
 
-      <aside style={{ background: 'var(--bg-muted)', borderLeft: '1px solid var(--border-default)', padding: 24, overflow: 'auto' }}>
-        <div className="t-caption" style={{ marginBottom: 14 }}>Properties</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Row label="Category">
+      {/* Editor Properties Sidebar */}
+      <aside style={{ background: 'var(--bg-muted)', padding: 24, overflowY: 'auto' }}>
+        <div className="t-caption" style={{ marginBottom: 16, fontWeight: 700, borderBottom: '1px solid var(--border-default)', paddingBottom: 8 }}>รายละเอียดคูมือ (SOP Properties)</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Row label="หมวดหมู่คู่มือ">
             <select
               className="input"
               value={form.categoryId ?? ''}
               onChange={(e) => setForm({ ...form, categoryId: e.target.value ? Number(e.target.value) : null })}
+              style={{ fontSize: 13 }}
             >
-              <option value="">— None —</option>
+              <option value="">— ไม่มีหมวดหมู่ —</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Row>
-          <Row label="Tags">
+
+          <Row label="แท็กคีย์เวิร์ด">
             <div>
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
                 {form.tags.map((t) => (
-                  <span key={t} className="pill" style={{ cursor: 'pointer' }} onClick={() => removeTag(t)}>{t} ×</span>
+                  <span key={t} className="pill" style={{ cursor: 'pointer', background: 'var(--bg-surface)', fontSize: 10, padding: '3px 8px' }} onClick={() => removeTag(t)}>{t} ×</span>
                 ))}
               </div>
               <input
@@ -1988,56 +2331,63 @@ export const PageSOPEditor = () => {
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                placeholder="Add tag…"
+                placeholder="พิมพ์แท็กแล้วกด Enter..."
                 style={{ fontSize: 12 }}
               />
             </div>
           </Row>
-          <Row label="Required ack">
+
+          <Row label="ยืนยันการรับทราบ">
             <Toggle checked={form.requiresAcknowledgment} onChange={(v) => setForm({ ...form, requiresAcknowledgment: v })}/>
           </Row>
-          <Row label="Deadline (days)">
+
+          <Row label="กำหนดเวลา (วัน)">
             <input
               className="input"
               type="number"
               min="1"
               value={form.acknowledgmentDeadlineDays}
               onChange={(e) => setForm({ ...form, acknowledgmentDeadlineDays: e.target.value })}
+              style={{ fontSize: 13 }}
             />
           </Row>
-          <Row label="Branch variants">
+
+          <Row label="ให้สาขาปรับสูตร">
             <Toggle checked={form.allowBranchVariants} onChange={(v) => setForm({ ...form, allowBranchVariants: v })}/>
           </Row>
-          <Row label="Cover Image">
+
+          <Row label="รูปภาพหน้าปก">
             <input
               className="input"
-              placeholder="https://..."
+              placeholder="ลิงก์ URL รูปภาพหน้าปก (https://...)"
               value={form.coverImageUrl || ''}
               onChange={(e) => setForm({ ...form, coverImageUrl: e.target.value })}
               style={{ fontSize: 12 }}
             />
           </Row>
-          <Row label="Video URL">
+
+          <Row label="วิดีโอประกอบชง">
             <input
               className="input"
-              placeholder="https://... (mp4/YouTube)"
+              placeholder="ลิงก์ URL วิดีโอชง (YouTube / mp4)"
               value={form.videoUrl || ''}
               onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
               style={{ fontSize: 12 }}
             />
           </Row>
-          <Row label="Status"><span className={'pill ' + statusPillClass}>{statusLabel}</span></Row>
+
+          <Row label="สถานะเผยแพร่"><span className={'pill ' + statusPillClass}>{statusLabel}</span></Row>
         </div>
 
         {existing && (
           <>
-            <div style={{ height: 24 }}/>
-            <div className="t-caption" style={{ marginBottom: 14 }}>Meta</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-              <div>Author: Staff #{existing.authorStaffId}</div>
-              <div>Version: {existing.version ?? 1}</div>
-              <div>Created: {existing.createdAt ? new Date(existing.createdAt).toLocaleString() : '—'}</div>
-              {existing.publishedAt && <div>Published: {new Date(existing.publishedAt).toLocaleString()}</div>}
+            <div style={{ height: 28 }}/>
+            <div className="t-caption" style={{ marginBottom: 12, fontWeight: 750 }}>ข้อมูลผู้บันทึก (Meta Data)</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--bg-surface)', padding: 12, borderRadius: 'var(--r-md)', border: '1px solid var(--border-default)' }}>
+              <div>ผู้เขียนคู่มือ: พนักงาน ID #{existing.authorStaffId}</div>
+              <div>จำนวนเวอร์ชันเอกสาร: v{existing.version ?? 1}</div>
+              <div>สร้างเอกสารเมื่อ: {existing.createdAt ? new Date(existing.createdAt).toLocaleString('th-TH') : '—'}</div>
+              {existing.publishedAt && <div>เผยแพร่ทางการเมื่อ: {new Date(existing.publishedAt).toLocaleString('th-TH')}</div>}
             </div>
           </>
         )}
@@ -2051,7 +2401,7 @@ export const PageSOPEditor = () => {
 
 const Row = ({ label, children }) => (
   <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, alignItems: 'center', fontSize: 13 }}>
-    <div className="muted">{label}</div>
+    <div className="muted" style={{ fontWeight: 600 }}>{label}</div>
     <div>{children}</div>
   </div>
 );
@@ -2066,79 +2416,85 @@ export const PageSOPApprovalQueue = () => {
   const reject = trpc.sop.rejectVariant.useMutation({ onSuccess: () => refetch(), onError: (e) => alert(e.message) });
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <div className="breadcrumb">Knowledge / Approval Queue</div>
+    <div className="page" style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 20px' }}>
+      <div className="page-header" style={{ marginBottom: 24 }}>
+        <div className="breadcrumb" style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>Knowledge / Approvals</div>
         <div className="page-title-row">
           <div>
-            <h1 className="page-title">Approval Queue</h1>
-            <p className="page-desc">Pending variant requests from franchise branches</p>
+            <h1 className="page-title">รายการรออนุมัติปรับปรุงสูตรสาขา (Approval Queue)</h1>
+            <p className="page-desc">คำขอปรับสูตรการชงของพนักงานแต่ละสาขาแฟรนไชส์ เพื่อให้เหมาะสมกับอุปกรณ์ในสาขา</p>
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 20 }}>
-        <div className="card" style={{ padding: 18 }}>
-          <div className="t-caption" style={{ fontSize: 10, color: 'var(--warning)' }}>Pending</div>
-          <div className="tabular" style={{ fontSize: 24, fontWeight: 600, marginTop: 4 }}>{variants.length}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <div className="card" style={{ padding: 18, border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+          <div className="t-caption" style={{ fontSize: 11, color: 'var(--warning)', fontWeight: 700 }}>รอตรวจสอบ (Pending Review)</div>
+          <div className="tabular" style={{ fontSize: 32, fontWeight: 800, marginTop: 4, color: 'var(--warning)' }}>{variants.length} รายการ</div>
         </div>
       </div>
 
       {isLoading ? (
-        <div style={{ padding: 40, textAlign: 'center' }} className="muted">Loading requests…</div>
+        <div style={{ padding: 40, textAlign: 'center' }} className="muted">กำลังดึงคิวรายการอนุมัติสูตร…</div>
       ) : variants.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-tertiary)' }}>
-          <IconCheckCircle size={36} style={{ opacity: 0.3 }}/>
-          <p style={{ marginTop: 12 }}>No pending variant requests.</p>
+        <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-tertiary)', background: 'var(--bg-surface)', border: '1px dashed var(--border-default)', borderRadius: 'var(--r-lg)' }}>
+          <IconCheckCircle size={44} style={{ opacity: 0.3, color: 'var(--matcha-500)' }}/>
+          <p style={{ marginTop: 12, fontWeight: 600 }}>ไม่มีคำขอค้างอนุมัติในระบบ</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {variants.map((r) => {
-            const at = r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—';
+            const at = r.createdAt ? new Date(r.createdAt).toLocaleDateString('th-TH') : '—';
             return (
-              <div key={r.id} className="card" style={{ padding: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+              <div key={r.id} className="card" style={{ padding: 24, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', borderRadius: 'var(--r-lg)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16, flexWrap: 'wrap' }}>
                   <Avatar name={`Staff #${r.requestedByStaffId}`} size={44}/>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontWeight: 600 }}>Staff #{r.requestedByStaffId}</span>
-                      <span className="muted" style={{ fontSize: 13 }}>Branch #{r.branchId}</span>
-                      <span className="muted" style={{ fontSize: 12 }}>· {at}</span>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 700, fontSize: 15 }}>พนักงาน ID #{r.requestedByStaffId}</span>
+                      <span className="pill" style={{ background: 'var(--bg-muted)', border: 'none', fontSize: 11 }}>สาขา ID #{r.branchId}</span>
+                      <span className="muted" style={{ fontSize: 12 }}>· ขอเมื่อ {at}</span>
                     </div>
-                    <div style={{ marginTop: 4, fontSize: 14, color: 'var(--text-secondary)' }}>
-                      Requested variant for master SOP <b style={{ color: 'var(--text-primary)' }}>#{r.masterSopId}</b>
+                    <div style={{ marginTop: 4, fontSize: 13.5, color: 'var(--text-secondary)' }}>
+                      เสนอขอตั้งค่าสูตรสาขาแยกต่างหาก (Variant) สำหรับคู่มือชงหลักรหัส <b style={{ color: 'var(--text-primary)' }}>#{r.masterSopId}</b>
                     </div>
                   </div>
-                  <span className="pill pill-warning">Pending review</span>
+                  <span className="pill pill-warning" style={{ fontWeight: 700 }}>รออนุมัติการใช้</span>
                 </div>
 
                 {r.changeReason && (
-                  <div className="card" style={{ padding: 16, marginBottom: 12, background: 'var(--bg-muted)' }}>
-                    <div className="t-caption" style={{ marginBottom: 8 }}>Reason for variant</div>
-                    <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{r.changeReason}</div>
+                  <div className="card" style={{ padding: 14, marginBottom: 14, background: 'var(--bg-muted)', border: 'none' }}>
+                    <div className="t-caption" style={{ marginBottom: 6, fontWeight: 700, fontSize: 10, color: 'var(--text-tertiary)' }}>เหตุผลการเปลี่ยนสูตร</div>
+                    <div style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{r.changeReason}</div>
                   </div>
                 )}
 
                 {r.changesSummary && (
-                  <>
-                    <div className="t-caption" style={{ marginBottom: 8 }}>Changes summary</div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, background: 'var(--bg-muted)', padding: 12, borderRadius: 'var(--r-default)', marginBottom: 16, whiteSpace: 'pre-wrap' }}>
+                  <div style={{ marginBottom: 20 }}>
+                    <div className="t-caption" style={{ marginBottom: 6, fontWeight: 700, fontSize: 10 }}>รายละเอียดขั้นตอนการปรับแต่ง</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, background: 'var(--bg-muted)', padding: 12, borderRadius: 'var(--r-default)', whiteSpace: 'pre-wrap', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
                       {r.changesSummary}
                     </div>
-                  </>
+                  </div>
                 )}
 
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', borderTop: '1px solid var(--border-default)', paddingTop: 16 }}>
                   <button
-                    onClick={() => { const reason = prompt('Reason for rejection:') ?? ''; if (reason) reject.mutate({ variantId: r.id, reason }); }}
+                    onClick={() => { const reason = prompt('ระบุเหตุผลในการปฏิเสธคำขอนี้:') ?? ''; if (reason) reject.mutate({ variantId: r.id, reason }); }}
                     disabled={reject.isPending}
                     className="btn btn-secondary"
-                  ><IconError size={14}/> Reject</button>
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--danger)' }}
+                  >
+                    <IconError size={14}/> ปฏิเสธคำขอ (Reject)
+                  </button>
                   <button
-                    onClick={() => approve.mutate({ variantId: r.id })}
+                    onClick={() => { if(confirm('คุณต้องการกดอนุมัติการเปลี่ยนขั้นตอนสูตรชงของสาขานี้เลยใช่หรือไม่?')) approve.mutate({ variantId: r.id }); }}
                     disabled={approve.isPending}
                     className="btn btn-primary"
-                  ><IconCheck size={14}/> Approve</button>
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    <IconCheck size={14}/> อนุมัติให้ใช้สูตรนี้ (Approve)
+                  </button>
                 </div>
               </div>
             );
@@ -2161,43 +2517,43 @@ export const PageSOPCompliance = () => {
   const dashOffset = 2 * Math.PI * 90 * (compliantPct / 100);
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <div className="breadcrumb">Knowledge / Compliance</div>
+    <div className="page" style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px' }}>
+      <div className="page-header" style={{ marginBottom: 24 }}>
+        <div className="breadcrumb" style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>Knowledge / Compliance</div>
         <div className="page-title-row">
           <div>
-            <h1 className="page-title">Compliance Dashboard</h1>
-            <p className="page-desc">SOP acknowledgments across all staff</p>
+            <h1 className="page-title">รายงานการเข้าอ่านคู่มือ (Compliance Dashboard)</h1>
+            <p className="page-desc">สถิติการยืนยันการรับทราบข้อมูลคู่มือชงและการปฏิบัติงานของพนักงานทั้งหมดในร้าน</p>
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginBottom: 16 }} className="inv-grid">
-        <div className="card" style={{ padding: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-          <svg viewBox="0 0 240 240" style={{ width: 220, height: 220 }}>
-            <circle cx="120" cy="120" r="90" fill="none" stroke="var(--bg-subtle)" strokeWidth="16"/>
-            <circle cx="120" cy="120" r="90" fill="none" stroke="var(--matcha-500)" strokeWidth="16" strokeLinecap="round" strokeDasharray={`${dashOffset} ${2 * Math.PI * 90}`} transform="rotate(-90 120 120)"/>
-            <text x="120" y="118" textAnchor="middle" fontSize="14" fill="var(--text-tertiary)" style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>Compliant</text>
-            <text x="120" y="148" textAnchor="middle" fontSize="42" fontWeight="600" fill="var(--text-primary)" style={{ letterSpacing: '-0.02em' }}>{compliantPct}%</text>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 20, marginBottom: 24 }} className="inv-grid">
+        <div className="card" style={{ padding: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+          <svg viewBox="0 0 240 240" style={{ width: 200, height: 200 }}>
+            <circle cx="120" cy="120" r="90" fill="none" stroke="var(--bg-subtle)" strokeWidth="14"/>
+            <circle cx="120" cy="120" r="90" fill="none" stroke="var(--matcha-500)" strokeWidth="14" strokeLinecap="round" strokeDasharray={`${dashOffset} ${2 * Math.PI * 90}`} transform="rotate(-90 120 120)" style={{ transition: 'stroke-dasharray 0.5s ease' }}/>
+            <text x="120" y="112" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text-tertiary)" style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>อัตราการยืนยัน</text>
+            <text x="120" y="150" textAnchor="middle" fontSize="38" fontWeight="800" fill="var(--text-primary)" style={{ letterSpacing: '-0.02em' }}>{compliantPct}%</text>
           </svg>
         </div>
-        <div className="card" style={{ padding: 24 }}>
-          <SectionHeader title="Compliance overview" desc={isLoading ? 'Loading…' : 'Across all published SOPs'}/>
+        <div className="card" style={{ padding: 24, border: '1px solid var(--border-default)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <SectionHeader title="สถิติภาพรวมรายงาน" desc={isLoading ? 'กำลังวิเคราะห์ข้อมูลผลงาน…' : 'คำนวณจากยอดพนักงานที่กด Acknowledge บนคู่มือที่มีสถานะเป็นบังคับอ่าน'}/>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 24 }}>
-            <Stat label="Acknowledged" value={String(report?.acknowledged ?? 0)} color="var(--matcha-700)"/>
-            <Stat label="Pending" value={String(report?.pending ?? 0)}/>
-            <Stat label="SOPs Tracked" value={String(report?.totalSops ?? 0)} color="var(--text-tertiary)"/>
+            <Stat label="อ่านยืนยันแล้ว" value={String(report?.acknowledged ?? 0)} color="var(--matcha-700)"/>
+            <Stat label="ค้างยืนยันอ่าน" value={String(report?.pending ?? 0)}/>
+            <Stat label="คู่มือที่ถูกติดตาม" value={String(report?.totalSops ?? 0)} color="var(--text-tertiary)"/>
           </div>
         </div>
       </div>
 
       {(report?.items ?? []).length > 0 && (
-        <div className="card" style={{ overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+        <div className="card" style={{ overflow: 'hidden', border: '1px solid var(--border-default)', background: 'var(--bg-surface)', borderRadius: 'var(--r-lg)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
             <thead>
-              <tr style={{ background: 'var(--bg-muted)' }}>
-                {['SOP', 'Acknowledged', 'Required', '%'].map((h) => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+              <tr style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border-default)' }}>
+                {['คู่มือการใช้งาน (SOP)', 'ยืนยันอ่านแล้ว', 'จำนวนเป้าหมาย', 'อัตราส่วนอ่าน'].map((h) => (
+                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -2205,16 +2561,16 @@ export const PageSOPCompliance = () => {
               {(report?.items ?? []).map((d) => {
                 const pct = d.totalRequired > 0 ? Math.round((d.acknowledgedCount / d.totalRequired) * 100) : 0;
                 return (
-                  <tr key={d.sop.id} style={{ borderTop: '1px solid var(--border-default)' }}>
-                    <td style={{ padding: '12px 16px', fontWeight: 500 }}>{d.sop.title}</td>
-                    <td style={{ padding: '12px 16px', color: 'var(--matcha-700)' }} className="tabular">{d.acknowledgedCount}</td>
-                    <td style={{ padding: '12px 16px', color: 'var(--text-tertiary)' }} className="tabular">{d.totalRequired}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 60, height: 4, background: 'var(--bg-subtle)', borderRadius: 2, overflow: 'hidden' }}>
+                  <tr key={d.sop.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 150ms' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                    <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-primary)' }}>{d.sop.title}</td>
+                    <td style={{ padding: '14px 16px', color: 'var(--matcha-700)', fontWeight: 700 }} className="tabular">{d.acknowledgedCount} คน</td>
+                    <td style={{ padding: '14px 16px', color: 'var(--text-tertiary)' }} className="tabular">{d.totalRequired} คน</td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 80, height: 6, background: 'var(--bg-subtle)', borderRadius: 99, overflow: 'hidden' }}>
                           <div style={{ width: pct + '%', height: '100%', background: pct >= 80 ? 'var(--matcha-500)' : pct >= 60 ? 'var(--warning)' : 'var(--danger)' }}/>
                         </div>
-                        <span className="tabular" style={{ fontWeight: 500 }}>{pct}%</span>
+                        <span className="tabular" style={{ fontWeight: 700, color: pct >= 80 ? 'var(--matcha-700)' : 'var(--text-primary)' }}>{pct}%</span>
                       </div>
                     </td>
                   </tr>
@@ -2224,6 +2580,11 @@ export const PageSOPCompliance = () => {
           </table>
         </div>
       )}
+      <style>{`
+        @media (max-width: 768px) {
+          .inv-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 };
@@ -2259,10 +2620,10 @@ export const PageSOPVariants = () => {
     if (!d) return '—';
     const dt = new Date(d);
     const days = Math.floor((Date.now() - dt.getTime()) / (1000 * 60 * 60 * 24));
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days}d ago`;
-    return dt.toLocaleDateString();
+    if (days === 0) return 'วันนี้';
+    if (days === 1) return 'เมื่อวานนี้';
+    if (days < 7) return `${days} วันก่อน`;
+    return dt.toLocaleDateString('th-TH');
   };
 
   const pillFor = (status) => ({
@@ -2273,50 +2634,53 @@ export const PageSOPVariants = () => {
   }[status] || '');
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <div className="breadcrumb">Knowledge / My Variants</div>
+    <div className="page" style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
+      <div className="page-header" style={{ marginBottom: 24 }}>
+        <div className="breadcrumb" style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>Knowledge / Variants</div>
         <div className="page-title-row">
           <div>
-            <h1 className="page-title">My Branch Variants</h1>
-            <p className="page-desc">{counts.all} request{counts.all !== 1 ? 's' : ''} · {counts.pending} pending review</p>
+            <h1 className="page-title">รายการปรับสูตรเฉพาะสาขา (My Branch Variants)</h1>
+            <p className="page-desc">ติดตามผลการอนุมัติสูตรชงแยกพิเศษของสาขาคุณ ส่งคำขอโดยเปิดเข้าหน้าคู่มือสูตรชงนั้นๆ</p>
           </div>
-          <button className="btn btn-primary" disabled title="Request a variant from a master SOP detail page"><IconPlus size={16}/> Request New Variant</button>
         </div>
       </div>
 
-      <Tabs items={[
-        { value: 'all', label: 'All Variants', count: counts.all },
-        { value: 'pending', label: 'Pending', count: counts.pending },
-        { value: 'approved', label: 'Approved', count: counts.approved },
-        { value: 'rejected', label: 'Rejected', count: counts.rejected },
-      ]} value={tab} onChange={setTab}/>
+      <div style={{ marginBottom: 16 }}>
+        <Tabs items={[
+          { value: 'all', label: 'ทั้งหมด', count: counts.all },
+          { value: 'pending', label: 'รออนุมัติ', count: counts.pending },
+          { value: 'approved', label: 'ผ่านอนุมัติ', count: counts.approved },
+          { value: 'rejected', label: 'ถูกปฏิเสธ', count: counts.rejected },
+        ]} value={tab} onChange={setTab}/>
+      </div>
 
       {isLoading ? (
-        <div className="muted" style={{ padding: 40, textAlign: 'center', marginTop: 16 }}>Loading variants…</div>
+        <div className="muted" style={{ padding: 40, textAlign: 'center', marginTop: 16 }}>กำลังโหลดรายการปรับปรุงสูตร…</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-tertiary)', marginTop: 16 }}>
-          <IconBookmark size={36} style={{ opacity: 0.3 }}/>
-          <p style={{ marginTop: 12 }}>No {tab === 'all' ? '' : tab} variant requests yet.</p>
-          <p className="muted" style={{ fontSize: 13 }}>Open a master SOP to request a branch-specific variant.</p>
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-tertiary)', background: 'var(--bg-surface)', border: '1px dashed var(--border-default)', borderRadius: 'var(--r-lg)', marginTop: 16 }}>
+          <IconBookmark size={40} style={{ opacity: 0.3 }}/>
+          <p style={{ marginTop: 12, fontWeight: 600 }}>ไม่พบรายการคำขอปรับสูตรสาขา</p>
+          <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>กดเลือกที่คู่มือสูตรชงหลัก แล้วกดยื่นปรับปรุงขั้นตอนพิเศษได้ตลอดเวลา</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 16 }}>
           {filtered.map((v) => {
             const master = sopMap.get(v.masterSopId);
             return (
-              <div key={v.id} className="card" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <div key={v.id} className="card" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', border: '1px solid var(--border-default)', background: 'var(--bg-surface)', borderRadius: 'var(--r-md)' }}>
                 <div style={{ flex: 1, minWidth: 280 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 600 }}>{master?.title || `Master SOP #${v.masterSopId}`}</span>
-                    <span className={'pill ' + pillFor(v.status)}><span className="dot"/> {v.status}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15 }}>{master?.title || `คู่มือหลัก ID #${v.masterSopId}`}</span>
+                    <span className={'pill ' + pillFor(v.status)} style={{ fontWeight: 700 }}><span className="dot"/> {v.status}</span>
                   </div>
-                  <div className="muted" style={{ fontSize: 13 }}>
-                    {v.changeReason ? <>Reason: {v.changeReason}</> : <>No reason provided</>} · submitted {fmtDate(v.createdAt)}
+                  <div className="muted" style={{ fontSize: 13, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {v.changeReason ? <span>เหตุผล: {v.changeReason}</span> : <span>ไม่ได้ระบุเหตุผลประกอบ</span>}
+                    <span>·</span>
+                    <span>ส่งคำขอเมื่อ {fmtDate(v.createdAt)}</span>
                   </div>
                   {v.reviewNotes && (
-                    <div className="muted" style={{ fontSize: 12, marginTop: 6, padding: 8, background: 'var(--bg-muted)', borderRadius: 'var(--r-subtle)' }}>
-                      <strong>Review notes:</strong> {v.reviewNotes}
+                    <div style={{ fontSize: 12.5, marginTop: 10, padding: '10px 14px', background: 'var(--bg-muted)', borderRadius: 'var(--r-subtle)', borderLeft: '3.5px solid var(--matcha-500)' }}>
+                      <strong>ความคิดเห็นจากสำนักงานใหญ่:</strong> {v.reviewNotes}
                     </div>
                   )}
                 </div>
@@ -2324,14 +2688,16 @@ export const PageSOPVariants = () => {
                   {v.status === 'pending' && (
                     <button
                       className="btn btn-ghost btn-sm"
-                      style={{ color: 'var(--danger)' }}
+                      style={{ color: 'var(--danger)', fontWeight: 600 }}
                       onClick={() => {
-                        if (window.confirm('Withdraw this variant request?')) {
+                        if (window.confirm('คุณต้องการยกเลิกการส่งคำขออนุมัติปรับสูตรนี้ใช่หรือไม่?')) {
                           withdrawVariant.mutate({ variantId: v.id });
                         }
                       }}
                       disabled={withdrawVariant.isPending}
-                    >Withdraw</button>
+                    >
+                      ยกเลิกคำขอ (Withdraw)
+                    </button>
                   )}
                 </div>
               </div>
@@ -2357,35 +2723,36 @@ export const PageSOPMyTasks = () => {
   const pending = tasks.filter((t) => t.status === 'pending' && !overdue.includes(t));
   const completed = tasks.filter((t) => t.status === 'completed');
 
-  const greetingName = session?.firstName || 'there';
+  const greetingName = session?.firstName || 'พนักงานชงชา';
   const totalDone = completed.length;
   const totalTasks = tasks.length;
   const pct = totalTasks > 0 ? Math.round((totalDone / totalTasks) * 100) : 0;
 
   const sections = [
-    { l: 'Overdue', c: 'var(--danger)', tasks: overdue },
-    { l: 'Due Soon', c: 'var(--warning)', tasks: pending },
-    { l: 'In Progress', c: 'var(--matcha-600)', tasks: inProgress },
+    { l: 'เกินกำหนดเวลา (Overdue)', c: 'var(--danger)', tasks: overdue },
+    { l: 'งานที่ต้องทำ (Assigned Tasks)', c: 'var(--warning)', tasks: pending },
+    { l: 'กำลังดำเนินการ (In Progress)', c: 'var(--matcha-600)', tasks: inProgress },
   ].filter((s) => s.tasks.length > 0);
 
   return (
-    <div className="page" style={{ maxWidth: 1100 }}>
-      <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+    <div className="page" style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 20px' }}>
+      {/* Learning platform styled header */}
+      <div className="page-header" style={{ marginBottom: 28, background: 'linear-gradient(135deg, var(--matcha-50), var(--bg-surface))', padding: 24, borderRadius: 'var(--r-lg)', border: '1px solid var(--border-default)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
           <div>
-            <div className="t-caption jp" style={{ color: 'var(--matcha-700)' }}>朝 · Good morning</div>
-            <h1 className="page-title" style={{ marginTop: 8 }}>Hello, {greetingName}</h1>
-            <p className="page-desc">{totalTasks > 0 ? `You're ${pct}% through your training.` : 'No tasks assigned yet.'}</p>
+            <div className="t-caption jp" style={{ color: 'var(--matcha-700)', fontSize: 13, fontWeight: 700 }}>朝の挨拶 · Good morning</div>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginTop: 4, letterSpacing: '-0.020em' }}>สวัสดี, {greetingName}</h1>
+            <p className="page-desc" style={{ fontSize: 14, marginTop: 4 }}>{totalTasks > 0 ? `คุณอ่านและประเมินหลักสูตรไปแล้วเสร็จสิ้น ${pct}%` : 'ไม่มีประวัติคำสั่งฝึกอบรม SOP ค้างเรียนในระบบ'}</p>
           </div>
           {totalTasks > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ position: 'relative', width: 80, height: 80 }}>
+              <div style={{ position: 'relative', width: 72, height: 72 }}>
                 <svg viewBox="0 0 80 80" style={{ width: '100%', height: '100%' }}>
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="var(--bg-subtle)" strokeWidth="6"/>
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="var(--matcha-500)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 32 * (pct / 100)} ${2 * Math.PI * 32}`} transform="rotate(-90 40 40)"/>
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="var(--bg-subtle)" strokeWidth="6.5"/>
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="var(--matcha-500)" strokeWidth="6.5" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 32 * (pct / 100)} ${2 * Math.PI * 32}`} transform="rotate(-90 40 40)"/>
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
-                  <span className="tabular" style={{ fontSize: 18, fontWeight: 600 }}>{totalDone}/{totalTasks}</span>
+                  <span className="tabular" style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>{totalDone}/{totalTasks}</span>
                 </div>
               </div>
             </div>
@@ -2394,54 +2761,63 @@ export const PageSOPMyTasks = () => {
       </div>
 
       {isLoading ? (
-        <div style={{ padding: 40, textAlign: 'center' }} className="muted">Loading tasks…</div>
+        <div style={{ padding: 40, textAlign: 'center' }} className="muted">กำลังดึงข้อมูลพนักงานฝึกงาน…</div>
       ) : sections.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-tertiary)' }}>
-          <IconCheckCircle size={36} style={{ opacity: 0.3 }}/>
-          <p style={{ marginTop: 12, fontWeight: 500 }}>You're all caught up</p>
-          <p style={{ fontSize: 13 }}>No outstanding SOP tasks.</p>
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-tertiary)', background: 'var(--bg-surface)', border: '1px dashed var(--border-default)', borderRadius: 'var(--r-lg)' }}>
+          <IconCheckCircle size={44} style={{ opacity: 0.3, color: 'var(--matcha-500)' }}/>
+          <p style={{ marginTop: 12, fontWeight: 600 }}>ไม่มีงานค้างฝึกฝน</p>
+          <p style={{ fontSize: 13, marginTop: 4 }}>คุณรับทราบและผ่านการอบรมสูตรเครื่องดื่มทั้งหมดเรียบร้อยแล้ว!</p>
         </div>
       ) : sections.map((sec) => (
-        <div key={sec.l} style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, paddingTop: 12, borderTop: '3px solid ' + sec.c, paddingLeft: 4 }}>
-            <span style={{ fontWeight: 600, fontSize: 14, color: sec.c, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{sec.l}</span>
-            <span className="muted" style={{ fontSize: 13 }}>{sec.tasks.length}</span>
+        <div key={sec.l} style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, borderLeft: '4px solid ' + sec.c, paddingLeft: 12 }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: sec.c, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{sec.l}</span>
+            <span className="pill" style={{ background: sec.c + '12', color: sec.c, border: 'none', fontSize: 11, fontWeight: 700 }}>{sec.tasks.length}</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
             {sec.tasks.map((t) => {
-              const dueLabel = t.dueDate ? `Due ${new Date(t.dueDate).toLocaleDateString()}` : 'No deadline';
+              const dueLabel = t.dueDate ? `เดดไลน์: ${new Date(t.dueDate).toLocaleDateString('th-TH')}` : 'ไม่กำหนดส่ง';
               return (
-                <div key={t.id} className="card" style={{ overflow: 'hidden' }}>
-                  <div style={{ padding: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                      <span className="pill">SOP #{t.sopId}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{t.status}</span>
+                <div key={t.id} className="card" style={{ overflow: 'hidden', border: '1px solid var(--border-default)', background: 'var(--bg-surface)', borderRadius: 'var(--r-md)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div style={{ padding: 18 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                      <span className="pill" style={{ fontSize: 10, background: 'var(--matcha-50)', color: 'var(--matcha-700)', border: 'none', fontWeight: 600 }}>SOP ID #{t.sopId}</span>
+                      <span style={{ fontSize: 10, textTransform: 'uppercase', fontWeight: 700, color: 'var(--text-tertiary)' }}>{t.status}</span>
                     </div>
-                    <div style={{ fontWeight: 600, fontSize: 15 }}>{t.sop?.title ?? `Task #${t.id}`}</div>
-                    <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{dueLabel}</div>
-                    <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', lineHeight: 1.3 }}>{t.sop?.title ?? `รายการอบรม #${t.id}`}</div>
+                    <div className="muted" style={{ fontSize: 12, marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <IconClock size={12}/>
+                      <span>{dueLabel}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, padding: '12px 18px', background: 'var(--bg-muted)', borderTop: '1px solid var(--border-subtle)' }}>
+                    <button
+                      onClick={() => navigate(`/sop/${t.sopId}`)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ flex: 1, fontSize: 12, fontWeight: 600 }}
+                    >
+                      เปิดอ่านสูตร
+                    </button>
+                    {t.status === 'pending' && (
                       <button
-                        onClick={() => navigate(`/sop/${t.sopId}`)}
-                        className="btn btn-secondary btn-sm"
-                        style={{ flex: 1 }}
-                      >Read</button>
-                      {t.status === 'pending' && (
-                        <button
-                          onClick={() => startTask.mutate({ taskId: t.id })}
-                          disabled={startTask.isPending}
-                          className="btn btn-primary btn-sm"
-                          style={{ flex: 1 }}
-                        >Start</button>
-                      )}
-                      {t.status === 'in_progress' && (
-                        <button
-                          onClick={() => completeTask.mutate({ taskId: t.id })}
-                          disabled={completeTask.isPending}
-                          className="btn btn-primary btn-sm"
-                          style={{ flex: 1 }}
-                        >Complete</button>
-                      )}
-                    </div>
+                        onClick={() => startTask.mutate({ taskId: t.id })}
+                        disabled={startTask.isPending}
+                        className="btn btn-primary btn-sm"
+                        style={{ flex: 1, fontSize: 12, fontWeight: 600 }}
+                      >
+                        เริ่มฝึกชง
+                      </button>
+                    )}
+                    {t.status === 'in_progress' && (
+                      <button
+                        onClick={() => completeTask.mutate({ taskId: t.id })}
+                        disabled={completeTask.isPending}
+                        className="btn btn-primary btn-sm"
+                        style={{ flex: 1, fontSize: 12, fontWeight: 600 }}
+                      >
+                        เรียนเสร็จแล้ว
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -2452,7 +2828,6 @@ export const PageSOPMyTasks = () => {
     </div>
   );
 };
-
 
 // ----- Material Usage & Cost Tracking -----
 export const PageSOPMaterialUsage = () => {
@@ -2483,23 +2858,23 @@ export const PageSOPMaterialUsage = () => {
   const fmtCurrency = (n) => `฿${fmtNum(n)}`;
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <div className="breadcrumb">Knowledge / Material Usage</div>
+    <div className="page" style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px' }}>
+      <div className="page-header" style={{ marginBottom: 24 }}>
+        <div className="breadcrumb" style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>Knowledge / Material Costs</div>
         <div className="page-title-row">
           <div>
-            <h1 className="page-title">วัตถุดิบ & ต้นทุน</h1>
-            <p className="page-desc">ติดตามการใช้วัตถุดิบ ต้นทุนต่อแก้ว และสถานะสต็อก (Real-time)</p>
+            <h1 className="page-title">อัตราการใช้วัตถุดิบและคำนวณต้นทุน (Material Costs)</h1>
+            <p className="page-desc">วิเคราะห์ต้นทุนวัตถุดิบเฉลี่ยต่อแก้ว กำไรสุทธิ อัตราส่วนสต็อก และสถิติการใช้งานจริงหลังการสั่งชง POS</p>
           </div>
         </div>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 20 }}>
         <Tabs
           items={[
-            { value: 'recipes', label: 'สูตร & ต้นทุน' },
-            { value: 'history', label: 'ประวัติการตัดยอด' },
-            { value: 'summary', label: 'สรุปการใช้วัตถุดิบ' },
+            { value: 'recipes', label: 'สูตรชง & วิเคราะห์ต้นทุนแก้ว' },
+            { value: 'history', label: 'ประวัติตัดสต็อกรายแก้ว' },
+            { value: 'summary', label: 'วิเคราะห์สรุปการใช้วัตถุดิบ' },
           ]}
           value={tab}
           onChange={setTab}
@@ -2507,14 +2882,14 @@ export const PageSOPMaterialUsage = () => {
       </div>
 
       {(tab === 'history' || tab === 'summary') && (
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--r-md)', border: '1px solid var(--border-default)' }}>
           <div style={{ flex: 1, minWidth: 140 }}>
-            <label style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4, display: 'block' }}>จากวันที่</label>
-            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="input" />
+            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, display: 'block', textTransform: 'uppercase' }}>จากวันที่</label>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="input" style={{ fontSize: 13 }} />
           </div>
           <div style={{ flex: 1, minWidth: 140 }}>
-            <label style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4, display: 'block' }}>ถึงวันที่</label>
-            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="input" />
+            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, display: 'block', textTransform: 'uppercase' }}>ถึงวันที่</label>
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="input" style={{ fontSize: 13 }} />
           </div>
         </div>
       )}
@@ -2522,140 +2897,165 @@ export const PageSOPMaterialUsage = () => {
       {tab === 'recipes' && (
         <div>
           {recipesLoading ? (
-            <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>กำลังโหลดข้อมูลสูตร...</div>
+            <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>กำลังวิเคราะห์ราคาทุนสูตรสินค้า...</div>
           ) : recipeCosts.length === 0 ? (
-            <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
-              <p style={{ fontSize: 16, marginBottom: 8 }}>ยังไม่มีสูตรวัตถุดิบ</p>
-              <p style={{ fontSize: 13 }}>กรุณาตั้งค่าสูตร (Recipe) ในหน้า Menu Management ก่อน</p>
+            <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)', border: '1px dashed var(--border-default)', borderRadius: 'var(--r-lg)', background: 'var(--bg-surface)' }}>
+              <p style={{ fontSize: 16, marginBottom: 6, fontWeight: 600 }}>ไม่พบข้อมูลสูตรชงในระบบ</p>
+              <p style={{ fontSize: 13 }}>โปรดสร้างส่วนผสมวัตถุดิบ (Recipes) ในหัวข้อจัดการเมนูก่อนวิเคราะห์ต้นทุน</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 8 }}>
-                <div className="card" style={{ padding: 16 }}>
-                  <div className="muted" style={{ fontSize: 12 }}>เมนูที่มีสูตร</div>
-                  <div style={{ fontSize: 24, fontWeight: 600 }}>{recipeCosts.length}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 8 }}>
+                <div className="card" style={{ padding: 18, border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+                  <div className="muted" style={{ fontSize: 12, fontWeight: 600 }}>สูตรเมนูเครื่องดื่มที่มี</div>
+                  <div style={{ fontSize: 26, fontWeight: 800, marginTop: 4 }}>{recipeCosts.length} เมนู</div>
                 </div>
-                <div className="card" style={{ padding: 16 }}>
-                  <div className="muted" style={{ fontSize: 12 }}>ต้นทุนเฉลี่ย/แก้ว</div>
-                  <div style={{ fontSize: 24, fontWeight: 600 }}>
+                <div className="card" style={{ padding: 18, border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+                  <div className="muted" style={{ fontSize: 12, fontWeight: 600 }}>ค่าเฉลี่ยต้นทุนต่อแก้ว</div>
+                  <div style={{ fontSize: 26, fontWeight: 800, marginTop: 4, color: 'var(--danger)' }}>
                     {fmtCurrency(recipeCosts.reduce((s, r) => s + r.totalCostPerCup, 0) / (recipeCosts.length || 1))}
                   </div>
                 </div>
-                <div className="card" style={{ padding: 16 }}>
-                  <div className="muted" style={{ fontSize: 12 }}>Margin เฉลี่ย</div>
-                  <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--matcha-700)' }}>
+                <div className="card" style={{ padding: 18, border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+                  <div className="muted" style={{ fontSize: 12, fontWeight: 600 }}>อัตรากำไรขั้นต้น (Margin)</div>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--matcha-700)', marginTop: 4 }}>
                     {Math.round(recipeCosts.reduce((s, r) => s + r.marginPercent, 0) / (recipeCosts.length || 1))}%
                   </div>
                 </div>
               </div>
-              {recipeCosts.map((item) => (
-                <div key={item.menuItemId} className="card" style={{ overflow: 'hidden' }}>
-                  <div
-                    onClick={() => setExpandedMenu(expandedMenu === item.menuItemId ? null : item.menuItemId)}
-                    style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', background: expandedMenu === item.menuItemId ? 'var(--bg-muted)' : 'transparent' }}
+
+              {recipeCosts.map((item) => {
+                const isExpanded = expandedMenu === item.menuItemId;
+                return (
+                  <div 
+                    key={item.menuItemId} 
+                    className="card" 
+                    style={{ 
+                      overflow: 'hidden', 
+                      border: '1px solid var(--border-default)', 
+                      background: 'var(--bg-surface)', 
+                      borderRadius: 'var(--r-md)', 
+                      transition: 'border-color 200ms ease'
+                    }}
                   >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 500 }}>{item.menuItemName}</div>
-                      {item.menuItemNameThai && <div className="muted" style={{ fontSize: 12 }}>{item.menuItemNameThai}</div>}
-                    </div>
-                    <div style={{ textAlign: 'right', minWidth: 80 }}>
-                      <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>ต้นทุน/แก้ว</div>
-                      <div style={{ fontWeight: 600 }}>{fmtCurrency(item.totalCostPerCup)}</div>
-                    </div>
-                    <div style={{ textAlign: 'right', minWidth: 80 }}>
-                      <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>ราคาขาย</div>
-                      <div style={{ fontWeight: 500 }}>{fmtCurrency(item.basePrice)}</div>
-                    </div>
-                    <div style={{ textAlign: 'right', minWidth: 60 }}>
-                      <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Margin</div>
-                      <div style={{ fontWeight: 600, color: item.marginPercent >= 50 ? 'var(--matcha-700)' : item.marginPercent >= 30 ? 'var(--warning)' : 'var(--danger)' }}>
-                        {item.marginPercent}%
+                    <div
+                      onClick={() => setExpandedMenu(isExpanded ? null : item.menuItemId)}
+                      style={{ 
+                        padding: '16px 20px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 16, 
+                        cursor: 'pointer', 
+                        background: isExpanded ? 'var(--bg-muted)' : 'transparent',
+                        transition: 'background 200ms ease'
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>{item.menuItemName}</div>
+                        {item.menuItemNameThai && <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{item.menuItemNameThai}</div>}
                       </div>
+                      <div style={{ textAlign: 'right', minWidth: 90 }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600 }}>ต้นทุนแก้ว</div>
+                        <div style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--danger)', marginTop: 2 }}>{fmtCurrency(item.totalCostPerCup)}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', minWidth: 90 }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600 }}>ราคาหน้าร้าน</div>
+                        <div style={{ fontWeight: 600, fontSize: 14.5, color: 'var(--text-primary)', marginTop: 2 }}>{fmtCurrency(item.basePrice)}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', minWidth: 70 }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600 }}>มาร์จิ้น</div>
+                        <div style={{ fontWeight: 700, fontSize: 14.5, color: item.marginPercent >= 50 ? 'var(--matcha-700)' : item.marginPercent >= 30 ? 'var(--warning)' : 'var(--danger)', marginTop: 2 }}>
+                          {item.marginPercent}%
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 14, color: 'var(--text-tertiary)', paddingLeft: 6 }}>
+                        {isExpanded ? <IconChevUp size={16}/> : <IconChevDown size={16}/>}
+                      </span>
                     </div>
-                    <span style={{ fontSize: 18, color: 'var(--text-tertiary)' }}>{expandedMenu === item.menuItemId ? '▼' : '▶'}</span>
-                  </div>
-                  {expandedMenu === item.menuItemId && (
-                    <div style={{ borderTop: '1px solid var(--border-default)' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                        <thead>
-                          <tr style={{ background: 'var(--bg-muted)' }}>
-                            {['วัตถุดิบ', 'ปริมาณ/แก้ว', 'หน่วย', 'ราคา/หน่วย', 'ต้นทุน/แก้ว', 'สต็อกปัจจุบัน', 'ทำได้ (แก้ว)'].map((h) => (
-                              <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {item.ingredients.map((ing) => (
-                            <tr key={ing.id} style={{ borderTop: '1px solid var(--border-default)' }}>
-                              <td style={{ padding: '10px 12px', fontWeight: 500 }}>
-                                {ing.name}
-                                {ing.nameThai && <span className="muted" style={{ marginLeft: 6, fontSize: 11 }}>({ing.nameThai})</span>}
-                              </td>
-                              <td style={{ padding: '10px 12px' }}>{fmtNum(ing.quantityPerCup)}</td>
-                              <td style={{ padding: '10px 12px' }}>{ing.unitOfMeasure}</td>
-                              <td style={{ padding: '10px 12px' }}>{fmtCurrency(ing.costPerUnit)}</td>
-                              <td style={{ padding: '10px 12px', fontWeight: 500 }}>{fmtCurrency(ing.costPerCup)}</td>
-                              <td style={{ padding: '10px 12px' }}>
-                                {ing.currentStock !== null ? (
-                                  <span style={{ color: ing.currentStock <= 0 ? 'var(--danger)' : ing.currentStock < 100 ? 'var(--warning)' : 'var(--matcha-700)' }}>
-                                    {fmtNum(ing.currentStock)} {ing.unitOfMeasure}
-                                  </span>
-                                ) : <span className="muted">-</span>}
-                              </td>
-                              <td style={{ padding: '10px 12px' }}>
-                                {ing.cupsAvailable !== null ? (
-                                  <span style={{ fontWeight: 600, color: ing.cupsAvailable <= 5 ? 'var(--danger)' : ing.cupsAvailable <= 20 ? 'var(--warning)' : 'var(--matcha-700)' }}>
-                                    {ing.cupsAvailable}
-                                  </span>
-                                ) : <span className="muted">-</span>}
-                              </td>
+                    
+                    {isExpanded && (
+                      <div style={{ borderTop: '1px solid var(--border-default)', overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600 }}>
+                          <thead>
+                            <tr style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border-default)' }}>
+                              {['ส่วนผสมวัตถุดิบ', 'ปริมาณที่ใช้', 'หน่วย', 'ทุน/หน่วย', 'ราคาทุนรวมแก้ว', 'สต็อกคงคลัง', 'ชงเพิ่มได้สูงสุด'].map((h) => (
+                                <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{h}</th>
+                              ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      <div style={{ padding: '10px 12px', background: 'var(--bg-muted)', display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                        <span className="muted">กำไร/แก้ว: <b style={{ color: 'var(--matcha-700)' }}>{fmtCurrency(item.profitPerCup)}</b></span>
-                        <span className="muted">วัตถุดิบ {item.ingredients.length} รายการ</span>
+                          </thead>
+                          <tbody>
+                            {item.ingredients.map((ing) => (
+                              <tr key={ing.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 150ms' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                                <td style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                  {ing.name}
+                                  {ing.nameThai && <span className="muted" style={{ marginLeft: 6, fontSize: 11, fontWeight: 400 }}>({ing.nameThai})</span>}
+                                </td>
+                                <td style={{ padding: '10px 14px' }}>{fmtNum(ing.quantityPerCup)}</td>
+                                <td style={{ padding: '10px 14px' }}>{ing.unitOfMeasure}</td>
+                                <td style={{ padding: '10px 14px' }}>{fmtCurrency(ing.costPerUnit)}</td>
+                                <td style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--danger)' }}>{fmtCurrency(ing.costPerCup)}</td>
+                                <td style={{ padding: '10px 14px' }}>
+                                  {ing.currentStock !== null ? (
+                                    <span style={{ fontWeight: 600, color: ing.currentStock <= 0 ? 'var(--danger)' : ing.currentStock < 100 ? 'var(--warning)' : 'var(--matcha-700)' }}>
+                                      {fmtNum(ing.currentStock)} {ing.unitOfMeasure}
+                                    </span>
+                                  ) : <span className="muted">-</span>}
+                                </td>
+                                <td style={{ padding: '10px 14px' }}>
+                                  {ing.cupsAvailable !== null ? (
+                                    <span style={{ fontWeight: 700, color: ing.cupsAvailable <= 5 ? 'var(--danger)' : ing.cupsAvailable <= 20 ? 'var(--warning)' : 'var(--matcha-700)' }}>
+                                      {ing.cupsAvailable} แก้ว
+                                    </span>
+                                  ) : <span className="muted">-</span>}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <div style={{ padding: '12px 16px', background: 'var(--bg-muted)', display: 'flex', justifyContent: 'space-between', fontSize: 13, borderTop: '1px solid var(--border-default)' }}>
+                          <span className="muted" style={{ fontWeight: 500 }}>กำไรต่อแก้ว: <b style={{ color: 'var(--matcha-700)', fontSize: 14 }}>{fmtCurrency(item.profitPerCup)}</b></span>
+                          <span className="muted">รวมส่วนผสมทั้งหมด {item.ingredients.length} ชนิด</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
       {tab === 'history' && (
-        <div className="card" style={{ overflow: 'hidden' }}>
+        <div className="card" style={{ overflow: 'hidden', border: '1px solid var(--border-default)', background: 'var(--bg-surface)', borderRadius: 'var(--r-lg)' }}>
           {historyLoading ? (
-            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>กำลังโหลด...</div>
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>กำลังดึงประวัติการขายสินค้าและสต็อก…</div>
           ) : usageHistory.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>ไม่มีข้อมูลการตัดยอดในช่วงเวลานี้</div>
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>ไม่มีบันทึกข้อมูลการตัดยอดสต็อกเครื่องดื่มในช่วงเวลานี้</div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
               <thead>
-                <tr style={{ background: 'var(--bg-muted)' }}>
-                  {['วันที่/เวลา', 'วัตถุดิบ', 'ปริมาณที่ใช้', 'หน่วย', 'ต้นทุน', 'Order'].map((h) => (
-                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>{h}</th>
+                <tr style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border-default)' }}>
+                  {['วันที่และเวลาขาย', 'ชื่อวัตถุดิบ', 'ปริมาณใช้จริง', 'หน่วย', 'มูลค่าราคาทุนรวม', 'รหัสคำสั่งซื้อ POS'].map((h) => (
+                    <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {usageHistory.map((row) => (
-                  <tr key={row.id} style={{ borderTop: '1px solid var(--border-default)' }}>
-                    <td style={{ padding: '10px 14px', fontSize: 12 }}>
+                  <tr key={row.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 150ms' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: 'var(--text-secondary)' }}>
                       {row.createdAt ? new Date(row.createdAt).toLocaleString('th-TH') : '-'}
                     </td>
-                    <td style={{ padding: '10px 14px', fontWeight: 500 }}>
+                    <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-primary)' }}>
                       {row.itemName}
-                      {row.itemNameThai && <span className="muted" style={{ marginLeft: 6, fontSize: 11 }}>({row.itemNameThai})</span>}
+                      {row.itemNameThai && <span className="muted" style={{ marginLeft: 6, fontSize: 11, fontWeight: 400 }}>({row.itemNameThai})</span>}
                     </td>
-                    <td style={{ padding: '10px 14px' }}>{fmtNum(row.quantity)}</td>
-                    <td style={{ padding: '10px 14px' }}>{row.itemUnit}</td>
-                    <td style={{ padding: '10px 14px' }}>{row.totalCost > 0 ? fmtCurrency(row.totalCost) : '-'}</td>
-                    <td style={{ padding: '10px 14px' }}>
-                      {row.orderNumber ? <span className="badge badge-info">#{row.orderNumber}</span> : <span className="muted">-</span>}
+                    <td style={{ padding: '12px 14px', fontWeight: 700 }} className="tabular">{fmtNum(row.quantity)}</td>
+                    <td style={{ padding: '12px 14px' }}>{row.itemUnit}</td>
+                    <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--danger)' }}>{row.totalCost > 0 ? fmtCurrency(row.totalCost) : '-'}</td>
+                    <td style={{ padding: '12px 14px' }}>
+                      {row.orderNumber ? <span className="pill" style={{ background: 'var(--matcha-50)', color: 'var(--matcha-700)', border: 'none', fontWeight: 600, fontSize: 11 }}>#{row.orderNumber}</span> : <span className="muted">-</span>}
                     </td>
                   </tr>
                 ))}
@@ -2668,52 +3068,52 @@ export const PageSOPMaterialUsage = () => {
       {tab === 'summary' && (
         <div>
           {summaryLoading ? (
-            <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>กำลังโหลด...</div>
+            <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>กำลังประมวลยอดรวมการใช้วัตถุดิบ...</div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
-                <div className="card" style={{ padding: 16 }}>
-                  <div className="muted" style={{ fontSize: 12 }}>ต้นทุนวัตถุดิบรวม</div>
-                  <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--danger)' }}>{fmtCurrency(usageSummary?.totalCost ?? 0)}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }}>
+                <div className="card" style={{ padding: 18, border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+                  <div className="muted" style={{ fontSize: 12, fontWeight: 600 }}>ยอดใช้จ่ายวัตถุดิบสุทธิ</div>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--danger)', marginTop: 4 }}>{fmtCurrency(usageSummary?.totalCost ?? 0)}</div>
                 </div>
-                <div className="card" style={{ padding: 16 }}>
-                  <div className="muted" style={{ fontSize: 12 }}>จำนวน Orders</div>
-                  <div style={{ fontSize: 22, fontWeight: 600 }}>{usageSummary?.totalOrders ?? 0}</div>
+                <div className="card" style={{ padding: 18, border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+                  <div className="muted" style={{ fontSize: 12, fontWeight: 600 }}>ยอดจำหน่ายรวมเครื่องดื่ม</div>
+                  <div style={{ fontSize: 26, fontWeight: 800, marginTop: 4 }}>{usageSummary?.totalOrders ?? 0} ออเดอร์</div>
                 </div>
-                <div className="card" style={{ padding: 16 }}>
-                  <div className="muted" style={{ fontSize: 12 }}>วัตถุดิบที่ใช้</div>
-                  <div style={{ fontSize: 22, fontWeight: 600 }}>{usageSummary?.items?.length ?? 0} รายการ</div>
+                <div className="card" style={{ padding: 18, border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
+                  <div className="muted" style={{ fontSize: 12, fontWeight: 600 }}>ชนิดส่วนผสมที่ตัดสต็อกออก</div>
+                  <div style={{ fontSize: 26, fontWeight: 800, marginTop: 4 }}>{usageSummary?.items?.length ?? 0} รายการ</div>
                 </div>
               </div>
-              <div className="card" style={{ overflow: 'hidden' }}>
+              <div className="card" style={{ overflow: 'hidden', border: '1px solid var(--border-default)', background: 'var(--bg-surface)', borderRadius: 'var(--r-lg)' }}>
                 {(usageSummary?.items ?? []).length === 0 ? (
-                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>ไม่มีข้อมูลในช่วงเวลานี้</div>
+                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>ไม่มีข้อมูลสรุปในช่วงเวลานี้</div>
                 ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
                     <thead>
-                      <tr style={{ background: 'var(--bg-muted)' }}>
-                        {['วัตถุดิบ', 'ใช้ไปทั้งหมด', 'หน่วย', 'ต้นทุนรวม', 'ราคา/หน่วย', 'สต็อกคงเหลือ', 'สถานะ'].map((h) => (
-                          <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>{h}</th>
+                      <tr style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border-default)' }}>
+                        {['ชื่อวัตถุดิบในร้าน', 'ปริมาณใช้รวม', 'หน่วย', 'มูลค่าทุนรวม', 'ทุนต่อหน่วย', 'สต็อกเหลือในร้าน', 'สถานะความเสี่ยง'].map((h) => (
+                          <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {(usageSummary?.items ?? []).map((row) => {
-                        const status = row.currentStock <= 0 ? 'หมด' : row.currentStock < 50 ? 'ใกล้หมด' : 'ปกติ';
+                        const status = row.currentStock <= 0 ? 'หมดสต็อก' : row.currentStock < 50 ? 'ใกล้หมด' : 'พร้อมบริการ';
                         const statusColor = row.currentStock <= 0 ? 'var(--danger)' : row.currentStock < 50 ? 'var(--warning)' : 'var(--matcha-700)';
                         return (
-                          <tr key={row.inventoryItemId} style={{ borderTop: '1px solid var(--border-default)' }}>
-                            <td style={{ padding: '10px 14px', fontWeight: 500 }}>
+                          <tr key={row.inventoryItemId} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 150ms' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                            <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-primary)' }}>
                               {row.name}
-                              {row.nameThai && <span className="muted" style={{ marginLeft: 6, fontSize: 11 }}>({row.nameThai})</span>}
+                              {row.nameThai && <span className="muted" style={{ marginLeft: 6, fontSize: 11, fontWeight: 400 }}>({row.nameThai})</span>}
                             </td>
-                            <td style={{ padding: '10px 14px' }}>{fmtNum(row.totalUsed)}</td>
-                            <td style={{ padding: '10px 14px' }}>{row.unitOfMeasure}</td>
-                            <td style={{ padding: '10px 14px', fontWeight: 500 }}>{fmtCurrency(row.totalCost)}</td>
-                            <td style={{ padding: '10px 14px' }}>{fmtCurrency(row.costPerUnit)}</td>
-                            <td style={{ padding: '10px 14px' }}>{fmtNum(row.currentStock)} {row.unitOfMeasure}</td>
-                            <td style={{ padding: '10px 14px' }}>
-                              <span style={{ fontSize: 11, fontWeight: 600, color: statusColor, background: statusColor + '15', padding: '2px 8px', borderRadius: 4 }}>
+                            <td style={{ padding: '12px 14px', fontWeight: 700 }} className="tabular">{fmtNum(row.totalUsed)}</td>
+                            <td style={{ padding: '12px 14px' }}>{row.unitOfMeasure}</td>
+                            <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--danger)' }}>{fmtCurrency(row.totalCost)}</td>
+                            <td style={{ padding: '12px 14px' }}>{fmtCurrency(row.costPerUnit)}</td>
+                            <td style={{ padding: '12px 14px', fontWeight: 600 }}>{fmtNum(row.currentStock)} {row.unitOfMeasure}</td>
+                            <td style={{ padding: '12px 14px' }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: statusColor, background: statusColor + '12', padding: '3px 10px', borderRadius: 99, display: 'inline-block' }}>
                                 {status}
                               </span>
                             </td>

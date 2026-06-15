@@ -5,7 +5,8 @@ import { getDb } from "../db";
 import {
   posOrders, posOrderItems, posOrderItemOptions, posOrderPayments,
   posMenuItems, posCategories, posBranchInventoryStock,
-  posInventoryItems, auditLogs,
+  posInventoryItems, auditLogs, posOrderRecipeSnapshots,
+  posRecipeIngredients, posExpenseReceipts,
 } from "../../drizzle/schema";
 import { router, staffProcedure, staffAdminProcedure } from "../_core/trpc";
 
@@ -239,45 +240,56 @@ export const reportsRouter = router({
       );
       const revenue = completedOrders.reduce((sum, o) => sum + Number(o.totalAmount ?? 0), 0);
 
-      // COGS from inventory movements (type: sold)
-      const { posInventoryMovements, posInventoryItems: posInvItems, posExpenseReceipts } = await import("../../drizzle/schema");
-      let movements = await db.select().from(posInventoryMovements);
-      if (branchId) movements = movements.filter((m) => m.branchId === branchId);
-      const soldMovements = movements.filter((m) =>
-        m.createdAt && m.createdAt >= from && m.createdAt <= to &&
-        m.movementType === "sold"
-      );
-      // Estimate COGS from movements (qty × cost per unit)
-      const inventoryItems = await db.select({ id: posInvItems.id, costPerUnit: posInvItems.costPerUnit }).from(posInvItems);
-      const costMap = new Map(inventoryItems.map((i) => [i.id, Number(i.costPerUnit ?? 0)]));
-      let cogsCost = soldMovements.reduce((sum, m) => {
-        const qty = Math.abs(Number(m.quantity ?? 0));
-        const cost = Number(m.costPerUnit ?? 0) || costMap.get(m.inventoryItemId) || 0;
-        return sum + qty * cost;
-      }, 0);
-
-      // Add options cost from completed orders in date range
+      // Calculate COGS using posOrderRecipeSnapshots with backward compatibility fallback
+      let cogsCost = 0;
       const completedOrderIds = completedOrders.map((o) => o.id);
       if (completedOrderIds.length > 0) {
-        const orderItems = await db.select({ id: posOrderItems.id, quantity: posOrderItems.quantity })
+        const orderItems = await db.select({ id: posOrderItems.id, menuItemId: posOrderItems.menuItemId, quantity: posOrderItems.quantity })
           .from(posOrderItems)
           .where(inArray(posOrderItems.orderId, completedOrderIds));
 
         if (orderItems.length > 0) {
           const orderItemIds = orderItems.map((oi) => oi.id);
-          const orderItemQtyMap = new Map(orderItems.map((oi) => [oi.id, oi.quantity ?? 1]));
+
+          // Load snapshots
+          const snapshots = await db.select({ orderItemId: posOrderRecipeSnapshots.orderItemId, totalCostSnapshot: posOrderRecipeSnapshots.totalCostSnapshot })
+            .from(posOrderRecipeSnapshots)
+            .where(inArray(posOrderRecipeSnapshots.orderItemId, orderItemIds));
+
+          const snapshotCostMap = new Map<number, number>();
+          for (const snap of snapshots) {
+            const current = snapshotCostMap.get(snap.orderItemId) ?? 0;
+            snapshotCostMap.set(snap.orderItemId, current + Number(snap.totalCostSnapshot ?? 0));
+          }
+
+          // Load fallback data for old items (base recipes + option cost adjustments)
+          const menuIds = Array.from(new Set(orderItems.map(oi => oi.menuItemId).filter((id): id is number => id !== null)));
+          const baseRecipes = menuIds.length > 0 ? await db.select().from(posRecipeIngredients).where(inArray(posRecipeIngredients.menuItemId, menuIds)) : [];
+          const inventoryItems = await db.select({ id: posInventoryItems.id, costPerUnit: posInventoryItems.costPerUnit }).from(posInventoryItems);
+          const itemCostMap = new Map(inventoryItems.map((i) => [i.id, Number(i.costPerUnit ?? 0)]));
 
           const itemOptions = await db.select({ orderItemId: posOrderItemOptions.orderItemId, costAdjustment: posOrderItemOptions.costAdjustment })
             .from(posOrderItemOptions)
             .where(inArray(posOrderItemOptions.orderItemId, orderItemIds));
 
-          const optionsCost = itemOptions.reduce((sum, opt) => {
-            const qty = orderItemQtyMap.get(opt.orderItemId) ?? 1;
-            const cost = Number(opt.costAdjustment ?? 0);
-            return sum + (qty * cost);
-          }, 0);
+          const optionsCostMap = new Map<number, number>();
+          for (const opt of itemOptions) {
+            const current = optionsCostMap.get(opt.orderItemId) ?? 0;
+            optionsCostMap.set(opt.orderItemId, current + Number(opt.costAdjustment ?? 0));
+          }
 
-          cogsCost += optionsCost;
+          for (const oi of orderItems) {
+            if (snapshotCostMap.has(oi.id)) {
+              cogsCost += snapshotCostMap.get(oi.id)!;
+            } else {
+              // Fallback calculation for old order item
+              const qty = Number(oi.quantity ?? 1);
+              const recipeItems = baseRecipes.filter(r => r.menuItemId === oi.menuItemId);
+              const recipeCost = recipeItems.reduce((sum, r) => sum + Number(r.quantity ?? 0) * (itemCostMap.get(r.inventoryItemId) ?? 0), 0);
+              const optCost = optionsCostMap.get(oi.id) ?? 0;
+              cogsCost += qty * (recipeCost + optCost);
+            }
+          }
         }
       }
 

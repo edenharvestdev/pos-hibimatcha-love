@@ -141,6 +141,20 @@
       "when": 1781174727001,
       "tag": "0019_cute_mister_fear",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1781177849077,
+      "tag": "0020_good_joystick",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1781178842554,
+      "tag": "0021_fine_cerise",
+      "breakpoints": true
     }
   ]
 }

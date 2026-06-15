@@ -93,6 +93,7 @@ export const optionsRouter = router({
       nameThai: z.string().optional(),
       priceAdjustment: z.string().optional(),
       costAdjustment: z.string().optional(),
+      stockEffects: z.any().optional(),
       sortOrder: z.number().int().optional(),
       isDefault: z.boolean().optional(),
     }))
@@ -112,6 +113,7 @@ export const optionsRouter = router({
       nameThai: z.string().optional(),
       priceAdjustment: z.string().optional(),
       costAdjustment: z.string().optional(),
+      stockEffects: z.any().optional(),
       sortOrder: z.number().int().optional(),
       isDefault: z.boolean().optional(),
       isActive: z.boolean().optional(),

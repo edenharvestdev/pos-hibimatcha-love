@@ -1,0 +1,10 @@
+[
+  {
+    "id": "150001",
+    "name": "Hibi House",
+    "province": null,
+    "isActive": true,
+    "locationType": "warehouse",
+    "branchCode": "0000"
+  }
+]

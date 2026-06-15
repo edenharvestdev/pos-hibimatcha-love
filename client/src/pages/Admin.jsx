@@ -3,7 +3,7 @@
 // ============================================
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { EmptyShelf,IconBowl,IconBox,IconCake,IconCheck,IconCopy,IconCupHot,IconCupIced,IconEdit,IconExport,IconImport,IconLeaf,IconMore,IconMoreV,IconPayment,IconPlus,IconShare,IconTrash,IconUser,IconWhisk,IconX } from "@/icons";
+import { EmptyShelf,IconBowl,IconBox,IconCake,IconCheck,IconCopy,IconCupHot,IconCupIced,IconEdit,IconExport,IconImport,IconLeaf,IconMore,IconMoreV,IconPayment,IconPlus,IconShare,IconTrash,IconUser,IconWhisk,IconX,IconInventory } from "@/icons";
 import { useApp, Drawer,Field,Select,Toggle,Checkbox,Tabs,TopActionBar,BulkActionBar,EmptyState,StatCard,Avatar } from "@/components";
 import { trpc } from "@/lib/trpc";
 import { getSession } from "@/lib/authStore";
@@ -12,6 +12,7 @@ import { DistributeDrawer } from "@/components/DistributeDrawer";
 import { StaffDetailDrawer } from "@/components/StaffDetailDrawer";
 import BulkInviteModal from "@/components/BulkInviteModal";
 import { ImageUploader } from "@/components/ImageUploader";
+import { OptionStockEffectsModal } from "@/components/OptionStockEffectsModal";
 
 const Stat = ({ label, value, color }) => (
   <div>
@@ -232,6 +233,7 @@ export const PageAdminMenu = () => {
         inventoryItemId: r.inventoryItemId,
         quantity: String(r.quantity),
         unitOfMeasure: r.unitOfMeasure,
+        role: r.role || '',
         notes: r.notes || '',
       })));
     }
@@ -288,6 +290,7 @@ export const PageAdminMenu = () => {
             inventoryItemId: Number(r.inventoryItemId),
             quantity: r.quantity,
             unitOfMeasure: r.unitOfMeasure || 'piece',
+            role: r.role || undefined,
             notes: r.notes || undefined,
           })),
         });
@@ -304,7 +307,7 @@ export const PageAdminMenu = () => {
     next.has(gid) ? next.delete(gid) : next.add(gid);
     return next;
   });
-  const addIngredient = () => setRecipeIngredients((r) => [...r, { inventoryItemId: '', quantity: '', unitOfMeasure: 'piece', notes: '' }]);
+  const addIngredient = () => setRecipeIngredients((r) => [...r, { inventoryItemId: '', quantity: '', unitOfMeasure: 'piece', role: '', notes: '' }]);
   const updateIngredient = (idx, patch) => setRecipeIngredients((r) => r.map((it, i) => i === idx ? { ...it, ...patch } : it));
   const removeIngredient = (idx) => setRecipeIngredients((r) => r.filter((_, i) => i !== idx));
 
@@ -598,7 +601,7 @@ export const PageAdminMenu = () => {
                     {recipeIngredients.length === 0 ? (
                       <div className="muted" style={{ textAlign: 'center', padding: 16, fontSize: 13 }}>No ingredients yet.</div>
                     ) : recipeIngredients.map((ing, i) => (
-                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 80px 100px 1fr 28px', gap: 8, padding: '6px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border-default)', alignItems: 'center' }}>
+                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 80px 100px 130px 1fr 28px', gap: 8, padding: '6px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border-default)', alignItems: 'center' }}>
                         <select className="input" value={ing.inventoryItemId} onChange={(e) => updateIngredient(i, { inventoryItemId: e.target.value })}>
                           <option value="">— Pick ingredient —</option>
                           {inventoryItems.map((iv) => <option key={iv.id} value={iv.id}>{iv.name}{iv.itemCode ? ` (${iv.itemCode})` : ''}</option>)}
@@ -606,6 +609,10 @@ export const PageAdminMenu = () => {
                         <input className="input" type="number" step="0.01" value={ing.quantity} onChange={(e) => updateIngredient(i, { quantity: e.target.value })} placeholder="Qty"/>
                         <select className="input" value={ing.unitOfMeasure} onChange={(e) => updateIngredient(i, { unitOfMeasure: e.target.value })}>
                           {['g', 'kg', 'ml', 'l', 'piece', 'pack', 'box', 'bottle', 'can', 'bag'].map((u) => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                        <select className="input" value={ing.role || ''} onChange={(e) => updateIngredient(i, { role: e.target.value })}>
+                          <option value="">— No role —</option>
+                          {['MILK', 'SWEETENER', 'MATCHA', 'ICE', 'CUP', 'LID', 'STRAW', 'PACKAGING', 'TOPPING'].map((r) => <option key={r} value={r}>{r}</option>)}
                         </select>
                         <input className="input" value={ing.notes} onChange={(e) => updateIngredient(i, { notes: e.target.value })} placeholder="Notes…"/>
                         <button className="btn btn-ghost btn-icon" style={{ width: 24, height: 24 }} onClick={() => removeIngredient(i)}><IconX size={12}/></button>
@@ -767,6 +774,8 @@ export const PageAdminOptions = () => {
   const [newGroupOpen, setNewGroupOpen] = useState(false);
   const [newGroupForm, setNewGroupForm] = useState({ name: '', nameThai: '', selectionType: 'single', isRequired: false });
   const [newOption, setNewOption] = useState({ name: '', priceAdjustment: '0', costAdjustment: '0' });
+  const [effectsModalOpen, setEffectsModalOpen] = useState(false);
+  const [selectedOptionForEffects, setSelectedOptionForEffects] = useState(null);
 
   useEffect(() => {
     if (groups.length > 0 && !activeId) setActiveId(groups[0].id);
@@ -797,6 +806,14 @@ export const PageAdminOptions = () => {
   const deleteOption = trpc.options.deleteOption.useMutation({
     onSuccess: () => { refetchGroup(); refetchGroups(); },
   });
+
+  const handleSaveStockEffects = (effects) => {
+    if (selectedOptionForEffects) {
+      updateOption.mutate({ id: selectedOptionForEffects.id, stockEffects: effects });
+    }
+    setEffectsModalOpen(false);
+    setSelectedOptionForEffects(null);
+  };
 
   const typeLabel = (t) => ({ single: 'Single', multi: 'Multi', quantity: 'Quantity' }[t] || t);
 
@@ -881,11 +898,12 @@ export const PageAdminOptions = () => {
               </div>
 
               <div className="t-caption" style={{ marginBottom: 8 }}>{lang === 'th' ? 'รายการตัวเลือก' : 'Options'}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '20px 1fr 120px 120px 80px 28px', gap: 12, marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid var(--border-default)', color: 'var(--text-tertiary)', fontSize: 12, fontWeight: 500 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '20px 1fr 100px 100px 80px 80px 28px', gap: 12, marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid var(--border-default)', color: 'var(--text-tertiary)', fontSize: 12, fontWeight: 500 }}>
                 <div></div>
                 <div>{lang === 'th' ? 'ชื่อตัวเลือก' : 'Option Name'}</div>
                 <div>{lang === 'th' ? 'ราคาเพิ่ม' : 'Price Adj.'}</div>
                 <div>{lang === 'th' ? 'ต้นทุน' : 'Cost'}</div>
+                <div style={{ textAlign: 'center' }}>{lang === 'th' ? 'ผลสต๊อก' : 'Stock'}</div>
                 <div>{lang === 'th' ? 'ใช้งาน' : 'Active'}</div>
                 <div></div>
               </div>
@@ -895,7 +913,7 @@ export const PageAdminOptions = () => {
                   <div className="muted" style={{ fontSize: 13, padding: '12px 0' }}>{lang === 'th' ? 'ไม่มีตัวเลือกในกลุ่มนี้ เพิ่มตัวเลือกด้านล่าง' : 'No options yet. Add one below.'}</div>
                 ) : (
                   (activeGroup.options ?? []).map((opt, i) => (
-                    <div key={opt.id} style={{ display: 'grid', gridTemplateColumns: '20px 1fr 120px 120px 80px 28px', gap: 12, padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border-default)', alignItems: 'center' }}>
+                    <div key={opt.id} style={{ display: 'grid', gridTemplateColumns: '20px 1fr 100px 100px 80px 80px 28px', gap: 12, padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--border-default)', alignItems: 'center' }}>
                       <span style={{ cursor: 'grab', color: 'var(--text-quaternary)' }}>::</span>
                       <input
                         className="input"
@@ -932,6 +950,40 @@ export const PageAdminOptions = () => {
                           }}
                         />
                       </div>
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <button
+                          className="btn btn-ghost btn-icon"
+                          style={{
+                            width: 32,
+                            height: 32,
+                            position: 'relative',
+                            color: opt.stockEffects && Array.isArray(opt.stockEffects) && opt.stockEffects.length > 0 ? 'var(--matcha-600)' : 'var(--text-tertiary)'
+                          }}
+                          onClick={() => {
+                            setSelectedOptionForEffects(opt);
+                            setEffectsModalOpen(true);
+                          }}
+                          title={lang === 'th' ? 'ตั้งค่าผลต่อสต๊อก' : 'Stock Effects'}
+                        >
+                          <IconInventory size={16} />
+                          {opt.stockEffects && Array.isArray(opt.stockEffects) && opt.stockEffects.length > 0 && (
+                            <span style={{
+                              position: 'absolute',
+                              top: -2,
+                              right: -2,
+                              fontSize: 9,
+                              fontWeight: 'bold',
+                              padding: '2px 4px',
+                              background: 'var(--matcha-500)',
+                              color: 'white',
+                              borderRadius: 10,
+                              lineHeight: 1
+                            }}>
+                              {opt.stockEffects.length}
+                            </span>
+                          )}
+                        </button>
+                      </div>
                       <Toggle
                         checked={!!opt.isActive}
                         onChange={(v) => updateOption.mutate({ id: opt.id, isActive: v })}
@@ -948,7 +1000,7 @@ export const PageAdminOptions = () => {
                 )}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px auto', gap: 8, marginTop: 14, alignItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 100px 80px 80px auto', gap: 8, marginTop: 14, alignItems: 'center' }}>
                 <input
                   className="input"
                   placeholder={lang === 'th' ? 'ชื่อตัวเลือกใหม่' : 'New option name'}
@@ -976,6 +1028,8 @@ export const PageAdminOptions = () => {
                     style={{ paddingLeft: 24 }}
                   />
                 </div>
+                <div></div>
+                <div></div>
                 <button
                   className="btn btn-primary btn-sm"
                   onClick={() => {
@@ -1035,6 +1089,13 @@ export const PageAdminOptions = () => {
           <Toggle checked={newGroupForm.isRequired} onChange={(v) => setNewGroupForm({ ...newGroupForm, isRequired: v })} label="Customer must select an option"/>
         </Field>
       </Drawer>
+
+      <OptionStockEffectsModal
+        isOpen={effectsModalOpen}
+        onClose={() => setEffectsModalOpen(false)}
+        option={selectedOptionForEffects}
+        onSave={handleSaveStockEffects}
+      />
 
       <style>{`@media (max-width: 900px) { .opt-grid { grid-template-columns: 1fr !important; } }`}</style>
     </div>
@@ -1689,19 +1750,21 @@ const LinkedMenusSection = ({ optionGroupId }) => {
       </div>
 
       {linkedMenus.length > 0 ? (
-        <div className="table-wrap" style={{ maxHeight: 240, overflowY: 'auto' }}>
-          <table className="table table-sm">
+        <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid var(--border-default)', borderRadius: 'var(--r-default)', background: 'var(--bg-surface)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr>
-                <th style={{ width: 140 }}>หมวดหมู่</th>
-                <th>ชื่อเมนู</th>
+              <tr style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--bg-muted)', position: 'sticky', top: 0, zIndex: 1 }}>
+                <th style={{ width: 160, padding: '10px 12px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>หมวดหมู่</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>ชื่อเมนู</th>
               </tr>
             </thead>
             <tbody>
               {linkedMenus.map((m) => (
-                <tr key={m.menuItemId}>
-                  <td className="muted">{m.categoryName || '—'}</td>
-                  <td>{m.menuItemSku ? `${m.menuItemSku} - ` : ''}{m.menuItemName}</td>
+                <tr key={m.menuItemId} style={{ borderBottom: '1px solid var(--border-default)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                  <td style={{ padding: '10px 12px', color: 'var(--text-secondary)' }}>{m.categoryName || '—'}</td>
+                  <td style={{ padding: '10px 12px', fontWeight: 500 }}>{m.menuItemSku ? `${m.menuItemSku} - ` : ''}{m.menuItemName}</td>
                 </tr>
               ))}
             </tbody>

@@ -398,7 +398,7 @@ export const printingRouter = router({
       }
 
       let qrDataUrl: string | undefined;
-      const isPaid = payments.some((p: any) => p.status === "completed") || data.orderData.paidAmount >= data.orderData.totalAmount;
+      const isPaid = payments.some((p: any) => p.status === "completed") || (data.orderData.paidAmount ?? 0) >= data.orderData.totalAmount;
       if (data.settings.promptpayId && data.orderData.totalAmount > 0 && !isPaid) {
         qrDataUrl = await generatePromptPayQRDataUrl(data.settings.promptpayId, data.orderData.totalAmount);
       }
@@ -548,7 +548,7 @@ export const printingRouter = router({
           }
 
           let qrDataUrl: string | undefined;
-          const isPaid = payments.some((p: any) => p.status === "completed") || data.orderData.paidAmount >= data.orderData.totalAmount;
+          const isPaid = payments.some((p: any) => p.status === "completed") || (data.orderData.paidAmount ?? 0) >= data.orderData.totalAmount;
           if (data.settings.promptpayId && data.orderData.totalAmount > 0 && !isPaid) {
             qrDataUrl = await generatePromptPayQRDataUrl(data.settings.promptpayId, data.orderData.totalAmount);
           }

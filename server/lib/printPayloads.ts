@@ -336,6 +336,8 @@ export function generateReceiptHTML(
     ? order.branchName
     : `Hibi Matcha Cafe ${order.branchName}`;
 
+    const subtotalExcludingVat = order.totalAmount - order.taxAmount;
+
   return `<!DOCTYPE html><html><head><meta charset="utf-8">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -381,7 +383,7 @@ export function generateReceiptHTML(
 </style></head><body>
 
   <div class="center h1" style="font-size: 20px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 6px;">
-    ${paymentMethod ? "ใบเสร็จรับเงิน (Receipt)" : "ใบแจ้งยอดชำระ (Bill/Invoice)"}
+    ใบเสร็จ
   </div>
 
   ${settings.receiptHeaderImage
@@ -448,15 +450,15 @@ export function generateReceiptHTML(
   <table class="totals">
     <tr>
       <td class="tl">ยอดรวมส่วนลด</td>
-      <td class="tr">${order.discountAmount > 0 ? order.discountAmount.toFixed(2) : ""}</td>
+      <td class="tr">${order.discountAmount > 0 ? order.discountAmount.toFixed(2) : "0.00"}</td>
     </tr>
     <tr>
       <td class="tl">ปัดเศษ</td>
-      <td class="tr">${roundingAmt !== 0 ? roundingAmt.toFixed(2) : ""}</td>
+      <td class="tr">${roundingAmt !== 0 ? roundingAmt.toFixed(2) : "0.00"}</td>
     </tr>
     <tr>
       <td class="tl">ยอดรวม</td>
-      <td class="tr">${order.subtotal.toFixed(2)}</td>
+      <td class="tr">${subtotalExcludingVat.toFixed(2)}</td>
     </tr>
     <tr>
       <td class="tl">ภาษีมูลค่าเพิ่ม (7%)</td>
@@ -470,18 +472,14 @@ export function generateReceiptHTML(
 
   <div class="line"></div>
 
-  <div class="meta">ประเภทการชำระเงิน</div>
+  <div class="meta" style="margin-top: 6px; font-weight: bold;">ประเภทการชำระเงิน</div>
   <table class="pay-table">
     <tr>
       <td class="tl">${payMethodName}</td>
-      <td class="tr">${payMethodName}</td>
+      <td class="tr">${paidAmt.toFixed(2)}</td>
     </tr>
     <tr style="border-top: 1px solid #000;" class="bold-row">
       <td class="tl pay-label">ยอดชำระ</td>
-      <td class="tr">${paidAmt.toFixed(2)}</td>
-    </tr>
-    <tr class="bold-row">
-      <td></td>
       <td class="tr">${order.totalAmount.toFixed(2)}</td>
     </tr>
   </table>

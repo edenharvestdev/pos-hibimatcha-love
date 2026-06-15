@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import QRCode from "qrcode";
-import { EmptyCart,IconBookmark,IconBowl,IconBox,IconBrand,IconCake,IconCards,IconCheck,IconChevLeft,IconChevRight,IconClock,IconCoin,IconCupHot,IconCupIced,IconDiscount,IconEdit,IconExport,IconEye,IconGrid,IconHeart,IconImport,IconLeaf,IconList,IconMore,IconMoreV,IconLogout,IconPlus,IconPrint,IconQR,IconReceipt,IconRefresh,IconSettings,IconShare,IconTrash,IconWallet,IconWhisk } from "@/icons";
+import { EmptyCart,IconBookmark,IconBowl,IconBox,IconBrand,IconCake,IconCards,IconCheck,IconChevLeft,IconChevRight,IconClock,IconCoin,IconCupHot,IconCupIced,IconDiscount,IconEdit,IconExport,IconEye,IconGrid,IconHeart,IconImport,IconLeaf,IconList,IconMore,IconMoreV,IconLogout,IconPlus,IconPrint,IconQR,IconReceipt,IconRefresh,IconSettings,IconShare,IconTrash,IconWallet,IconWhisk,IconInfo,IconSearch } from "@/icons";
 import { useApp,Drawer,Field,Select,Toggle,Checkbox,SearchInput,TopActionBar,BulkActionBar,Placeholder,CountUp,Modal } from "@/components";
 import { Numpad } from "@/components/Numpad";
 import { Logo } from "@/components/Shell";
@@ -102,6 +102,8 @@ export const PagePOS = () => {
   const [orderType, setOrderType] = useState('Dine-in');
   const [discount, setDiscount] = useState(null); // { type: 'percent'|'fixed', value: number, label: string }
   const [discountOpen, setDiscountOpen] = useState(false);
+  const [showSopLibraryDrawer, setShowSopLibraryDrawer] = useState(false);
+  const [sopPreviewId, setSopPreviewId] = useState(null);
 
   // CRM member points states
   const [member, setMember] = useState(null);
@@ -319,7 +321,7 @@ export const PagePOS = () => {
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost btn-sm hide-on-sunmi" onClick={() => navigate('/pos/kitchen')} title={t('pos.kitchen')}><IconClock size={16}/> {t('pos.kitchen')}</motion.button>
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost btn-sm hide-on-sunmi" onClick={() => navigate('/pos/orders')} title={t('pos.orders')}><IconReceipt size={16}/> {t('pos.orders')}</motion.button>
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost btn-sm hide-on-sunmi" onClick={() => navigate('/pos/delivery')} title={t('pos.delivery')}><IconBox size={16}/> {t('pos.delivery')}</motion.button>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost btn-sm hide-on-sunmi" onClick={() => navigate('/sop')} title={t('pos.sop')}><IconBookmark size={16}/> {t('pos.sop')}</motion.button>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-ghost btn-sm hide-on-sunmi" onClick={() => setShowSopLibraryDrawer(true)} title={t('pos.sop')}><IconBookmark size={16}/> {t('pos.sop')}</motion.button>
           {(session?.role === 'super_admin' || session?.role === 'staff_admin') && (
             <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-secondary btn-sm hide-on-sunmi" onClick={() => navigate('/backoffice/menu')} title={t('nav.menu')}><IconPlus size={16}/> {t('nav.menu')}</motion.button>
           )}
@@ -461,6 +463,23 @@ export const PagePOS = () => {
         onClose={() => { setOptionFor(null); setEditingCartIdx(null); }} 
         onAdd={confirmAddItem}
         editingItem={editingCartIdx !== null ? cart[editingCartIdx] : null}
+        onPreviewSop={(id) => setSopPreviewId(id)}
+      />
+
+      {/* SOP Library Drawer */}
+      <SopLibraryDrawer
+        open={showSopLibraryDrawer}
+        onClose={() => setShowSopLibraryDrawer(false)}
+        onSelectSop={(id) => {
+          setSopPreviewId(id);
+        }}
+      />
+
+      {/* Standalone SOP Preview Drawer */}
+      <SopPreviewDrawer
+        sopId={sopPreviewId}
+        open={!!sopPreviewId}
+        onClose={() => setSopPreviewId(null)}
       />
 
       {/* Connection status */}
@@ -1519,7 +1538,178 @@ const DiscountDrawer = ({ open, onClose, sub, onApply, branchId }) => {
   );
 };
 
-const OptionSheet = ({ item, onClose, onAdd, editingItem = null }) => {
+const SopPreviewDrawer = ({ sopId, open, onClose }) => {
+  const { data: sop, isLoading } = trpc.sop.getById.useQuery(
+    { id: sopId ?? 0 },
+    { enabled: open && !!sopId }
+  );
+
+  const getYoutubeEmbedUrl = (url) => {
+    if (!url) return null;
+    try {
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      const match = url.match(regExp);
+      if (match && match[2].length === 11) {
+        return `https://www.youtube.com/embed/${match[2]}`;
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      title={sop?.title || "วิธีชง / Recipe Guide"}
+      subtitle={sop?.subtitle || "คู่มือขั้นตอนการชง / Recipe Step-by-Step"}
+      width={460}
+      footer={
+        <button className="btn btn-primary" onClick={onClose} style={{ height: 44, width: '100%' }}>
+          เข้าใจแล้ว (Close Guide)
+        </button>
+      }
+    >
+      {isLoading && <div className="muted center" style={{ padding: 40, textAlign: 'center' }}>กำลังโหลดสูตร...</div>}
+      {!isLoading && !sop && <div className="muted center" style={{ padding: 40, textAlign: 'center' }}>ไม่พบข้อมูลสูตร</div>}
+      {!isLoading && sop && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {sop.coverImageUrl && (
+            <img src={sop.coverImageUrl} alt={sop.title} style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 'var(--r-md)' }} />
+          )}
+
+          {sop.videoUrl && (
+            <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-default)', background: 'black' }}>
+              {(() => {
+                const ytUrl = getYoutubeEmbedUrl(sop.videoUrl);
+                if (ytUrl) {
+                  return (
+                    <iframe
+                      width="100%"
+                      height="220"
+                      src={ytUrl}
+                      title="SOP Video"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      style={{ display: 'block' }}
+                    />
+                  );
+                }
+                return (
+                  <video src={sop.videoUrl} controls style={{ width: '100%', display: 'block', maxHeight: 220 }} />
+                );
+              })()}
+            </div>
+          )}
+
+          <div className="sop-body-content" style={{ fontSize: 14, lineHeight: 1.6 }}>
+            {(() => {
+              const c = sop.content;
+              if (!c) return <p className="muted italic">ไม่มีรายละเอียดขั้นตอน</p>;
+              if (typeof c === 'string') {
+                return <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>{c}</div>;
+              }
+              if (Array.isArray(c)) {
+                return c.map((block, i) => (
+                  <div key={i} style={{ marginBottom: 12 }}>
+                    {block.type === 'heading' && <h3 style={{ fontSize: 15, fontWeight: 600, margin: '16px 0 8px', color: 'var(--matcha-800)' }}>{block.text}</h3>}
+                    {block.type === 'paragraph' && <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{block.text}</p>}
+                    {block.type === 'list' && block.items && (
+                      <ul style={{ paddingLeft: 20, color: 'var(--text-secondary)', fontSize: 13 }}>
+                        {block.items.map((it, j) => <li key={j} style={{ marginBottom: 4 }}>{it}</li>)}
+                      </ul>
+                    )}
+                    {block.type === 'callout' && (
+                      <div style={{ background: 'var(--matcha-50)', border: '1px solid var(--matcha-200)', borderRadius: 'var(--r-md)', padding: 12, margin: '8px 0', fontSize: 13, color: 'var(--matcha-900)', display: 'flex', gap: 8 }}>
+                        <IconInfo size={16} style={{ color: 'var(--matcha-600)', flex: 'none', marginTop: 2 }} />
+                        <div>{block.text}</div>
+                      </div>
+                    )}
+                  </div>
+                ));
+              }
+              return null;
+            })()}
+          </div>
+        </div>
+      )}
+    </Drawer>
+  );
+};
+
+const SopLibraryDrawer = ({ open, onClose, onSelectSop }) => {
+  const [search, setSearch] = useState('');
+  const { data: sops = [], isLoading } = trpc.sop.list.useQuery(
+    { search: search || undefined, status: 'published' },
+    { enabled: open }
+  );
+
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      title="คลังสูตรและวิธีปฏิบัติ (SOP Library)"
+      subtitle="ค้นหาสูตรเครื่องดื่มและขั้นตอนการเตรียมอุปกรณ์"
+      width={460}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
+        <div className="card" style={{ padding: '2px 12px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-muted)', borderRadius: 'var(--r-default)', border: '1px solid var(--border-default)' }}>
+          <IconSearch size={18} style={{ color: 'var(--text-tertiary)' }} />
+          <input
+            className="input"
+            placeholder="ค้นหาชื่อเมนู, สูตรชง, แท็ก..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ border: 'none', boxShadow: 'none', height: 38, fontSize: 14, flex: 1, background: 'transparent' }}
+          />
+        </div>
+
+        {isLoading ? (
+          <div className="muted center" style={{ textAlign: 'center', padding: 20 }}>กำลังโหลด...</div>
+        ) : sops.length === 0 ? (
+          <div className="muted center" style={{ textAlign: 'center', padding: 20 }}>ไม่พบข้อมูลสูตร</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', flex: 1 }}>
+            {sops.map((s) => (
+              <div
+                key={s.id}
+                onClick={() => onSelectSop(s.id)}
+                className="card"
+                style={{
+                  padding: '12px 16px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  transition: 'background 150ms, border-color 150ms',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--matcha-50)';
+                  e.currentTarget.style.borderColor = 'var(--matcha-300)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--bg-surface)';
+                  e.currentTarget.style.borderColor = 'var(--border-default)';
+                }}
+              >
+                <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--matcha-100)', display: 'grid', placeItems: 'center', color: 'var(--matcha-700)', flex: 'none' }}>
+                  <IconBookmark size={20} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.title}</div>
+                  {s.subtitle && <div className="muted" style={{ fontSize: 11, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.subtitle}</div>}
+                </div>
+                <IconChevRight size={16} style={{ color: 'var(--text-tertiary)', flex: 'none' }} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Drawer>
+  );
+};
+
+const OptionSheet = ({ item, onClose, onAdd, editingItem = null, onPreviewSop }) => {
   // selections: { [groupId]: optionId (single) | Set<optionId> (multi) | { [optionId]: number } (quantity) }
   const [selections, setSelections] = useState({});
   const [qty, setQty] = useState(1);
@@ -1529,6 +1719,234 @@ const OptionSheet = ({ item, onClose, onAdd, editingItem = null }) => {
     { id: item?.id },
     { enabled: !!item?.id, staleTime: 5000, refetchOnWindowFocus: true }
   );
+
+  const { branch } = useApp();
+  const branchId = branch?.id;
+
+  const { data: branchStock = [] } = trpc.inventory.listStock.useQuery(
+    { branchId: branchId ?? 0 },
+    { enabled: !!branchId && !!item?.id, staleTime: 10000, refetchOnWindowFocus: true }
+  );
+
+  const stockMap = useMemo(() => {
+    return new Map(branchStock.map(s => [s.inventoryItemId, s.availableStock]));
+  }, [branchStock]);
+
+  const getUnitCost = (itemId) => {
+    const stockItem = branchStock.find(s => s.inventoryItemId === itemId);
+    if (stockItem && stockItem.averageCost !== null && Number(stockItem.averageCost) > 0) {
+      return Number(stockItem.averageCost);
+    }
+    if (stockItem && stockItem.item && stockItem.item.costPerUnit !== null) {
+      return Number(stockItem.item.costPerUnit);
+    }
+    return 0;
+  };
+
+  const compileRecipe = (baseRecipe, selectedOptions) => {
+    let compiled = baseRecipe.map((r) => ({
+      inventoryItemId: Number(r.inventoryItemId),
+      quantity: Number(r.quantity ?? 0),
+      unit: r.unitOfMeasure || r.unit || 'pcs',
+      role: r.role || '',
+      itemName: r.itemName || '',
+    }));
+
+    const effects = [];
+    for (const item of selectedOptions) {
+      const opt = item.option;
+      const optQty = item.qty || 1;
+      if (opt.stockEffects && Array.isArray(opt.stockEffects)) {
+        for (const ef of opt.stockEffects) {
+          effects.push({
+            ...ef,
+            quantity: ef.quantity !== null && ef.quantity !== undefined && ef.quantity !== '' ? Number(ef.quantity) * optQty : null,
+            optQty: optQty,
+          });
+        }
+      }
+    }
+
+    // 3. Apply REPLACE
+    const replaceEffects = effects.filter(e => e.type === 'REPLACE');
+    for (const ef of replaceEffects) {
+      const idx = compiled.findIndex(r => 
+        (ef.targetRole && r.role === ef.targetRole) || 
+        (ef.targetInventoryItemId && r.inventoryItemId === ef.targetInventoryItemId)
+      );
+      if (idx !== -1) {
+        const original = compiled[idx];
+        const newQty = ef.quantity !== null && ef.quantity !== undefined ? ef.quantity : original.quantity;
+        compiled[idx] = {
+          inventoryItemId: Number(ef.inventoryItemId),
+          quantity: newQty,
+          unit: ef.unit || original.unit,
+          role: ef.role || original.role || '',
+        };
+      }
+    }
+
+    // 4. Apply REMOVE
+    const removeEffects = effects.filter(e => e.type === 'REMOVE');
+    for (const ef of removeEffects) {
+      compiled = compiled.filter(r => {
+        const matchRole = ef.targetRole && r.role === ef.targetRole;
+        const matchId = ef.targetInventoryItemId && r.inventoryItemId === ef.targetInventoryItemId;
+        return !(matchRole || matchId);
+      });
+    }
+
+    // 5. Apply SET_QUANTITY
+    const setQtyEffects = effects.filter(e => e.type === 'SET_QUANTITY');
+    for (const ef of setQtyEffects) {
+      compiled = compiled.map(r => {
+        const matchRole = ef.targetRole && r.role === ef.targetRole;
+        const matchId = ef.targetInventoryItemId && r.inventoryItemId === ef.targetInventoryItemId;
+        if (matchRole || matchId) {
+          return {
+            ...r,
+            quantity: ef.quantity !== null && ef.quantity !== undefined ? ef.quantity : r.quantity,
+            unit: ef.unit || r.unit,
+          };
+        }
+        return r;
+      });
+    }
+
+    // 6. Apply ADD
+    const addEffects = effects.filter(e => e.type === 'ADD');
+    for (const ef of addEffects) {
+      compiled.push({
+        inventoryItemId: Number(ef.inventoryItemId),
+        quantity: ef.quantity !== null && ef.quantity !== undefined ? ef.quantity : 1,
+        unit: ef.unit || 'pcs',
+        role: ef.role || '',
+      });
+    }
+
+    const grouped = {};
+    for (const r of compiled) {
+      const key = `${r.inventoryItemId}_${r.unit}`;
+      if (!grouped[key]) {
+        grouped[key] = { ...r };
+      } else {
+        grouped[key].quantity += r.quantity;
+      }
+    }
+
+    return Object.values(grouped);
+  };
+
+  const calculateDynamicCostAdjustment = (opt) => {
+    if (!opt.stockEffects || !Array.isArray(opt.stockEffects) || opt.stockEffects.length === 0) {
+      return Number(opt.costAdjustment ?? 0);
+    }
+
+    let calculatedCost = 0;
+    const baseRecipe = detail?.recipe ?? [];
+
+    for (const ef of opt.stockEffects) {
+      const efQty = ef.quantity !== null && ef.quantity !== undefined && ef.quantity !== '' ? Number(ef.quantity) : null;
+      if (ef.type === 'ADD' && ef.inventoryItemId) {
+        const cost = getUnitCost(ef.inventoryItemId);
+        calculatedCost += cost * (efQty ?? 1);
+      } 
+      else if (ef.type === 'REMOVE') {
+        const recipeItem = baseRecipe.find(r => 
+          (ef.targetRole && r.role === ef.targetRole) ||
+          (ef.targetInventoryItemId && r.inventoryItemId === ef.targetInventoryItemId)
+        );
+        if (recipeItem) {
+          const baseQty = Number(recipeItem.quantity ?? 0);
+          const cost = getUnitCost(recipeItem.inventoryItemId);
+          calculatedCost -= cost * baseQty;
+        }
+      } 
+      else if (ef.type === 'REPLACE' && ef.inventoryItemId) {
+        const recipeItem = baseRecipe.find(r => 
+          (ef.targetRole && r.role === ef.targetRole) ||
+          (ef.targetInventoryItemId && r.inventoryItemId === ef.targetInventoryItemId)
+        );
+        const baseQty = recipeItem ? Number(recipeItem.quantity ?? 0) : 0;
+        const replaceQty = efQty !== null ? efQty : baseQty;
+        
+        const targetCost = recipeItem ? getUnitCost(recipeItem.inventoryItemId) : 0;
+        const replacementCost = getUnitCost(ef.inventoryItemId);
+        
+        calculatedCost += (replacementCost * replaceQty) - (targetCost * baseQty);
+      } 
+      else if (ef.type === 'SET_QUANTITY') {
+        const recipeItem = baseRecipe.find(r => 
+          (ef.targetRole && r.role === ef.targetRole) ||
+          (ef.targetInventoryItemId && r.inventoryItemId === ef.targetInventoryItemId)
+        );
+        if (recipeItem) {
+          const baseQty = Number(recipeItem.quantity ?? 0);
+          const newQty = efQty ?? 0;
+          const cost = getUnitCost(recipeItem.inventoryItemId);
+          calculatedCost += cost * (newQty - baseQty);
+        }
+      }
+    }
+
+    return calculatedCost;
+  };
+
+  const isOptionOutOfStock = (opt) => {
+    const baseRecipe = detail?.recipe ?? [];
+    if (!baseRecipe || baseRecipe.length === 0) return false;
+
+    const simSelections = { ...selections };
+    const groupId = opt.groupId;
+    const group = groups.find(ig => ig.group?.id === groupId)?.group;
+    if (!group) return false;
+
+    if (group.selectionType === 'single') {
+      simSelections[groupId] = opt.id;
+    } else if (group.selectionType === 'multi') {
+      const next = new Set(selections[groupId] instanceof Set ? selections[groupId] : []);
+      next.add(opt.id);
+      simSelections[groupId] = next;
+    } else if (group.selectionType === 'quantity') {
+      const obj = { ...(selections[groupId] || {}) };
+      obj[opt.id] = (obj[opt.id] || 0) + 1;
+      simSelections[groupId] = obj;
+    }
+
+    const simSelectedOpts = [];
+    for (const ig of groups) {
+      const g = ig.group;
+      if (!g) continue;
+      const sel = simSelections[g.id];
+      const opts = ig.options ?? [];
+      if (g.selectionType === 'single' && sel != null) {
+        const o = opts.find((x) => x.id === sel);
+        if (o) simSelectedOpts.push({ option: o, qty: 1 });
+      } else if (g.selectionType === 'multi' && sel instanceof Set) {
+        for (const id of sel) {
+          const o = opts.find((x) => x.id === id);
+          if (o) simSelectedOpts.push({ option: o, qty: 1 });
+        }
+      } else if (g.selectionType === 'quantity' && sel && typeof sel === 'object') {
+        for (const [oid, n] of Object.entries(sel)) {
+          if (n > 0) {
+            const o = opts.find((x) => x.id === Number(oid));
+            if (o) simSelectedOpts.push({ option: o, qty: n });
+          }
+        }
+      }
+    }
+
+    const finalRecipe = compileRecipe(baseRecipe, simSelectedOpts);
+    for (const ing of finalRecipe) {
+      const available = stockMap.get(ing.inventoryItemId) ?? 0;
+      const required = ing.quantity * qty;
+      if (available < required) {
+        return true;
+      }
+    }
+    return false;
+  };
 
   useEffect(() => {
     if (item) {
@@ -1643,9 +2061,19 @@ const OptionSheet = ({ item, onClose, onAdd, editingItem = null }) => {
   });
 
   const onSubmit = () => {
-    const payload = selectedOpts.map((o) => ({ ...o, optionId: o.id, optionName: o.optionName }));
+    const payload = selectedOpts.map((o) => {
+      const costAdj = calculateDynamicCostAdjustment(o);
+      return {
+        ...o,
+        optionId: o.id,
+        optionName: o.optionName,
+        costAdjustment: String(costAdj)
+      };
+    });
     onAdd({ ...item, ...detail, basePrice, displayPrice: basePrice }, payload, qty, note);
   };
+
+
 
   return (
     <Drawer 
@@ -1688,7 +2116,7 @@ const OptionSheet = ({ item, onClose, onAdd, editingItem = null }) => {
 
       {detail?.sop && (
         <button
-          onClick={() => { window.location.hash = `/sop/${detail.sop.id}`; }}
+          onClick={() => onPreviewSop(detail.sop.id)}
           style={{
             width: '100%', display: 'flex', alignItems: 'center', gap: 12,
             padding: '12px 16px', marginBottom: 20,
@@ -1757,25 +2185,35 @@ const OptionSheet = ({ item, onClose, onAdd, editingItem = null }) => {
                 {opts.map((o) => {
                   const on = sel === o.id;
                   const p = Number(o.priceAdjustment ?? 0);
+                  const isOutOfStock = isOptionOutOfStock(o);
                   return (
-                    <button key={o.id} onClick={() => setSingle(g.id, o.id)} style={{
-                      padding: '12px 16px', borderRadius: 'var(--r-default)',
-                      background: on ? 'var(--matcha-50)' : 'var(--bg-surface)',
-                      border: '1.5px solid ' + (on ? 'var(--matcha-600)' : 'var(--border-default)'),
-                      fontSize: 14, fontWeight: 500,
-                      color: on ? 'var(--matcha-700)' : 'var(--text-primary)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      cursor: 'pointer', transition: 'all 200ms',
-                    }}>
+                    <button key={o.id}
+                      onClick={() => !isOutOfStock && setSingle(g.id, o.id)}
+                      disabled={isOutOfStock}
+                      style={{
+                        padding: '12px 16px', borderRadius: 'var(--r-default)',
+                        background: on ? 'var(--matcha-50)' : 'var(--bg-surface)',
+                        border: '1.5px solid ' + (on ? 'var(--matcha-600)' : 'var(--border-default)'),
+                        fontSize: 14, fontWeight: 500,
+                        color: isOutOfStock ? 'var(--text-tertiary)' : on ? 'var(--matcha-700)' : 'var(--text-primary)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+                        transition: 'all 200ms',
+                        opacity: isOutOfStock ? 0.6 : 1,
+                      }}
+                    >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{
                           width: 18, height: 18, borderRadius: '50%',
-                          border: '2px solid ' + (on ? 'var(--matcha-600)' : 'var(--border-emphasis)'),
+                          border: '2px solid ' + (isOutOfStock ? 'var(--border-default)' : on ? 'var(--matcha-600)' : 'var(--border-emphasis)'),
                           display: 'grid', placeItems: 'center', background: 'transparent', flex: 'none'
                         }}>
-                          {on && <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--matcha-600)' }}/>}
+                          {on && !isOutOfStock && <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--matcha-600)' }}/>}
                         </span>
-                        <span>{o.nameThai || o.name}</span>
+                        <span>
+                          {o.nameThai || o.name}
+                          {isOutOfStock && <span style={{ color: 'var(--red-600)', fontSize: 12, marginLeft: 8 }}>(ของหมด / Out of Stock)</span>}
+                        </span>
                       </div>
                       <span className="tabular" style={{ fontSize: 13, fontWeight: 600, color: on ? 'var(--matcha-700)' : 'var(--text-secondary)' }}>
                         {p === 0 ? '฿0' : (p > 0 ? `+฿${p}` : `−฿${Math.abs(p)}`)}
@@ -1791,25 +2229,35 @@ const OptionSheet = ({ item, onClose, onAdd, editingItem = null }) => {
                 {opts.map((o) => {
                   const on = sel instanceof Set && sel.has(o.id);
                   const p = Number(o.priceAdjustment ?? 0);
+                  const isOutOfStock = isOptionOutOfStock(o);
                   return (
-                    <button key={o.id} onClick={() => toggleMulti(g.id, o.id)} style={{
-                      padding: '12px 16px', borderRadius: 'var(--r-default)',
-                      background: on ? 'var(--matcha-50)' : 'var(--bg-surface)',
-                      border: '1.5px solid ' + (on ? 'var(--matcha-600)' : 'var(--border-default)'),
-                      fontSize: 14, fontWeight: 500,
-                      color: on ? 'var(--matcha-700)' : 'var(--text-primary)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      cursor: 'pointer', transition: 'all 200ms',
-                    }}>
+                    <button key={o.id}
+                      onClick={() => !isOutOfStock && toggleMulti(g.id, o.id)}
+                      disabled={isOutOfStock}
+                      style={{
+                        padding: '12px 16px', borderRadius: 'var(--r-default)',
+                        background: on ? 'var(--matcha-50)' : 'var(--bg-surface)',
+                        border: '1.5px solid ' + (on ? 'var(--matcha-600)' : 'var(--border-default)'),
+                        fontSize: 14, fontWeight: 500,
+                        color: isOutOfStock ? 'var(--text-tertiary)' : on ? 'var(--matcha-700)' : 'var(--text-primary)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+                        transition: 'all 200ms',
+                        opacity: isOutOfStock ? 0.6 : 1,
+                      }}
+                    >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{
                           width: 18, height: 18, borderRadius: 4,
-                          border: '2px solid ' + (on ? 'var(--matcha-600)' : 'var(--border-emphasis)'),
-                          display: 'grid', placeItems: 'center', background: on ? 'var(--matcha-600)' : 'transparent', flex: 'none'
+                          border: '2px solid ' + (isOutOfStock ? 'var(--border-default)' : on ? 'var(--matcha-600)' : 'var(--border-emphasis)'),
+                          display: 'grid', placeItems: 'center', background: on && !isOutOfStock ? 'var(--matcha-600)' : 'transparent', flex: 'none'
                         }}>
-                          {on && <IconCheck size={12} style={{ color: 'white' }} stroke={3}/>}
+                          {on && !isOutOfStock && <IconCheck size={12} style={{ color: 'white' }} stroke={3}/>}
                         </span>
-                        <span>{o.nameThai || o.name}</span>
+                        <span>
+                          {o.nameThai || o.name}
+                          {isOutOfStock && <span style={{ color: 'var(--red-600)', fontSize: 12, marginLeft: 8 }}>(ของหมด / Out of Stock)</span>}
+                        </span>
                       </div>
                       <span className="tabular" style={{ fontSize: 13, fontWeight: 600, color: on ? 'var(--matcha-700)' : 'var(--text-secondary)' }}>
                         {p === 0 ? '' : (p > 0 ? `+฿${p}` : `−฿${Math.abs(p)}`)}
@@ -1825,21 +2273,26 @@ const OptionSheet = ({ item, onClose, onAdd, editingItem = null }) => {
                 {opts.map((o) => {
                   const n = (sel && typeof sel === 'object' && sel[o.id]) || 0;
                   const p = Number(o.priceAdjustment ?? 0);
+                  const isOutOfStock = isOptionOutOfStock(o);
                   return (
                     <div key={o.id} style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '10px 12px', borderRadius: 'var(--r-default)',
                       border: '1px solid var(--border-default)',
                       background: n > 0 ? 'var(--matcha-50)' : 'var(--bg-surface)',
+                      opacity: isOutOfStock && n === 0 ? 0.6 : 1,
                     }}>
                       <div style={{ flex: 1, fontSize: 14 }}>
-                        <div style={{ fontWeight: 500 }}>{o.nameThai || o.name}</div>
+                        <div style={{ fontWeight: 500, color: isOutOfStock && n === 0 ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
+                          {o.nameThai || o.name}
+                          {isOutOfStock && <span style={{ color: 'var(--red-600)', fontSize: 12, marginLeft: 8 }}>(ของหมด / Out of Stock)</span>}
+                        </div>
                         {p !== 0 && <div className="muted" style={{ fontSize: 11 }}>{p > 0 ? `+฿${p}` : `−฿${Math.abs(p)}`} / ชิ้น</div>}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <button onClick={() => adjustQty(g.id, o.id, -1)} disabled={n <= 0} style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', cursor: 'pointer' }}>−</button>
                         <span className="tabular" style={{ minWidth: 18, textAlign: 'center', fontWeight: 600 }}>{n}</span>
-                        <button onClick={() => adjustQty(g.id, o.id, 1)} style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--matcha-600)', color: 'white', border: 'none', cursor: 'pointer' }}>+</button>
+                        <button onClick={() => adjustQty(g.id, o.id, 1)} disabled={isOutOfStock} style={{ width: 26, height: 26, borderRadius: '50%', background: isOutOfStock ? 'var(--border-default)' : 'var(--matcha-600)', color: isOutOfStock ? 'var(--text-tertiary)' : 'white', border: 'none', cursor: isOutOfStock ? 'not-allowed' : 'pointer' }}>+</button>
                       </div>
                     </div>
                   );
@@ -2706,6 +3159,7 @@ export const PageReceipt = () => {
     ).join('');
     const isPaid = order.payments && order.payments.some(p => p.status === 'completed');
     const headerTitle = isPaid ? 'ใบเสร็จรับเงิน (Receipt)' : 'ใบแจ้งยอดชำระ (Bill/Invoice)';
+    const subtotalExcludingVat = Number(order.totalAmount ?? 0) - Number(order.taxAmount ?? 0);
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt - ${order.orderNumber}</title>
 <style>
   @page { size: ${mmW} auto; margin: 2mm; }
@@ -2744,11 +3198,11 @@ export const PageReceipt = () => {
   <div class="sep"></div>
   ${items}
   <div class="sep"></div>
-  <div class="row"><span>Subtotal</span><span>฿${Number(order.subtotal ?? 0).toLocaleString()}</span></div>
-  ${Number(order.discountAmount) > 0 ? `<div class="row"><span>Discount</span><span>-฿${Number(order.discountAmount).toLocaleString()}</span></div>` : ''}
-  <div class="row"><span>VAT 7%</span><span>฿${Number(order.taxAmount ?? 0).toLocaleString()}</span></div>
+  <div class="row"><span>Subtotal</span><span>฿${subtotalExcludingVat.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+  ${Number(order.discountAmount) > 0 ? `<div class="row"><span>Discount</span><span>-฿${Number(order.discountAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>` : ''}
+  <div class="row"><span>VAT 7%</span><span>฿${Number(order.taxAmount ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
   <div class="sep"></div>
-  <div class="row bold big"><span>Total</span><span>฿${Number(order.totalAmount ?? 0).toLocaleString()}</span></div>
+  <div class="row bold big"><span>Total</span><span>฿${Number(order.totalAmount ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
   
   ${order.paymentQrPayload && !isPaid ? `
     <div class="sep"></div>

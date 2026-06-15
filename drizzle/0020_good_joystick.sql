@@ -1,0 +1,1 @@
+ALTER TABLE `pos_options` ADD `stockEffects` json;

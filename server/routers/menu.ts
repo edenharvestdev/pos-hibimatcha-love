@@ -179,6 +179,7 @@ export const menuRouter = router({
         inventoryItemId: posRecipeIngredients.inventoryItemId,
         quantity: posRecipeIngredients.quantity,
         unitOfMeasure: posRecipeIngredients.unitOfMeasure,
+        role: posRecipeIngredients.role,
         notes: posRecipeIngredients.notes,
         itemName: posInventoryItems.name,
       }).from(posRecipeIngredients)
@@ -655,6 +656,7 @@ export const menuRouter = router({
         inventoryItemId: z.number().int(),
         quantity: z.string(),
         unitOfMeasure: z.string(),
+        role: z.string().optional().nullable(),
         notes: z.string().optional(),
       })),
     }))

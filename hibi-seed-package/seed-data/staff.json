@@ -1,0 +1,162 @@
+[
+  {
+    "employeeCode": "HBHQ-00",
+    "name": "Updated Staff",
+    "role": "super_admin",
+    "branchId": null,
+    "commissionType": "fixed",
+    "commissionValue": "2000"
+  },
+  {
+    "employeeCode": "HBCN-03",
+    "name": "Extra ",
+    "role": "super_admin",
+    "branchId": null,
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "HB03-01",
+    "name": "aneesah",
+    "role": "branch_manager",
+    "branchId": "30001",
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "HB02-01",
+    "name": "Orrawan Chinnasri ",
+    "role": "branch_manager",
+    "branchId": "2",
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "HBCN-01",
+    "name": "ชนากานต์ บุญเพ็ง",
+    "role": "super_admin",
+    "branchId": null,
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "HBCN-02",
+    "name": "ณัฐชยา แก้วศรี",
+    "role": "branch_manager",
+    "branchId": "60001",
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "HBCN-04",
+    "name": "parit sirisut",
+    "role": "area_manager",
+    "branchId": null,
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": null,
+    "name": "Ramby",
+    "role": "super_admin",
+    "branchId": null,
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "HB02",
+    "name": "Nawamin111",
+    "role": "branch_owner",
+    "branchId": "30001",
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "HBHQ-01",
+    "name": "Nitiruj",
+    "role": "super_admin",
+    "branchId": null,
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "HB01-01",
+    "name": "Punpun",
+    "role": "branch_manager",
+    "branchId": "1",
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "HB02-02",
+    "name": "Oraphan Yoinual",
+    "role": "branch_staff",
+    "branchId": "2",
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "HB01-02",
+    "name": "นภัสรภรณ์ ผุดแจ่มใส(เอ๊ะ)",
+    "role": "branch_staff",
+    "branchId": "1",
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "HB05-01",
+    "name": "กัญญารัตน์ นิ่มอนงค์(เนย)",
+    "role": "branch_manager",
+    "branchId": "90001",
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "HB01-04",
+    "name": "เมลดา กนกธำรงพัชร(เมย์)",
+    "role": "branch_staff",
+    "branchId": "1",
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": null,
+    "name": "Commission Staff",
+    "role": "branch_staff",
+    "branchId": "1",
+    "commissionType": "percent",
+    "commissionValue": "500"
+  },
+  {
+    "employeeCode": "EM007",
+    "name": "วาส",
+    "role": "super_admin",
+    "branchId": null,
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "EM009",
+    "name": "Dev.Paul",
+    "role": "super_admin",
+    "branchId": null,
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "TMD000",
+    "name": "พี่ชาติสุดหล่อ",
+    "role": "super_admin",
+    "branchId": null,
+    "commissionType": "percent",
+    "commissionValue": "0"
+  },
+  {
+    "employeeCode": "HB04-01",
+    "name": "นัดดา ทองสุข",
+    "role": "branch_staff",
+    "branchId": "60001",
+    "commissionType": "percent",
+    "commissionValue": "500"
+  }
+]

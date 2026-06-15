@@ -9,7 +9,7 @@ import {
   posPaymentMethods, masterPaymentMethods, branches, staff,
   posBranchPaymentSettings,
   posRecipeIngredients, posBranchInventoryStock, posInventoryMovements,
-  posInventoryItems, memberPoints, members,
+  posInventoryItems, memberPoints, members, posOrderRecipeSnapshots,
 } from "../../drizzle/schema";
 import { logAudit, generateOrderNumber, generateTicketNumber } from "../lib/audit";
 import { router, staffProcedure, staffAdminProcedure } from "../_core/trpc";
@@ -63,6 +63,24 @@ export async function deductStockForOrder(
       .where(eq(posOrderItems.orderId, orderId));
     if (orderItems.length === 0) return { success: true, deductions: [] };
 
+    // ─── 2.5 Get order item options ─────────────────────────────────────
+    const itemIds = orderItems.map(oi => oi.id);
+    const orderItemOptionsList = await tx.select({
+      orderItemId: posOrderItemOptions.orderItemId,
+      optionId: posOrderItemOptions.optionId,
+      stockEffects: posOptions.stockEffects,
+    }).from(posOrderItemOptions)
+      .leftJoin(posOptions, eq(posOrderItemOptions.optionId, posOptions.id))
+      .where(inArray(posOrderItemOptions.orderItemId, itemIds));
+
+    const optionsByItemId = new Map<number, any[]>();
+    for (const opt of orderItemOptionsList) {
+      if (!opt.orderItemId) continue;
+      const arr = optionsByItemId.get(opt.orderItemId) || [];
+      arr.push(opt);
+      optionsByItemId.set(opt.orderItemId, arr);
+    }
+
     // ─── 3. Get recipe ingredients ──────────────────────────────────────
     const menuItemIds = Array.from(
       new Set(orderItems.map((oi) => oi.menuItemId).filter((id): id is number => id !== null && id !== undefined))
@@ -73,43 +91,194 @@ export async function deductStockForOrder(
       .where(inArray(posRecipeIngredients.menuItemId, menuItemIds));
     if (recipes.length === 0) return { success: true, deductions: [] }; // No recipes defined
 
-    // ─── 4. Build deduction map ─────────────────────────────────────────
+    // ─── 4. Build compiled recipes and deduction map ─────────────────────
     const deductions = new Map<number, number>();
+    const compiledRecipesByOrderItemId = new Map<number, Array<{
+      inventoryItemId: number;
+      quantity: number;
+      unit: string;
+      role: string;
+      optionId: number | null;
+      effectSource: 'base' | 'option';
+    }>>();
+
     for (const oi of orderItems) {
       const itemRecipes = recipes.filter((r) => r.menuItemId === oi.menuItemId);
-      for (const r of itemRecipes) {
-        const deductQty = Number(r.quantity ?? 0) * (oi.quantity ?? 1);
-        if (deductQty > 0) {
-          deductions.set(r.inventoryItemId, (deductions.get(r.inventoryItemId) ?? 0) + deductQty);
+      
+      // 1. Load Base Recipe
+      let compiled: Array<{
+        inventoryItemId: number;
+        quantity: number;
+        unit: string;
+        role: string;
+        optionId: number | null;
+        effectSource: 'base' | 'option';
+      }> = itemRecipes.map(r => ({
+        inventoryItemId: r.inventoryItemId,
+        quantity: Number(r.quantity ?? 0),
+        unit: r.unitOfMeasure || 'pcs',
+        role: r.role || '',
+        optionId: null,
+        effectSource: 'base',
+      }));
+
+      // Gather effects
+      const opts = optionsByItemId.get(oi.id) || [];
+      const effects: Array<{
+        type: 'ADD' | 'REMOVE' | 'REPLACE' | 'SET_QUANTITY';
+        targetRole?: string;
+        targetInventoryItemId?: number | null;
+        inventoryItemId?: number | null;
+        role?: string;
+        quantity?: number | null;
+        unit: string;
+        optionId: number;
+      }> = [];
+
+      for (const opt of opts) {
+        if (!opt.stockEffects) continue;
+        const rawEffects = Array.isArray(opt.stockEffects) ? opt.stockEffects : [];
+        for (const ef of rawEffects) {
+          effects.push({
+            type: ef.type,
+            targetRole: ef.targetRole,
+            targetInventoryItemId: ef.targetInventoryItemId,
+            inventoryItemId: ef.inventoryItemId,
+            role: ef.role,
+            quantity: ef.quantity !== null && ef.quantity !== undefined && ef.quantity !== '' ? Number(ef.quantity) : null,
+            unit: ef.unit || 'pcs',
+            optionId: opt.optionId,
+          });
+        }
+      }
+
+      // 3. Apply REPLACE
+      const replaceEffects = effects.filter(e => e.type === 'REPLACE');
+      for (const ef of replaceEffects) {
+        const idx = compiled.findIndex(r =>
+          (ef.targetRole && r.role === ef.targetRole) ||
+          (ef.targetInventoryItemId && r.inventoryItemId === ef.targetInventoryItemId)
+        );
+        if (idx !== -1) {
+          const original = compiled[idx];
+          const newQty = ef.quantity !== null && ef.quantity !== undefined ? ef.quantity : original.quantity;
+          compiled[idx] = {
+            inventoryItemId: Number(ef.inventoryItemId),
+            quantity: newQty,
+            unit: ef.unit || original.unit,
+            role: ef.role || original.role || '',
+            optionId: ef.optionId,
+            effectSource: 'option',
+          };
+        }
+      }
+
+      // 4. Apply REMOVE
+      const removeEffects = effects.filter(e => e.type === 'REMOVE');
+      for (const ef of removeEffects) {
+        compiled = compiled.filter(r => {
+          const matchRole = ef.targetRole && r.role === ef.targetRole;
+          const matchId = ef.targetInventoryItemId && r.inventoryItemId === ef.targetInventoryItemId;
+          return !(matchRole || matchId);
+        });
+      }
+
+      // 5. Apply SET_QUANTITY
+      const setQtyEffects = effects.filter(e => e.type === 'SET_QUANTITY');
+      for (const ef of setQtyEffects) {
+        compiled = compiled.map(r => {
+          const matchRole = ef.targetRole && r.role === ef.targetRole;
+          const matchId = ef.targetInventoryItemId && r.inventoryItemId === ef.targetInventoryItemId;
+          if (matchRole || matchId) {
+            return {
+              ...r,
+              quantity: ef.quantity !== null && ef.quantity !== undefined ? ef.quantity : r.quantity,
+              unit: ef.unit || r.unit,
+              optionId: ef.optionId,
+              effectSource: 'option',
+            };
+          }
+          return r;
+        });
+      }
+
+      // 6. Apply ADD
+      const addEffects = effects.filter(e => e.type === 'ADD');
+      for (const ef of addEffects) {
+        compiled.push({
+          inventoryItemId: Number(ef.inventoryItemId),
+          quantity: ef.quantity !== null && ef.quantity !== undefined ? ef.quantity : 1,
+          unit: ef.unit || 'pcs',
+          role: ef.role || '',
+          optionId: ef.optionId,
+          effectSource: 'option',
+        });
+      }
+
+      // Group by inventoryItemId + unit + optionId + effectSource
+      const groupedCompiled: Array<{
+        inventoryItemId: number;
+        quantity: number;
+        unit: string;
+        role: string;
+        optionId: number | null;
+        effectSource: 'base' | 'option';
+      }> = [];
+
+      for (const r of compiled) {
+        const existing = groupedCompiled.find(x =>
+          x.inventoryItemId === r.inventoryItemId &&
+          x.unit === r.unit &&
+          x.optionId === r.optionId &&
+          x.effectSource === r.effectSource
+        );
+        if (existing) {
+          existing.quantity += r.quantity;
+        } else {
+          groupedCompiled.push({ ...r });
+        }
+      }
+
+      compiledRecipesByOrderItemId.set(oi.id, groupedCompiled);
+
+      // Add to global deductions
+      const oiQty = Number(oi.quantity ?? 1);
+      for (const ing of groupedCompiled) {
+        if (ing.quantity > 0) {
+          const totalQty = ing.quantity * oiQty;
+          deductions.set(ing.inventoryItemId, (deductions.get(ing.inventoryItemId) ?? 0) + totalQty);
         }
       }
     }
     if (deductions.size === 0) return { success: true, deductions: [] };
 
-    // ─── 5. Pre-check stock availability ────────────────────────────────
+    // ─── 5. Load costs & pre-check stock availability ───────────────────
+    const inventoryItemIds = Array.from(deductions.keys());
+    const stockRows = await tx.select({
+      inventoryItemId: posBranchInventoryStock.inventoryItemId,
+      currentStock: posBranchInventoryStock.currentStock,
+      averageCost: posBranchInventoryStock.averageCost,
+    }).from(posBranchInventoryStock)
+      .where(and(
+        eq(posBranchInventoryStock.branchId, branchId),
+        inArray(posBranchInventoryStock.inventoryItemId, inventoryItemIds),
+      ));
+
+    // Get item names and fallbacks for error messages & costs
+    const itemNames = await tx.select({
+      id: posInventoryItems.id,
+      name: posInventoryItems.name,
+      nameThai: posInventoryItems.nameThai,
+      unitOfMeasure: posInventoryItems.unitOfMeasure,
+      costPerUnit: posInventoryItems.costPerUnit,
+    }).from(posInventoryItems)
+      .where(inArray(posInventoryItems.id, inventoryItemIds));
+
+    const stockMap = new Map(stockRows.map((r) => [r.inventoryItemId, Number(r.currentStock ?? 0)]));
+    const branchStockMap = new Map(stockRows.map((r) => [r.inventoryItemId, r]));
+    const nameMap = new Map(itemNames.map((r) => [r.id, r]));
+
     if (!options?.skipStockCheck) {
-      const inventoryItemIds = Array.from(deductions.keys());
-      const stockRows = await tx.select({
-        inventoryItemId: posBranchInventoryStock.inventoryItemId,
-        currentStock: posBranchInventoryStock.currentStock,
-      }).from(posBranchInventoryStock)
-        .where(and(
-          eq(posBranchInventoryStock.branchId, branchId),
-          inArray(posBranchInventoryStock.inventoryItemId, inventoryItemIds),
-        ));
-
-      // Get item names for error messages
-      const itemNames = await tx.select({
-        id: posInventoryItems.id,
-        name: posInventoryItems.name,
-        nameThai: posInventoryItems.nameThai,
-        unitOfMeasure: posInventoryItems.unitOfMeasure,
-      }).from(posInventoryItems)
-        .where(inArray(posInventoryItems.id, inventoryItemIds));
-
-      const stockMap = new Map(stockRows.map((r) => [r.inventoryItemId, Number(r.currentStock ?? 0)]));
-      const nameMap = new Map(itemNames.map((r) => [r.id, r]));
-
       const insufficient: Array<{ id: number; name: string; required: number; available: number; unit: string }> = [];
       for (const [itemId, requiredQty] of deductions) {
         const available = stockMap.get(itemId) ?? 0;
@@ -136,6 +305,19 @@ export async function deductStockForOrder(
         });
       }
     }
+
+    // Helper for unit cost
+    const getUnitCost = (itemId: number) => {
+      const bs = branchStockMap.get(itemId);
+      if (bs && bs.averageCost !== null && Number(bs.averageCost) > 0) {
+        return Number(bs.averageCost);
+      }
+      const ii = nameMap.get(itemId);
+      if (ii && ii.costPerUnit !== null) {
+        return Number(ii.costPerUnit);
+      }
+      return 0;
+    };
 
     // ─── 6. Apply deductions (within same transaction) ──────────────────
     const appliedDeductions: Array<{ inventoryItemId: number; qty: number }> = [];
@@ -176,6 +358,28 @@ export async function deductStockForOrder(
       });
 
       appliedDeductions.push({ inventoryItemId, qty });
+    }
+
+    // ─── 8. Record Recipe Snapshots ──────────────────────────────────
+    for (const oi of orderItems) {
+      const compiled = compiledRecipesByOrderItemId.get(oi.id) || [];
+      for (const ing of compiled) {
+        const unitCost = getUnitCost(ing.inventoryItemId);
+        const quantityUsed = ing.quantity * Number(oi.quantity ?? 1);
+        const totalCost = unitCost * quantityUsed;
+
+        await tx.insert(posOrderRecipeSnapshots).values({
+          orderItemId: oi.id,
+          inventoryItemId: ing.inventoryItemId,
+          quantityUsed: String(quantityUsed),
+          unit: ing.unit,
+          unitCostSnapshot: String(unitCost),
+          totalCostSnapshot: String(totalCost),
+          branchId: branchId,
+          optionId: ing.optionId,
+          effectSource: ing.effectSource,
+        });
+      }
     }
 
     return { success: true, deductions: appliedDeductions };
@@ -1122,7 +1326,7 @@ export const ordersRouter = router({
           const payments = fullOrder.payments || [];
           const lastPayment = payments[payments.length - 1];
           let qrDataUrl: string | undefined;
-          const isPaid = payments.some((p: any) => p.status === "completed") || orderData.paidAmount >= orderData.totalAmount;
+          const isPaid = payments.some((p: any) => p.status === "completed") || (orderData.paidAmount ?? 0) >= orderData.totalAmount;
           if (settings.promptpayId && orderData.totalAmount > 0 && !isPaid) {
             qrDataUrl = await generatePromptPayQRDataUrl(settings.promptpayId, orderData.totalAmount);
           }

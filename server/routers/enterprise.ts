@@ -56,7 +56,16 @@ async function generateDocumentNumber(db: any, branchId: number, docType: string
   let nextSequence = (seqConfig.currentSequence ?? 0) + 1;
 
   if (seqConfig.includeDate) {
-    if (seqConfig.lastResetDate !== currentDateStr) {
+    let lastResetDateStr = "";
+    if (seqConfig.lastResetDate) {
+      if (seqConfig.lastResetDate instanceof Date) {
+        const tzOffset = seqConfig.lastResetDate.getTimezoneOffset() * 60000;
+        lastResetDateStr = new Date(seqConfig.lastResetDate.getTime() - tzOffset).toISOString().slice(0, 10);
+      } else {
+        lastResetDateStr = String(seqConfig.lastResetDate).slice(0, 10);
+      }
+    }
+    if (lastResetDateStr !== currentDateStr) {
       nextSequence = 1;
     }
   }

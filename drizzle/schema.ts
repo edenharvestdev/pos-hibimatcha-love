@@ -177,6 +177,7 @@ export const posOptions = mysqlTable("pos_options", {
   nameThai: varchar("nameThai", { length: 100 }),
   priceAdjustment: decimal("priceAdjustment", { precision: 10, scale: 2 }).default("0"),
   costAdjustment: decimal("costAdjustment", { precision: 10, scale: 2 }).default("0"),
+  stockEffects: json("stockEffects"), // Array of StockEffect objects
   sortOrder: int("sortOrder").default(0),
   isDefault: boolean("isDefault").default(false),
   isActive: boolean("isActive").default(true),
@@ -537,8 +538,25 @@ export const posRecipeIngredients = mysqlTable("pos_recipe_ingredients", {
   inventoryItemId: int("inventoryItemId").notNull(),
   quantity: decimal("quantity", { precision: 10, scale: 4 }),
   unitOfMeasure: varchar("unitOfMeasure", { length: 20 }),
+  role: varchar("role", { length: 50 }),
   notes: text("notes"),
 }, (t) => [unique("uniq_recipe").on(t.menuItemId, t.inventoryItemId)]);
+
+// ─── Order Recipe Snapshots ──────────────────────────────────────────────────
+export const posOrderRecipeSnapshots = mysqlTable("pos_order_recipe_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  orderItemId: int("orderItemId").notNull(),
+  inventoryItemId: int("inventoryItemId").notNull(),
+  quantityUsed: decimal("quantityUsed", { precision: 10, scale: 4 }).notNull(),
+  unit: varchar("unit", { length: 20 }).notNull(),
+  unitCostSnapshot: decimal("unitCostSnapshot", { precision: 10, scale: 4 }).default("0.0000"),
+  totalCostSnapshot: decimal("totalCostSnapshot", { precision: 10, scale: 4 }).default("0.0000"),
+  branchId: int("branchId").notNull(),
+  optionId: int("optionId"),
+  effectSource: varchar("effectSource", { length: 50 }).notNull(), // 'base' | 'option'
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+export type PosOrderRecipeSnapshot = typeof posOrderRecipeSnapshots.$inferSelect;
 
 // ─── Suppliers ────────────────────────────────────────────────────────────────
 export const posSuppliers = mysqlTable("pos_suppliers", {
