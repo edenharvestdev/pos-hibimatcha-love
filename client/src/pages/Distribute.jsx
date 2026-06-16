@@ -36,7 +36,7 @@ export const PageDistribute = () => {
   const isLoading = menuLoading || stockLoading || branchLoading;
 
   const hq = branches.find((b) => b.branchType === "hq");
-  const targets = branches.filter((b) => b.branchType !== "hq" && b.status === "active");
+  const targets = branches.filter((b) => b.branchType !== "hq" && b.status !== "closed");
 
   // Entity options for the picker (when mode is chosen)
   // NOTE: declared before any early return — Rules of Hooks (must run on every render)
@@ -188,7 +188,7 @@ export const PageDistribute = () => {
         <SectionHeader title="Target branches" desc="Distribution destinations"/>
         {targets.length === 0 ? (
           <div className="muted" style={{ padding: 20, textAlign: "center", fontSize: 13 }}>
-            No active branches besides HQ. Add a branch under Franchise → All Branches.
+            No branches besides HQ yet. Add a branch under Franchise → All Branches.
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>

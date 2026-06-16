@@ -1048,8 +1048,14 @@ const AppSwitcher = ({ open, onClose }) => {
 
 // ----- POS Mode Shell (fullscreen, no admin sidebar) -----
 const POSShell = ({ children }) => {
-  const { route, navigate, branch, theme, setTheme, setCmdOpen, lang, setLang, t } = useApp();
+  const { route, navigate, branch, theme, setTheme, setCmdOpen, lang, setLang, t, staff } = useApp();
   const [appsOpen, setAppsOpen] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
+  
+  const userName = staff?.firstName
+    ? `${staff.firstName}${staff.lastName ? ' ' + staff.lastName : ''}`
+    : (staff?.employeeCode || 'Guest');
+
   const tabs = [
     { path: '/pos/terminal', label: t('pos.terminal'), icon: IconPOS },
     { path: '/pos/kitchen', label: t('nav.kitchen'), icon: IconKitchen },
@@ -1141,7 +1147,16 @@ const POSShell = ({ children }) => {
         <button className="btn btn-ghost hide-on-sunmi" onClick={() => setLang(lang === 'th' ? 'en' : 'th')} style={{ height: 32, padding: '0 8px', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }} title="Toggle language" data-no-toast>
           {lang === 'th' ? 'TH' : 'EN'}
         </button>
-        <Avatar name="Yuki Tanaka" size={32}/>
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setUserOpen((v) => !v)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 4, borderRadius: 999 }}
+            title="User menu"
+          >
+            <Avatar name={userName} size={32}/>
+          </button>
+          {userOpen && <UserDropdown onClose={() => setUserOpen(false)}/>}
+        </div>
         <button className="btn btn-secondary btn-sm" onClick={() => navigate('/')}>
           <IconChevLeft size={14}/> {t('pos.exitPOS')}
         </button>

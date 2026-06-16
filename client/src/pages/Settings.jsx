@@ -32,7 +32,15 @@ const SETTINGS_TABS = [
 
 export const PageSettings = () => {
   const [tab, setTab] = useState('profile');
-  const { theme, setTheme, t, lang } = useApp();
+  const { theme, setTheme, t, lang, role } = useApp();
+
+  const filteredTabs = useMemo(() => {
+    if (role === 'staff') {
+      return SETTINGS_TABS.filter((t) => ['profile', 'appearance', 'security', 'lang', 'about'].includes(t.id));
+    }
+    return SETTINGS_TABS;
+  }, [role]);
+
   return (
     <div className="page">
       <div className="page-header">
@@ -43,7 +51,7 @@ export const PageSettings = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 24 }} className="settings-grid">
         {/* Sidebar */}
         <aside style={{ position: 'sticky', top: 80, alignSelf: 'flex-start' }} className="settings-aside">
-          {SETTINGS_TABS.map((item) => {
+          {filteredTabs.map((item) => {
             const I = ICON_MAP[item.icon] || IconUser;
             const active = tab === item.id;
             return (

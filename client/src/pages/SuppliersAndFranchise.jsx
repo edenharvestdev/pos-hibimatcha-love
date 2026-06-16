@@ -602,8 +602,9 @@ export const PageFranchise = () => {
 
 // ----- Open new branch wizard -----
 export const PageFranchiseNew = () => {
-  const { navigate } = useApp();
+  const { navigate, t } = useApp();
   const [step, setStep] = useState(1);
+  const [successData, setSuccessData] = useState(null);
   const steps = ['Basics', 'Location', 'Ownership', 'System', 'Inventory', 'Staffing', 'Review'];
 
   const [form, setForm] = useState({
@@ -638,6 +639,9 @@ export const PageFranchiseNew = () => {
     contractType: 'standard',
     royaltyPercent: '5',
     contractStart: '',
+    ownerPassword: '',
+    ownerConfirmPassword: '',
+    ownerPin: '',
   });
 
   const utils = trpc.useUtils();
@@ -646,7 +650,11 @@ export const PageFranchiseNew = () => {
       utils.branches.list.invalidate();
       utils.branches.listPublic.invalidate();
       utils.branches.getMyBranches.invalidate();
-      navigate(`/backoffice/franchise/${b.id}`);
+      if (b.ownerEmployeeCode) {
+        setSuccessData(b);
+      } else {
+        navigate(`/backoffice/franchise/${b.id}`);
+      }
     },
     onError: (e) => alert(e.message),
   });
@@ -654,6 +662,21 @@ export const PageFranchiseNew = () => {
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = () => {
+    if (form.branchType === 'franchise' && (form.ownershipType === 'individual' || form.ownershipType === 'corporate')) {
+      if (!form.ownerPassword || form.ownerPassword.length < 6) {
+        alert(t('Password must be at least 6 characters', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'));
+        return;
+      }
+      if (form.ownerPassword !== form.ownerConfirmPassword) {
+        alert(t('Passwords do not match', 'รหัสผ่านไม่ตรงกัน'));
+        return;
+      }
+      if (form.ownerPin && (form.ownerPin.length !== 4 || !/^\d{4}$/.test(form.ownerPin))) {
+        alert(t('POS PIN must be exactly 4 digits', 'PIN ต้องเป็นตัวเลข 4 หลัก'));
+        return;
+      }
+    }
+
     createBranch.mutate({
       name: form.name,
       branchCode: form.branchCode,
@@ -680,6 +703,8 @@ export const PageFranchiseNew = () => {
       royaltyType: form.ownershipType === 'company' ? 'none' : 'percentage',
       royaltyValue: form.ownershipType === 'company' ? '0.00' : form.royaltyPercent,
       contractStartDate: form.contractStart || undefined,
+      ownerPassword: (form.branchType === 'franchise' && (form.ownershipType === 'individual' || form.ownershipType === 'corporate')) ? form.ownerPassword : undefined,
+      ownerPin: (form.branchType === 'franchise' && (form.ownershipType === 'individual' || form.ownershipType === 'corporate')) ? form.ownerPin || undefined : undefined,
     });
   };
 
@@ -695,6 +720,58 @@ export const PageFranchiseNew = () => {
     { value: 'individual', label: 'บุคคลธรรมดา (Individual Franchise)' },
     { value: 'corporate', label: 'นิติบุคคล (Corporate Franchise)' }
   ];
+
+  if (successData) {
+    return (
+      <div className="page" style={{ maxWidth: 640, margin: '0 auto' }}>
+        <div className="card" style={{ padding: 32, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--matcha-50)', color: 'var(--matcha-600)', display: 'grid', placeItems: 'center', fontSize: 32, fontWeight: 'bold' }}>✓</div>
+          <div>
+            <h2 className="t-h2" style={{ fontWeight: 600 }}>{t('Branch Created Successfully!', 'สร้างสาขาสำเร็จแล้ว!')}</h2>
+            <p className="muted" style={{ marginTop: 8 }}>{t('Franchise owner credentials have been generated.', 'รหัสผู้ใช้สำหรับเจ้าของแฟรนไชส์ถูกสร้างขึ้นแล้ว')}</p>
+          </div>
+
+          <div style={{ width: '100%', background: 'var(--bg-muted)', padding: 20, borderRadius: 'var(--r-default)', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13.5 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-default)', paddingBottom: 8 }}>
+              <span className="muted">{t('Branch Name', 'ชื่อสาขา')}</span>
+              <span style={{ fontWeight: 500 }}>{successData.name || form.name}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-default)', paddingBottom: 8 }}>
+              <span className="muted">{t('Branch Code', 'รหัสสาขา')}</span>
+              <span className="mono" style={{ fontWeight: 500 }}>{successData.branchCode || form.branchCode}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-default)', paddingBottom: 8 }}>
+              <span className="muted">{t('Owner Name', 'ชื่อเจ้าของ')}</span>
+              <span style={{ fontWeight: 500 }}>{form.ownerName}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-default)', paddingBottom: 8 }}>
+              <span className="muted">{t('Owner Employee Code', 'รหัสพนักงานเจ้าของ')}</span>
+              <span className="mono text-primary" style={{ fontWeight: 600, fontSize: 15 }}>{successData.ownerEmployeeCode}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-default)', paddingBottom: 8 }}>
+              <span className="muted">{t('Owner Password', 'รหัสผ่าน')}</span>
+              <span className="mono" style={{ fontWeight: 600 }}>{form.ownerPassword}</span>
+            </div>
+            {form.ownerPin && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 4 }}>
+                <span className="muted">{t('POS Quick PIN', 'PIN เข้าระบบ POS')}</span>
+                <span className="mono" style={{ fontWeight: 600 }}>{form.ownerPin}</span>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 12 }}>
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => navigate(`/backoffice/franchise/${successData.id}`)}>
+              {t('Go to Branch Detail', 'ไปยังรายละเอียดสาขา')}
+            </button>
+            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setSuccessData(null); setStep(1); setForm({ name: '', branchCode: '', branchType: 'company-owned', businessModel: 'cafe', status: 'inactive', country: 'Thailand', province: '', district: '', address: '', postalCode: '', phone: '', email: '', currency: 'THB', taxRate: '7.00', openingDate: '', posStations: '2', kitchenDisplay: true, customerDisplay: false, mobileOrdering: true, menuInheritance: 'master', accessCode: '', ownershipType: 'company', ownerName: '', ownerPhone: '', ownerEmail: '', ownerAddress: '', ownerTaxId: '', ownerCitizenId: '', contractType: 'standard', royaltyPercent: '5', contractStart: '', ownerPassword: '', ownerConfirmPassword: '', ownerPin: '' }); }}>
+              {t('Create Another Branch', 'สร้างสาขาอื่นต่อ')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page" style={{ maxWidth: 1000 }}>
@@ -878,6 +955,15 @@ export const PageFranchiseNew = () => {
                 <Field label="Royalty (%)">
                   <input className="input" value={form.royaltyPercent} onChange={(e) => setField('royaltyPercent', e.target.value)} placeholder="5"/>
                 </Field>
+                <Field label="Owner Password *">
+                  <input className="input" type="password" placeholder="At least 6 characters" value={form.ownerPassword || ''} onChange={(e) => setField('ownerPassword', e.target.value)}/>
+                </Field>
+                <Field label="Confirm Owner Password *">
+                  <input className="input" type="password" placeholder="Re-enter password" value={form.ownerConfirmPassword || ''} onChange={(e) => setField('ownerConfirmPassword', e.target.value)}/>
+                </Field>
+                <Field label="Owner POS PIN" style={{ gridColumn: 'span 2' }}>
+                  <input className="input" type="text" maxLength={4} placeholder="4 digits (optional)" value={form.ownerPin || ''} onChange={(e) => setField('ownerPin', e.target.value.replace(/\D/g, ''))}/>
+                </Field>
                 <Field label="Contract start" style={{ gridColumn: 'span 2' }}>
                   <input className="input" type="date" value={form.contractStart} onChange={(e) => setField('contractStart', e.target.value)}/>
                 </Field>
@@ -909,6 +995,15 @@ export const PageFranchiseNew = () => {
                 </Field>
                 <Field label="Royalty (%)">
                   <input className="input" value={form.royaltyPercent} onChange={(e) => setField('royaltyPercent', e.target.value)} placeholder="5"/>
+                </Field>
+                <Field label="Owner Password *">
+                  <input className="input" type="password" placeholder="At least 6 characters" value={form.ownerPassword || ''} onChange={(e) => setField('ownerPassword', e.target.value)}/>
+                </Field>
+                <Field label="Confirm Owner Password *">
+                  <input className="input" type="password" placeholder="Re-enter password" value={form.ownerConfirmPassword || ''} onChange={(e) => setField('ownerConfirmPassword', e.target.value)}/>
+                </Field>
+                <Field label="Owner POS PIN" style={{ gridColumn: 'span 2' }}>
+                  <input className="input" type="text" maxLength={4} placeholder="4 digits (optional)" value={form.ownerPin || ''} onChange={(e) => setField('ownerPin', e.target.value.replace(/\D/g, ''))}/>
                 </Field>
                 <Field label="Contract start" style={{ gridColumn: 'span 2' }}>
                   <input className="input" type="date" value={form.contractStart} onChange={(e) => setField('contractStart', e.target.value)}/>
@@ -968,7 +1063,23 @@ export const PageFranchiseNew = () => {
           <button className="btn btn-secondary" disabled={step === 1} onClick={() => setStep(step - 1)}>← Back</button>
           <div style={{ display: 'flex', gap: 8 }}>
             {step < steps.length ? (
-              <button className="btn btn-primary" onClick={() => setStep(step + 1)}>Next: {steps[step]} →</button>
+              <button className="btn btn-primary" onClick={() => {
+                if (step === 3 && form.branchType === 'franchise' && (form.ownershipType === 'individual' || form.ownershipType === 'corporate')) {
+                  if (!form.ownerPassword || form.ownerPassword.length < 6) {
+                    alert(t('Password must be at least 6 characters', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'));
+                    return;
+                  }
+                  if (form.ownerPassword !== form.ownerConfirmPassword) {
+                    alert(t('Passwords do not match', 'รหัสผ่านไม่ตรงกัน'));
+                    return;
+                  }
+                  if (form.ownerPin && (form.ownerPin.length !== 4 || !/^\d{4}$/.test(form.ownerPin))) {
+                    alert(t('POS PIN must be exactly 4 digits', 'PIN ต้องเป็นตัวเลข 4 หลัก'));
+                    return;
+                  }
+                }
+                setStep(step + 1);
+              }}>Next: {steps[step]} →</button>
             ) : (
               <button
                 className="btn btn-primary"

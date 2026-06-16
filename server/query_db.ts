@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { getDb } from "./db";
-import { sql } from "drizzle-orm";
+import { branches } from "../drizzle/schema";
 
 async function main() {
   const db = await getDb();
@@ -8,23 +8,13 @@ async function main() {
     console.error("Database not available");
     return;
   }
+  const branchesList = await db.select().from(branches);
+  console.log("Branches list:");
+  branchesList.forEach(b => {
+    console.log(`- ID: ${b.id}, Name: ${b.name}, Code: ${b.branchCode}, Type: ${b.branchType}, Status: ${b.status}`);
+  });
 
-  try {
-    const dbs = await db.execute(sql`SHOW DATABASES`);
-    console.log("Databases:", JSON.stringify(dbs, null, 2));
-
-    const currentDb = await db.execute(sql`SELECT DATABASE()`);
-    console.log("Current Database:", JSON.stringify(currentDb, null, 2));
-
-    const tables = await db.execute(sql`SHOW TABLES`);
-    console.log("Tables in current DB:", JSON.stringify(tables, null, 2));
-  } catch (err) {
-    console.error("Query failed:", err);
-  }
   process.exit(0);
 }
 
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+main().catch(console.error);

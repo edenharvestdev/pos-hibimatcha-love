@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { branches, staff, staffBranches, posOrders } from "../../drizzle/schema";
 import { logAudit } from "../lib/audit";
 import { router, superAdminProcedure, staffAdminProcedure } from "../_core/trpc";
+import { hashPassword, hashPin } from "../lib/auth";
 
 export const franchiseRouter = router({
   listBranches: superAdminProcedure
@@ -71,21 +72,25 @@ export const franchiseRouter = router({
       // Owner info
       ownerFirstName: z.string().optional(),
       ownerLastName: z.string().optional(),
+      ownerPassword: z.string().min(6).optional(),
+      ownerPin: z.string().length(4).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       
       let franchiseOwnerId = null;
+      let empCode = null;
 
       // Create owner account if owner info provided
       if (input.ownerFirstName && input.phone) {
         const [existing] = await db.select().from(staff).where(eq(staff.phone, input.phone)).limit(1);
         if (existing) {
           franchiseOwnerId = existing.id;
+          empCode = existing.employeeCode;
         } else {
           // generate random employee code
-          const empCode = "FR" + Math.floor(1000 + Math.random() * 9000);
+          empCode = "FR" + Math.floor(1000 + Math.random() * 9000);
           const [staffResult] = await db.insert(staff).values({
             employeeCode: empCode,
             firstName: input.ownerFirstName,
@@ -95,6 +100,8 @@ export const franchiseRouter = router({
             role: "staff_admin",
             employmentType: "contract",
             status: "active",
+            passwordHash: input.ownerPassword ? hashPassword(input.ownerPassword) : undefined,
+            pinHash: input.ownerPin ? hashPin(input.ownerPin) : undefined,
           });
           franchiseOwnerId = (staffResult as any).insertId as number;
         }
@@ -129,7 +136,10 @@ export const franchiseRouter = router({
 
       const [created] = await db.select().from(branches).where(eq(branches.id, id)).limit(1);
       await logAudit({ staff: ctx.staff, action: "create", entity: "branches", entityId: id });
-      return created;
+      return {
+        ...created,
+        ownerEmployeeCode: empCode,
+      };
     }),
 
   updateContract: superAdminProcedure

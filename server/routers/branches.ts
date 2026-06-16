@@ -3,7 +3,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "../db";
 import {
-  branches, staffBranches,
+  branches, staff, staffBranches,
   posMenuItems, posBranchMenuItems,
   posInventoryItems, posBranchInventoryStock, posInventoryMovements,
   posSops, posCategories,
@@ -11,6 +11,7 @@ import {
 import { sql } from "drizzle-orm";
 import { logAudit } from "../lib/audit";
 import { publicProcedure, router, staffProcedure, staffAdminProcedure, superAdminProcedure } from "../_core/trpc";
+import { hashPassword, hashPin } from "../lib/auth";
 
 const BranchInput = z.object({
   name: z.string().min(1),
@@ -45,6 +46,8 @@ const BranchInput = z.object({
   ownerAddress: z.string().optional(),
   ownerTaxId: z.string().optional(),
   ownerCitizenId: z.string().optional(),
+  ownerPassword: z.string().min(6).optional(),
+  ownerPin: z.string().length(4).optional(),
 });
 
 export const branchesRouter = router({
@@ -97,7 +100,43 @@ export const branchesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [result] = await db.insert(branches).values(input as any);
+
+      const { ownerPassword, ownerPin, ...branchData } = input;
+
+      let franchiseOwnerId = null;
+      let empCode = null;
+
+      // Automatically create a staff_admin account for the franchise owner if franchise & owner info provided
+      if (input.branchType === "franchise" && input.ownerName && input.ownerPhone) {
+        const [existing] = await db.select().from(staff).where(eq(staff.phone, input.ownerPhone)).limit(1);
+        if (existing) {
+          franchiseOwnerId = existing.id;
+          empCode = existing.employeeCode;
+        } else {
+          empCode = "FR" + Math.floor(1000 + Math.random() * 9000);
+          const names = input.ownerName.trim().split(/\s+/);
+          const firstName = names[0] || "Owner";
+          const lastName = names.slice(1).join(" ") || "Franchise";
+          const [staffResult] = await db.insert(staff).values({
+            employeeCode: empCode,
+            firstName,
+            lastName,
+            phone: input.ownerPhone,
+            email: input.ownerEmail,
+            role: "staff_admin",
+            employmentType: "contract",
+            status: "active",
+            passwordHash: ownerPassword ? hashPassword(ownerPassword) : undefined,
+            pinHash: ownerPin ? hashPin(ownerPin) : undefined,
+          });
+          franchiseOwnerId = (staffResult as any).insertId as number;
+        }
+      }
+
+      const [result] = await db.insert(branches).values({
+        ...branchData,
+        franchiseOwnerId: franchiseOwnerId || branchData.franchiseOwnerId,
+      } as any);
       const id = (result as any).insertId as number;
 
       // Auto-link all active menu items to this new branch so the POS works immediately
@@ -127,9 +166,22 @@ export const branchesRouter = router({
         }
       }
 
+      // Link owner to branch
+      if (franchiseOwnerId) {
+         await db.insert(staffBranches).values({
+           staffId: franchiseOwnerId,
+           branchId: id,
+           isPrimary: true,
+         });
+         await db.update(staff).set({ primaryBranchId: id }).where(eq(staff.id, franchiseOwnerId));
+      }
+
       const [created] = await db.select().from(branches).where(eq(branches.id, id)).limit(1);
       await logAudit({ staff: ctx.staff, action: "create", entity: "branches", entityId: id, afterData: created });
-      return created;
+      return {
+        ...created,
+        ownerEmployeeCode: empCode,
+      };
     }),
 
   update: staffAdminProcedure

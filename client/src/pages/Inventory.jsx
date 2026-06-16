@@ -855,7 +855,7 @@ export const PageInvTransfer = () => {
   // Is this branch HQ?
   const myBranch = branches.find((b) => b.id === branchId);
   const isHQ = myBranch?.branchType === 'hq';
-  const targetBranches = branches.filter((b) => b.id !== branchId && b.status === 'active');
+  const targetBranches = branches.filter((b) => b.id !== branchId && b.status !== 'closed');
 
   const transferStock = trpc.inventory.transferStock.useMutation({
     onSuccess: () => {

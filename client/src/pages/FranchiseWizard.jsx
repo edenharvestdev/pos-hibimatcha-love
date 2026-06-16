@@ -3,13 +3,17 @@ import { trpc } from "@/lib/trpc";
 import { TopActionBar, Avatar, SectionHeader, useApp } from "@/components";
 
 export const PageFranchiseWizard = () => {
-  const { t } = useApp();
+  const { t, navigate } = useApp();
   const [step, setStep] = useState(1);
+  const [successData, setSuccessData] = useState(null);
   const [formData, setFormData] = useState({
     ownerFirstName: "",
     ownerLastName: "",
     ownerEmail: "",
     ownerPhone: "",
+    ownerPassword: "",
+    ownerConfirmPassword: "",
+    ownerPin: "",
     branchName: "",
     branchCode: "",
     province: "",
@@ -21,12 +25,43 @@ export const PageFranchiseWizard = () => {
 
   const onboard = trpc.franchise.openNewBranch.useMutation();
 
-  const handleNext = () => setStep(s => Math.min(s + 1, 4));
+  const handleNext = () => {
+    if (step === 1 && formData.ownerFirstName && formData.ownerPhone) {
+      if (!formData.ownerPassword || formData.ownerPassword.length < 6) {
+        alert(t('Password must be at least 6 characters!', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร!'));
+        return;
+      }
+      if (formData.ownerPassword !== formData.ownerConfirmPassword) {
+        alert(t('Passwords do not match!', 'รหัสผ่านไม่ตรงกัน!'));
+        return;
+      }
+      if (formData.ownerPin && (formData.ownerPin.length !== 4 || !/^\d{4}$/.test(formData.ownerPin))) {
+        alert(t('POS PIN must be exactly 4 digits!', 'รหัส PIN ต้องเป็นตัวเลข 4 หลัก!'));
+        return;
+      }
+    }
+    setStep(s => Math.min(s + 1, 4));
+  };
+  
   const handlePrev = () => setStep(s => Math.max(s - 1, 1));
 
   const handleSubmit = async () => {
+    if (formData.ownerFirstName && formData.ownerPhone) {
+      if (!formData.ownerPassword || formData.ownerPassword.length < 6) {
+        alert(t('Password must be at least 6 characters!', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร!'));
+        return;
+      }
+      if (formData.ownerPassword !== formData.ownerConfirmPassword) {
+        alert(t('Passwords do not match!', 'รหัสผ่านไม่ตรงกัน!'));
+        return;
+      }
+      if (formData.ownerPin && (formData.ownerPin.length !== 4 || !/^\d{4}$/.test(formData.ownerPin))) {
+        alert(t('POS PIN must be exactly 4 digits!', 'รหัส PIN ต้องเป็นตัวเลข 4 หลัก!'));
+        return;
+      }
+    }
     try {
-      await onboard.mutateAsync({
+      const res = await onboard.mutateAsync({
         name: formData.branchName,
         branchCode: formData.branchCode,
         branchType: "franchise",
@@ -37,12 +72,73 @@ export const PageFranchiseWizard = () => {
         contractEndDate: formData.contractEndDate,
         royaltyType: formData.royaltyType,
         royaltyValue: formData.royaltyValue,
+        ownerFirstName: formData.ownerFirstName || undefined,
+        ownerLastName: formData.ownerLastName || undefined,
+        ownerPassword: formData.ownerPassword || undefined,
+        ownerPin: formData.ownerPin || undefined,
       });
-      alert(t('Franchise branch created successfully!', 'สร้างสาขาแฟรนไชส์สำเร็จ!'));
+      setSuccessData(res);
     } catch (e) {
       alert("Error: " + e.message);
     }
   };
+
+  if (successData) {
+    return (
+      <div className="flex flex-col h-full bg-muted/20">
+        <TopActionBar title={t('Onboarding Success', 'สร้างสาขาสำเร็จแล้ว')} />
+        <div className="p-6 flex-1 overflow-y-auto max-w-2xl mx-auto w-full">
+          <div className="bg-card border rounded-xl p-8 shadow-sm flex flex-col items-center text-center space-y-6">
+            <div className="w-16 h-16 bg-emerald-500/10 text-emerald-600 rounded-full flex items-center justify-center text-3xl font-bold">
+              ✓
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold">{t('Franchise Created!', 'สร้างสาขาแฟรนไชส์สำเร็จ!')}</h2>
+              <p className="text-muted-foreground mt-2">{t('Please keep the login credentials below safe.', 'กรุณาจดจำรหัสผ่านและข้อมูลการเข้าใช้งานด้านล่างนี้')}</p>
+            </div>
+            
+            <div className="w-full bg-muted p-6 rounded-lg text-left space-y-3 font-medium text-sm">
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">{t('Branch Name', 'ชื่อสาขา')}</span>
+                <span>{successData.name || formData.branchName}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">{t('Branch Code', 'รหัสสาขา')}</span>
+                <span className="mono">{successData.branchCode || formData.branchCode}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">{t('Owner Name', 'ชื่อเจ้าของ')}</span>
+                <span>{formData.ownerFirstName} {formData.ownerLastName}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">{t('Owner Employee Code', 'รหัสพนักงานเจ้าของ')}</span>
+                <span className="mono text-primary font-bold text-base">{successData.ownerEmployeeCode}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">{t('Owner Password', 'รหัสผ่าน')}</span>
+                <span className="mono font-bold">{formData.ownerPassword}</span>
+              </div>
+              {formData.ownerPin && (
+                <div className="flex justify-between pb-1">
+                  <span className="text-muted-foreground">{t('POS Quick PIN', 'PIN เข้าระบบ POS')}</span>
+                  <span className="mono font-bold">{formData.ownerPin}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="w-full pt-4 flex gap-4">
+              <button onClick={() => navigate(`/backoffice/franchise/${successData.id}`)} className="btn btn-primary flex-1 py-3 text-sm font-semibold">
+                {t('Go to Branch Detail', 'ไปยังรายละเอียดสาขา')}
+              </button>
+              <button onClick={() => { setSuccessData(null); setStep(1); setFormData({ ownerFirstName: "", ownerLastName: "", ownerEmail: "", ownerPhone: "", ownerPassword: "", ownerConfirmPassword: "", ownerPin: "", branchName: "", branchCode: "", province: "", contractStartDate: "", contractEndDate: "", royaltyType: "percentage", royaltyValue: "5" }); }} className="btn btn-secondary flex-1 py-3 text-sm font-semibold">
+                {t('Onboard Another Branch', 'สร้างสาขาอื่นต่อ')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-muted/20">
@@ -71,20 +167,32 @@ export const PageFranchiseWizard = () => {
                <SectionHeader title={t('Franchise Owner Info', 'ข้อมูลเจ้าของแฟรนไชส์')} />
                <div className="grid grid-cols-2 gap-4">
                  <div>
-                   <label className="text-sm font-medium mb-1 block">{t('First Name', 'ชื่อ')}</label>
+                   <label className="text-sm font-medium mb-1 block">{t('First Name', 'ชื่อ')} *</label>
                    <input className="input" value={formData.ownerFirstName} onChange={e => setFormData({...formData, ownerFirstName: e.target.value})} />
                  </div>
                  <div>
-                   <label className="text-sm font-medium mb-1 block">{t('Last Name', 'นามสกุล')}</label>
+                   <label className="text-sm font-medium mb-1 block">{t('Last Name', 'นามสกุล')} *</label>
                    <input className="input" value={formData.ownerLastName} onChange={e => setFormData({...formData, ownerLastName: e.target.value})} />
                  </div>
                  <div>
-                   <label className="text-sm font-medium mb-1 block">{t('Phone', 'เบอร์โทรศัพท์')}</label>
+                   <label className="text-sm font-medium mb-1 block">{t('Phone', 'เบอร์โทรศัพท์')} *</label>
                    <input className="input" value={formData.ownerPhone} onChange={e => setFormData({...formData, ownerPhone: e.target.value})} />
                  </div>
                  <div>
                    <label className="text-sm font-medium mb-1 block">{t('Email', 'อีเมล')}</label>
                    <input className="input" value={formData.ownerEmail} onChange={e => setFormData({...formData, ownerEmail: e.target.value})} />
+                 </div>
+                 <div>
+                   <label className="text-sm font-medium mb-1 block">{t('Password', 'รหัสผ่าน')} *</label>
+                   <input type="password" placeholder="At least 6 characters" className="input" value={formData.ownerPassword} onChange={e => setFormData({...formData, ownerPassword: e.target.value})} />
+                 </div>
+                 <div>
+                   <label className="text-sm font-medium mb-1 block">{t('Confirm Password', 'ยืนยันรหัสผ่าน')} *</label>
+                   <input type="password" className="input" value={formData.ownerConfirmPassword} onChange={e => setFormData({...formData, ownerConfirmPassword: e.target.value})} />
+                 </div>
+                 <div className="col-span-2">
+                   <label className="text-sm font-medium mb-1 block">{t('POS Quick PIN', 'รหัส PIN ด่วนเข้า POS')}</label>
+                   <input type="text" maxLength={4} placeholder="4 digits (optional)" className="input" value={formData.ownerPin} onChange={e => setFormData({...formData, ownerPin: e.target.value.replace(/\D/g, '')})} />
                  </div>
                </div>
             </div>
@@ -147,6 +255,7 @@ export const PageFranchiseWizard = () => {
                  <p><strong>{t('Branch:', 'สาขา:')}</strong> {formData.branchName} ({formData.branchCode}) - {formData.province}</p>
                  <p><strong>{t('Contract:', 'สัญญา:')}</strong> {formData.contractStartDate} {t('to', 'ถึง')} {formData.contractEndDate}</p>
                  <p><strong>Royalty:</strong> {formData.royaltyValue} {formData.royaltyType === 'percentage' ? '%' : formData.royaltyType === 'hybrid' ? '% + Fixed' : t('THB', 'บาท')}</p>
+                 {formData.ownerPin && <p><strong>POS PIN:</strong> {formData.ownerPin}</p>}
                </div>
                <p className="text-sm text-muted-foreground">
                  {t('The system will automatically create a branch and user credentials for the franchise owner.', 'ระบบจะทำการสร้างสาขาและบัญชีผู้ใช้งานสำหรับเจ้าของแฟรนไชส์โดยอัตโนมัติ')}
