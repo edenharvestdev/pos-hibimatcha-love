@@ -952,6 +952,12 @@ const CommandPalette = () => {
 // ----- App Switcher (accessible from everywhere) -----
 const AppSwitcher = ({ open, onClose }) => {
   const { navigate, role } = useApp();
+  const { data: myTasks = [] } = trpc.sop.listMyTasks.useQuery(
+    { status: 'pending' },
+    { enabled: open, staleTime: 30000 }
+  );
+  const pendingTaskCount = myTasks.filter((t) => t.status === 'pending' || t.status === 'overdue').length;
+
   if (!open) return null;
   const apps = [
     { path: '/', label: 'Dashboard', icon: IconHome, color: 'var(--matcha-600)', desc: 'Overview' },
@@ -963,7 +969,7 @@ const AppSwitcher = ({ open, onClose }) => {
     { path: '/inventory', label: 'Inventory', icon: IconInventory, color: 'var(--matcha-600)', desc: 'Stock + supply' },
     { path: '/suppliers', label: 'Suppliers', icon: IconSupplier, color: '#0891b2', desc: 'Vendors + POs' },
     { path: '/sop', label: 'SOP Library', icon: IconBook, color: 'var(--matcha-700)', desc: 'Knowledge' },
-    { path: '/sop/my-tasks', label: 'My Tasks', icon: IconCheckList, color: 'var(--gold)', desc: 'Personal training', badge: 3 },
+    { path: '/sop/my-tasks', label: 'My Tasks', icon: IconCheckList, color: 'var(--gold)', desc: 'Personal training', badge: pendingTaskCount > 0 ? pendingTaskCount : undefined },
     { path: '/admin/reports', label: 'Reports', icon: IconReports, color: 'var(--matcha-700)', desc: 'Analytics' },
     { path: '/franchise', label: 'Branches', icon: IconFranchise, color: '#dc2626', desc: 'All locations', roles: ['super'] },
     { path: '/settings', label: 'Settings', icon: IconSettings, color: 'var(--text-secondary)', desc: 'Preferences' },

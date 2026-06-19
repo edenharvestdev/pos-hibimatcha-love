@@ -15,6 +15,7 @@ import {
 } from "../../drizzle/schema";
 import { logAudit } from "../lib/audit";
 import { assertMenuItemAccessible } from "../lib/branchAccess";
+import { resolveBranchSop } from "../lib/resolveBranchSop";
 import { router, staffProcedure, staffAdminProcedure, superAdminProcedure } from "../_core/trpc";
 
 const MenuItemInput = z.object({
@@ -180,18 +181,11 @@ export const menuRouter = router({
         })
       );
 
-      // Load linked SOP (preparation instructions) if any
+      // Load linked SOP (branch override when applicable)
       let sop = null;
       if ((item as any).sopId) {
-        const [s] = await db.select({
-          id: posSops.id,
-          title: posSops.title,
-          titleThai: posSops.titleThai,
-          subtitle: posSops.subtitle,
-          content: posSops.content,
-          status: posSops.status,
-        }).from(posSops).where(eq(posSops.id, (item as any).sopId)).limit(1);
-        sop = s ?? null;
+        const branchId = ctx.staff.currentBranchId ?? undefined;
+        sop = await resolveBranchSop(db, (item as any).sopId, branchId);
       }
 
       return { ...item, optionGroups: optionGroupsWithOptions, recipe, sop };

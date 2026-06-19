@@ -41,6 +41,7 @@ import {
   posOptions,
   posPaymentMethods,
   posBranchPaymentSettings,
+  posGiftVouchers,
 } from "../../drizzle/schema";
 import { hashPassword, hashPin } from "../lib/auth";
 import { distributeStarterPackToAllStores } from "../lib/distributeToBranch";
@@ -850,6 +851,17 @@ export async function seed() {
     });
   }
   console.log(`  ${PAYMENT_METHODS.length} payment methods`);
+
+  // Sample gift vouchers for POS testing
+  const sampleVouchers = [
+    { code: "HIBI500", initialBalance: "500.00", currentBalance: "500.00" },
+    { code: "HIBI1000", initialBalance: "1000.00", currentBalance: "1000.00" },
+    { code: "WELCOME200", initialBalance: "200.00", currentBalance: "200.00" },
+  ];
+  for (const v of sampleVouchers) {
+    await db.insert(posGiftVouchers).values(v).onDuplicateKeyUpdate({ set: { isActive: true } });
+  }
+  console.log(`  ${sampleVouchers.length} gift vouchers`);
 
   console.log("\n✅ Seed complete.");
   console.log("\n┌──────────────────────────────────────────────────────────────┐");

@@ -16,8 +16,10 @@ import {
 } from "../../drizzle/schema";
 import { logAudit } from "../lib/audit";
 import { verifyPin } from "../lib/auth";
+import { lookupGiftVoucherBalance, deductGiftVoucherBalance } from "../lib/giftVouchers";
+import { calculateFranchiseComplianceScores } from "../lib/franchiseCompliance";
 import { router, staffProcedure, staffAdminProcedure } from "../_core/trpc";
-import { getFullOrder, deductStockForOrder } from "./orders";
+import { getFullOrder, deductStockForOrder, finalizeOrderStockDeduction } from "./orders";
 
 // Helper function to generate document numbering sequences sequentially
 async function generateDocumentNumber(db: any, branchId: number, docType: string) {
@@ -1069,23 +1071,17 @@ export const enterpriseRouter = router({
 
       if (existing) return existing;
 
-      // Mock calculation for scoring engine (ranges 0-100)
-      const sopCompliance = 92.50;
-      const wasteRate = 4.20; // 4.2% waste
-      const stockCountCompletion = 100.00;
-      const expiryCompliance = 98.00;
-      const revenueCompliance = 95.00;
-      const overallScore = 95.10;
+      const scores = await calculateFranchiseComplianceScores(db, input.branchId, input.month);
 
       const [result] = await db.insert(franchiseComplianceScores).values({
         branchId: input.branchId,
         month: input.month,
-        sopCompliance: String(sopCompliance),
-        wasteRate: String(wasteRate),
-        stockCountCompletion: String(stockCountCompletion),
-        expiryCompliance: String(expiryCompliance),
-        revenueCompliance: String(revenueCompliance),
-        overallScore: String(overallScore),
+        sopCompliance: String(scores.sopCompliance),
+        wasteRate: String(scores.wasteRate),
+        stockCountCompletion: String(scores.stockCountCompletion),
+        expiryCompliance: String(scores.expiryCompliance),
+        revenueCompliance: String(scores.revenueCompliance),
+        overallScore: String(scores.overallScore),
       });
 
       const id = (result as any).insertId as number;
@@ -1306,12 +1302,13 @@ export const enterpriseRouter = router({
             }
 
             if (method.type === "voucher") {
-              const ref = p.referenceNumber || "";
-              let balance = 500;
-              const match = ref.match(/(\d+)$/);
-              if (match) balance = Number(match[1]);
+              const ref = (p.referenceNumber || "").trim();
+              const balance = await lookupGiftVoucherBalance(tx, ref, order.branchId);
+              if (!ref || balance <= 0) {
+                throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Invalid or expired voucher/gift card code." });
+              }
               if (Number(p.amount) > balance) {
-                throw new TRPCError({ code: "PRECONDITION_FAILED", message: `Voucher/Gift Card balance insufficient.` });
+                throw new TRPCError({ code: "PRECONDITION_FAILED", message: `Voucher/Gift Card balance insufficient. Available: ฿${balance.toLocaleString()}` });
               }
             }
           }
@@ -1397,10 +1394,14 @@ export const enterpriseRouter = router({
               status: "pending",
             });
           }
+
+          if (method.type === "voucher" && p.referenceNumber) {
+            await deductGiftVoucherBalance(tx, p.referenceNumber, payAmt, order.branchId);
+          }
         }
 
         if (order.branchId) {
-          await deductStockForOrder(order.id, order.branchId, ctx.staff.staffId);
+          await finalizeOrderStockDeduction(order.id, order.branchId, ctx.staff.staffId);
         }
 
         const generatedNum = await generateDocumentNumber(tx, order.branchId!, "sales_receipt");
@@ -1413,6 +1414,15 @@ export const enterpriseRouter = router({
         await logAudit({ staff: ctx.staff, action: "checkout_split", entity: "pos_orders", entityId: order.id });
         return { success: true, change, orderNumber: generatedNum };
       });
+    }),
+
+  lookupGiftVoucher: staffProcedure
+    .input(z.object({ code: z.string().min(1), branchId: z.number().int().optional() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { balance: 0, valid: false };
+      const balance = await lookupGiftVoucherBalance(db, input.code, input.branchId);
+      return { balance, valid: balance > 0 };
     }),
 
   listDocumentSequences: staffProcedure

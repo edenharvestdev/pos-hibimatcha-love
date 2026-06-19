@@ -104,6 +104,14 @@ export const PagePOS = () => {
   const [discountOpen, setDiscountOpen] = useState(false);
   const [showSopLibraryDrawer, setShowSopLibraryDrawer] = useState(false);
   const [sopPreviewId, setSopPreviewId] = useState(null);
+  const [heldDrawerOpen, setHeldDrawerOpen] = useState(false);
+
+  const resumeOrder = trpc.orders.resumeOrder.useMutation({
+    onSuccess: () => {
+      utils.orders.listHeld.invalidate();
+      setHeldDrawerOpen(false);
+    },
+  });
 
   // CRM member points states
   const [member, setMember] = useState(null);
@@ -466,13 +474,52 @@ export const PagePOS = () => {
         onPreviewSop={(id) => setSopPreviewId(id)}
       />
 
+      {/* Held orders */}
+      <Drawer
+        open={heldDrawerOpen}
+        onClose={() => setHeldDrawerOpen(false)}
+        title="Held Orders"
+        subtitle={`${heldOrders?.length ?? 0} orders on hold`}
+        width={420}
+      >
+        {(heldOrders ?? []).length === 0 ? (
+          <p className="muted" style={{ textAlign: 'center', padding: 24 }}>No held orders</p>
+        ) : (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {(heldOrders ?? []).map((o) => (
+              <div key={o.id} className="card" style={{ padding: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{o.orderNumber}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>
+                    ฿{Number(o.totalAmount).toLocaleString()} · {o.customerName || 'Walk-in'}
+                  </div>
+                </div>
+                <button
+                  className="btn btn-primary btn-sm"
+                  disabled={resumeOrder.isPending}
+                  onClick={async () => {
+                    try {
+                      await resumeOrder.mutateAsync({ orderId: o.id });
+                      navigate(`/pos/payment?orderId=${o.id}`);
+                    } catch (e) {
+                      alert(e?.message ?? 'Resume failed');
+                    }
+                  }}
+                >
+                  Resume
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Drawer>
+
       {/* SOP Library Drawer */}
       <SopLibraryDrawer
         open={showSopLibraryDrawer}
         onClose={() => setShowSopLibraryDrawer(false)}
-        onSelectSop={(id) => {
-          setSopPreviewId(id);
-        }}
+        branchId={branchId}
+        onSelectSop={(id) => { setSopPreviewId(id); setShowSopLibraryDrawer(false); }}
       />
 
       {/* Standalone SOP Preview Drawer */}
@@ -488,9 +535,14 @@ export const PagePOS = () => {
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--matcha-500)', boxShadow: '0 0 6px var(--matcha-500)' }}/>
           {t('pos.online')}
         </span>
-        <span className="glass pill" style={{ height: 28, padding: '0 12px', fontSize: 12 }}>
+        <button
+          type="button"
+          className="glass pill"
+          onClick={() => setHeldDrawerOpen(true)}
+          style={{ height: 28, padding: '0 12px', fontSize: 12, cursor: 'pointer', border: 'none' }}
+        >
           <IconClock size={12}/> {heldOrders?.length ?? 0} {t('pos.held')}
-        </span>
+        </button>
       </div>
 
       <style>{`
@@ -949,14 +1001,19 @@ const CartPanel = ({
 
   const createOrder = trpc.orders.create.useMutation();
   const confirmOrder = trpc.orders.confirmOrder.useMutation();
-  const getPrintPayload = trpc.orders.getPrintPayload.useMutation();
   const networkPrintOnConfirm = trpc.printing.autoPrintOnConfirm.useMutation();
+
+  const fetchPrintPayload = async (orderId, type) =>
+    utils.client.orders.getPrintPayload.query({ orderId, type });
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     if (!branchId) { alert(t('inventory.noBranch')); return; }
     try {
       const orderTypeMap = { 'Dine-in': 'dine-in', 'Takeaway': 'takeaway', 'Delivery': 'delivery' };
+      const regularDiscount = !discount ? 0 : discount.type === 'percent'
+        ? Math.round(sub * discount.value / 100)
+        : Math.min(discount.value, sub);
       const result = await createOrder.mutateAsync({
         branchId,
         orderType: orderTypeMap[orderType] ?? 'dine-in',
@@ -965,6 +1022,8 @@ const CartPanel = ({
         notes: orderNote || undefined,
         memberId: member ? member.id : undefined,
         pointsRedeemed: pointsRedeemed || undefined,
+        discountCode: discount?.code || undefined,
+        manualDiscountAmount: discount && !discount.code ? regularDiscount : undefined,
         items: cart.map((it) => ({
           menuItemId: it.id,
           quantity: it.qty,
@@ -980,11 +1039,11 @@ const CartPanel = ({
         await confirmOrder.mutateAsync({ orderId: result.id });
         const auto = getAutomation();
         // Network auto-print (server-side TCP) — fire & forget
-        networkPrintOnConfirm.mutate({ orderId: result.id, branchId: session?.currentBranchId || 1 });
+        networkPrintOnConfirm.mutate({ orderId: result.id, branchId: branchId || 1 });
         // Browser auto-print order slip (fallback)
         if (auto.autoPrintReceipt) {
           try {
-            const slipPayload = await getPrintPayload.mutateAsync({ orderId: result.id, type: 'order_slip' });
+            const slipPayload = await fetchPrintPayload(result.id, 'order_slip');
             if (slipPayload?.html) {
               const w = window.open('', '_blank', 'width=380,height=600');
               if (w) { w.document.write(slipPayload.html); w.document.close(); }
@@ -993,7 +1052,7 @@ const CartPanel = ({
         }
         // Browser auto-print kitchen ticket (fallback)
         try {
-          const kitchenPayload = await getPrintPayload.mutateAsync({ orderId: result.id, type: 'kitchen_ticket' });
+          const kitchenPayload = await fetchPrintPayload(result.id, 'kitchen_ticket');
           if (kitchenPayload?.html) {
             const w = window.open('', '_blank', 'width=380,height=600');
             if (w) { w.document.write(kitchenPayload.html); w.document.close(); }
@@ -1011,36 +1070,42 @@ const CartPanel = ({
     onClearDiscount?.();
   };
 
-  const holdOrder = trpc.orders.holdOrder?.useMutation?.() ?? null;
+  const holdOrder = trpc.orders.holdOrder.useMutation({
+    onSuccess: () => utils.orders.listHeld.invalidate(),
+  });
+
   const handleHold = async () => {
     if (cart.length === 0) return;
     if (!branchId) return;
     try {
-      if (holdOrder) {
-        const orderTypeMap = { 'Dine-in': 'dine-in', 'Takeaway': 'takeaway', 'Delivery': 'delivery' };
-        await holdOrder.mutateAsync({
-          branchId,
-          orderType: orderTypeMap[orderType] ?? 'dine-in',
-          tableNumber: tableNo || undefined,
-          customerName: customerName || undefined,
-          notes: orderNote || undefined,
-          items: cart.map((it) => ({
-            menuItemId: it.id,
-            quantity: it.qty,
-            options: (it.rawOpts ?? []).map((o) => ({
-              optionId: o.id ?? o.optionId,
-              optionName: o.optionName ?? o.name,
-              priceAdjustment: String(o.priceAdjustment ?? '0'),
-            })),
+      const orderTypeMap = { 'Dine-in': 'dine-in', 'Takeaway': 'takeaway', 'Delivery': 'delivery' };
+      const regularDiscount = !discount ? 0 : discount.type === 'percent'
+        ? Math.round(sub * discount.value / 100)
+        : Math.min(discount.value, sub);
+      await holdOrder.mutateAsync({
+        branchId,
+        orderType: orderTypeMap[orderType] ?? 'dine-in',
+        tableNumber: tableNo || undefined,
+        customerName: customerName || undefined,
+        notes: orderNote || undefined,
+        memberId: member ? member.id : undefined,
+        pointsRedeemed: pointsRedeemed || undefined,
+        discountCode: discount?.code || undefined,
+        manualDiscountAmount: discount && !discount.code ? regularDiscount : undefined,
+        items: cart.map((it) => ({
+          menuItemId: it.id,
+          quantity: it.qty,
+          options: (it.rawOpts ?? []).map((o) => ({
+            optionId: o.id ?? o.optionId,
+            optionName: o.optionName ?? o.name,
+            priceAdjustment: String(o.priceAdjustment ?? '0'),
           })),
-        });
-      }
+        })),
+      });
       handleClear();
-      alert('Order held! You can resume it from the orders screen.');
+      alert('Order held! Tap the held counter to resume.');
     } catch (err) {
-      // Graceful fallback — just clear locally
-      handleClear();
-      alert('Order held locally.');
+      alert(err?.message ?? 'Failed to hold order');
     }
   };
 
@@ -1435,6 +1500,7 @@ const DiscountDrawer = ({ open, onClose, sub, onApply, branchId }) => {
       value: val,
       label: isPercent ? `${val}%` : `฿${val}`,
       id: d.id,
+      code: d.code,
     });
   };
 
@@ -1637,10 +1703,10 @@ const SopPreviewDrawer = ({ sopId, open, onClose }) => {
   );
 };
 
-const SopLibraryDrawer = ({ open, onClose, onSelectSop }) => {
+const SopLibraryDrawer = ({ open, onClose, onSelectSop, branchId }) => {
   const [search, setSearch] = useState('');
   const { data: sops = [], isLoading } = trpc.sop.list.useQuery(
-    { search: search || undefined, status: 'published' },
+    { search: search || undefined, status: 'published', branchId: branchId || undefined },
     { enabled: open }
   );
 
@@ -2381,6 +2447,12 @@ export const PagePayment = () => {
   const networkPrintReceipt = trpc.printing.autoPrintOnPaid.useMutation();
   const processSplitPayment = trpc.enterprise.processSplitPayment.useMutation();
 
+  const selMethod = methods.find((x) => x.code === method);
+  const { data: voucherInfo } = trpc.enterprise.lookupGiftVoucher.useQuery(
+    { code: refNum, branchId: Number(currentBranchId) },
+    { enabled: selMethod?.type === 'voucher' && refNum.trim().length >= 3 }
+  );
+
   const total = Number(order?.totalAmount ?? 0);
   const splitTotalPaid = splitPayments.reduce((acc, curr) => acc + curr.amount, 0);
   const splitRemaining = Math.max(0, total - splitTotalPaid);
@@ -2411,6 +2483,11 @@ export const PagePayment = () => {
     }
     // Reference check
     if (mObj.requiresReference && !refNum) return true;
+    if (mObj.type === 'voucher') {
+      if (!refNum || !voucherInfo?.valid) return true;
+      const payAmt = splitEnabled ? splitAmount : total;
+      if (payAmt > (voucherInfo?.balance ?? 0)) return true;
+    }
     // Slip upload check
     if (mObj.requiresSlipUpload && !slipUrl) return true;
     // Loyalty point check
@@ -2847,7 +2924,21 @@ export const PagePayment = () => {
               {type === 'voucher' && (
                 <div className="card anim-fade" style={{ padding: 24 }}>
                   <div className="t-h4" style={{ fontWeight: 600, marginBottom: 16 }}>{sel.name}</div>
-                  <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>The voucher's value will be deducted from the total. If voucher value is greater, remaining will need another payment.</div>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Enter voucher/gift card code. Balance will be deducted on payment.</div>
+                  <input
+                    className="input"
+                    placeholder="Voucher code"
+                    value={refNum}
+                    onChange={(e) => setRefNum(e.target.value.toUpperCase())}
+                    style={{ marginBottom: 12, fontFamily: 'monospace', letterSpacing: 2 }}
+                  />
+                  {refNum.length >= 3 && (
+                    <div style={{ fontSize: 14, fontWeight: 600, color: voucherInfo?.valid ? 'var(--matcha-700)' : 'var(--danger)' }}>
+                      {voucherInfo?.valid
+                        ? `Balance: ฿${Number(voucherInfo.balance).toLocaleString()}`
+                        : 'Invalid or expired code'}
+                    </div>
+                  )}
                 </div>
               )}
               {type === 'loyalty' && (
@@ -3132,7 +3223,7 @@ export const PageReceipt = () => {
   const { navigate, t } = useApp();
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [paperSize, setPaperSize] = useState('80mm'); // 80mm, 58mm, A4
-  const getPrintPayload = trpc.orders.getPrintPayload.useMutation();
+  const utils = trpc.useUtils();
   const [printLoading, setPrintLoading] = useState(null); // 'receipt'|'labels'|'kitchen'|null
 
   const hash = location.hash.replace(/^#/, '');
@@ -3235,7 +3326,7 @@ export const PageReceipt = () => {
     if (!orderId) return;
     setPrintLoading(type);
     try {
-      const payload = await getPrintPayload.mutateAsync({ orderId: Number(orderId), type });
+      const payload = await utils.client.orders.getPrintPayload.query({ orderId: Number(orderId), type });
       if (payload?.html) {
         const w = window.open('', '_blank', 'width=420,height=700');
         if (!w) { alert('Popup blocked — please allow popups'); return; }
@@ -3396,11 +3487,34 @@ export const PageKitchen = () => {
   const { branch, t } = useApp();
   const session = getSession();
   const branchId = branch?.id || session?.currentBranchId;
+  const [station, setStation] = useState('all');
+  const [soundOn, setSoundOn] = useState(() => localStorage.getItem('kitchen_sound') !== 'false');
+  const prevPendingRef = useRef(0);
+
+  const stationParam = station === 'All' ? undefined : station.toLowerCase();
 
   const { data: tickets = [], refetch } = trpc.kitchen.listTickets.useQuery(
-    { branchId: branchId ?? 0 },
+    { branchId: branchId ?? 0, station: stationParam },
     { enabled: !!branchId, refetchInterval: 10000 }
   );
+
+  const pendingCount = tickets.filter((tk) => tk.status === 'pending').length;
+  useEffect(() => {
+    if (soundOn && pendingCount > prevPendingRef.current && prevPendingRef.current > 0) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        gain.gain.value = 0.15;
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+      } catch (_) { /* ignore */ }
+    }
+    prevPendingRef.current = pendingCount;
+  }, [pendingCount, soundOn]);
 
   const markPreparing = trpc.kitchen.markPreparing.useMutation({ onSuccess: () => refetch() });
   const markReady = trpc.kitchen.markReady.useMutation({ onSuccess: () => refetch() });
@@ -3413,8 +3527,13 @@ export const PageKitchen = () => {
     <div style={{ padding: 24, minHeight: 'calc(100vh - 56px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', gap: 6 }}>
-          {['All', 'Drinks', 'Food', 'Desserts'].map((t, i) => (
-            <button key={t} className={i === 0 ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}>{t}</button>
+          {['All', 'Drinks', 'Food', 'Desserts'].map((label) => (
+            <button
+              key={label}
+              type="button"
+              className={station === label ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}
+              onClick={() => setStation(label)}
+            >{label}</button>
           ))}
         </div>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
@@ -3422,7 +3541,7 @@ export const PageKitchen = () => {
           <span style={{ width: 1, height: 28, background: 'var(--border-default)' }}/>
           <Stat label="Ready" value={String(readyCount)}/>
           <span style={{ width: 1, height: 28, background: 'var(--border-default)' }}/>
-          <Toggle label="Sound" checked={true} onChange={() => {}}/>
+          <Toggle label="Sound" checked={soundOn} onChange={(v) => { setSoundOn(v); localStorage.setItem('kitchen_sound', String(v)); }}/>
         </div>
       </div>
 
@@ -3541,7 +3660,8 @@ export const PageOrders = () => {
   const orders = data?.orders ?? [];
   const totalOrders = data?.total ?? 0;
   const bulkSyncMut = trpc.orders.bulkSyncToSheet.useMutation();
-  const getPrintPayload = trpc.orders.getPrintPayload.useMutation();
+  const utils = trpc.useUtils();
+  const [printLoading, setPrintLoading] = useState(false);
   const updateStatusMut = trpc.orders.updateStatus.useMutation({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [['orders']] });
@@ -3560,8 +3680,9 @@ export const PageOrders = () => {
   };
 
   const handlePrint = async (orderId, type = 'receipt') => {
+    setPrintLoading(true);
     try {
-      const payload = await getPrintPayload.mutateAsync({ orderId, type });
+      const payload = await utils.client.orders.getPrintPayload.query({ orderId, type });
       if (payload?.html) {
         const w = window.open('', '_blank', 'width=380,height=600');
         if (w) {
@@ -3571,6 +3692,8 @@ export const PageOrders = () => {
       }
     } catch (e) {
       alert('Print failed: ' + (e.message || 'Unknown'));
+    } finally {
+      setPrintLoading(false);
     }
   };
 
@@ -3748,9 +3871,9 @@ export const PageOrders = () => {
                 className="btn btn-primary"
                 style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                 onClick={() => handlePrint(openOrder.id, 'receipt')}
-                disabled={getPrintPayload.isPending}
+                disabled={printLoading}
               >
-                <IconPrint size={16}/> {getPrintPayload.isPending ? 'กำลังพิมพ์...' : 'พิมพ์ใบเสร็จย้อนหลัง (Reprint Receipt)'}
+                <IconPrint size={16}/> {printLoading ? 'กำลังพิมพ์...' : 'พิมพ์ใบเสร็จย้อนหลัง (Reprint Receipt)'}
               </button>
               {openOrder.status !== 'cancelled' && openOrder.status !== 'refunded' && (
                 <button
@@ -3842,23 +3965,31 @@ export const PagePendingOrders = () => {
     { enabled: !!branchId, refetchInterval: 15000 }
   );
 
+  const { data: branchMethods = [] } = trpc.enterprise.getBranchPaymentMethods.useQuery(
+    { branchId: branchId ?? 0 },
+    { enabled: !!branchId }
+  );
+  const defaultPaymentMethodId = branchMethods.find((m) => m.type === 'cash')?.id
+    ?? branchMethods[0]?.id;
+
   const markPaid = trpc.orders.markPaid.useMutation({
     onSuccess: () => {
       refetch();
-      // Invalidate inventory queries since stock deduction happens on payment
       queryClient.invalidateQueries({ queryKey: [['inventory']] });
     },
   });
-  const getPrintPayload = trpc.orders.getPrintPayload.useMutation();
+  const utils = trpc.useUtils();
   const networkPrintOnPaid = trpc.printing.autoPrintOnPaid.useMutation();
 
   const handleMarkPaid = async (orderId) => {
     if (!window.confirm('Mark this order as paid?')) return;
+    if (!defaultPaymentMethodId) {
+      alert('No payment method configured for this branch');
+      return;
+    }
     try {
-      await markPaid.mutateAsync({ orderId });
-      // Network auto-print receipt + open cash drawer (fire & forget)
-      const sess = getSession();
-      networkPrintOnPaid.mutate({ orderId, branchId: sess?.currentBranchId || 1, openDrawer: true });
+      await markPaid.mutateAsync({ orderId, paymentMethodId: defaultPaymentMethodId });
+      networkPrintOnPaid.mutate({ orderId, branchId: branchId || 1, openDrawer: true });
     } catch (e) {
       alert('Failed: ' + (e.message || 'Unknown error'));
     }
@@ -3866,7 +3997,7 @@ export const PagePendingOrders = () => {
 
   const handlePrint = async (orderId, type) => {
     try {
-      const payload = await getPrintPayload.mutateAsync({ orderId, type });
+      const payload = await utils.client.orders.getPrintPayload.query({ orderId, type });
       if (payload?.html) {
         const w = window.open('', '_blank', 'width=380,height=600');
         if (w) {

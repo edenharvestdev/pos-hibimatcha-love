@@ -10,7 +10,7 @@ import {
   IconWarning, IconWhisk, IconTrash, IconX, IconChevUp, IconChevDown,
   IconBuilding, IconClock, IconCalendar, IconUser, IconUsers, IconStaff
 } from "@/icons";
-import { useApp, Drawer, Select, Toggle, Checkbox, Tabs, TopActionBar, Placeholder, SectionHeader, Avatar, Sparkline } from "@/components";
+import { useApp, Drawer, Select, Toggle, Checkbox, Tabs, TopActionBar, Placeholder, SectionHeader, Avatar, Sparkline, Field } from "@/components";
 import { trpc } from "@/lib/trpc";
 import { getSession } from "@/lib/authStore";
 import { getAutomation } from "@/lib/automationSettings";
@@ -573,6 +573,9 @@ export const PageSOPDetail = () => {
   const [autoAckTriggered, setAutoAckTriggered] = useState(false);
   const [linkMenuOpen, setLinkMenuOpen] = useState(false);
   const [variantRequestOpen, setVariantRequestOpen] = useState(false);
+  const [assignTaskOpen, setAssignTaskOpen] = useState(false);
+  const [selectedStaffIds, setSelectedStaffIds] = useState([]);
+  const [taskDueDate, setTaskDueDate] = useState('');
   const [viewMode, setViewMode] = useState('doc'); // 'doc' | 'step'
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
   const [completedSteps, setCompletedSteps] = useState(new Set());
@@ -588,6 +591,8 @@ export const PageSOPDetail = () => {
     { enabled: !!sopId }
   );
 
+  const canWrite = role === 'super' || role === 'admin';
+
   const { data: variantRequests = [], refetch: refetchVariants } = trpc.sop.listVariants.useQuery(
     { branchId: branch?.id || undefined },
     { enabled: !!branch?.id, staleTime: 5000 }
@@ -595,7 +600,12 @@ export const PageSOPDetail = () => {
 
   const { data: acks = [] } = trpc.sop.listAcknowledgments.useQuery(
     { sopId: sopId ?? 0 },
-    { enabled: !!sopId }
+    { enabled: !!sopId && canWrite }
+  );
+
+  const { data: myAck } = trpc.sop.getMyAcknowledgment.useQuery(
+    { sopId: sopId ?? 0 },
+    { enabled: !!sopId && !canWrite }
   );
 
   const pendingRequest = useMemo(() => {
@@ -609,12 +619,27 @@ export const PageSOPDetail = () => {
     onError: (e) => alert(e.message),
   });
 
+  const { data: branchStaff = [] } = trpc.staff.list.useQuery(
+    { branchId: branch?.id, status: 'active' },
+    { enabled: assignTaskOpen && !!branch?.id }
+  );
+  const assignTask = trpc.sop.assignTask.useMutation({
+    onSuccess: () => {
+      alert('มอบหมายงานสำเร็จ');
+      setAssignTaskOpen(false);
+      setSelectedStaffIds([]);
+    },
+    onError: (e) => alert(e.message),
+  });
+
   useEffect(() => {
     const session = getSession();
-    if (acks.length > 0 && session?.id) {
+    if (canWrite && acks.length > 0 && session?.id) {
       setAcked(acks.some((a) => a.staffId === session.id));
+    } else if (!canWrite && myAck) {
+      setAcked(true);
     }
-  }, [acks]);
+  }, [acks, myAck, canWrite]);
 
   const steps = useMemo(() => {
     if (!sop?.content) return [];
@@ -914,6 +939,41 @@ export const PageSOPDetail = () => {
         onSuccess={() => { refetch(); refetchVariants(); }}
       />
 
+      <Drawer open={assignTaskOpen} onClose={() => setAssignTaskOpen(false)} title="มอบหมายงานอบรม SOP" width={420}>
+        <Field label="กำหนดส่ง">
+          <input className="input" type="date" value={taskDueDate} onChange={(e) => setTaskDueDate(e.target.value)} />
+        </Field>
+        <div className="t-caption" style={{ margin: '16px 0 8px', color: 'var(--text-tertiary)' }}>เลือกพนักงาน</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto' }}>
+          {branchStaff.map((s) => (
+            <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-default)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={selectedStaffIds.includes(s.id)}
+                onChange={(e) => {
+                  setSelectedStaffIds((prev) =>
+                    e.target.checked ? [...prev, s.id] : prev.filter((id) => id !== s.id)
+                  );
+                }}
+              />
+              <span>{s.firstNameThai || s.firstName} {s.lastNameThai || s.lastName} · {s.employeeCode}</span>
+            </label>
+          ))}
+        </div>
+        <button
+          className="btn btn-primary"
+          style={{ marginTop: 16, width: '100%' }}
+          disabled={!selectedStaffIds.length || assignTask.isPending}
+          onClick={() => assignTask.mutate({
+            sopId: sop.id,
+            staffIds: selectedStaffIds,
+            dueDate: taskDueDate || undefined,
+          })}
+        >
+          {assignTask.isPending ? 'กำลังมอบหมาย…' : 'มอบหมายงาน'}
+        </button>
+      </Drawer>
+
       {/* Override Info bar */}
       {sop.branchId !== null && sop.masterSopId !== null && (
         <div style={{ maxWidth: 1200, margin: '20px auto 0', padding: '0 20px' }}>
@@ -925,7 +985,7 @@ export const PageSOPDetail = () => {
                 <br/>สาขานี้กำลังใช้สูตรชงที่ผ่านการปรับเปลี่ยนเฉพาะกิจ เพื่อความคล่องตัวในงานสาขา
               </div>
             </div>
-            {branch?.id && (role === 'staff_admin' || role === 'admin' || role === 'super_admin') && (
+            {branch?.id && (role === 'admin' || role === 'super') && (
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn btn-secondary btn-sm" onClick={() => setVariantRequestOpen(true)} style={{ background: 'var(--bg-surface)' }}>
                   <IconEdit size={12}/> แก้ไขสูตรสาขา
@@ -1071,16 +1131,21 @@ export const PageSOPDetail = () => {
 
           {/* Right sidebar tags */}
           <aside style={{ position: 'sticky', top: 90, alignSelf: 'flex-start' }} className="sop-aside">
-            {role === 'super' && (
+            {(role === 'super' || canWrite) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
                 <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>ผู้เขียน / แอดมินจัดการ</div>
-                <button className="btn btn-secondary btn-sm" onClick={() => setLinkMenuOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'center' }}>
-                  <IconMenu size={14}/> เชื่อมหน้าเมนูขาย POS
+                {role === 'super' && (
+                  <button className="btn btn-secondary btn-sm" onClick={() => setLinkMenuOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'center' }}>
+                    <IconMenu size={14}/> เชื่อมหน้าเมนูขาย POS
+                  </button>
+                )}
+                <button className="btn btn-secondary btn-sm" onClick={() => setAssignTaskOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'center' }}>
+                  <IconCheckList size={14}/> มอบหมายงานอบรม
                 </button>
               </div>
             )}
 
-            {sop.branchId === null && sop.allowBranchVariants && branch?.id && (role === 'staff_admin' || role === 'admin' || role === 'super_admin') && (
+            {sop.branchId === null && sop.allowBranchVariants && branch?.id && (role === 'admin' || role === 'super') && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
                 <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>ปรับแต่งสาขา</div>
                 <button className="btn btn-secondary btn-sm" onClick={() => setVariantRequestOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'center' }}>
@@ -1416,6 +1481,7 @@ export const PageSOPEditor = () => {
   const createSop = trpc.sop.create.useMutation();
   const updateSop = trpc.sop.update.useMutation();
   const publishSop = trpc.sop.publish.useMutation();
+  const submitForReview = trpc.sop.submitForReview.useMutation();
 
   const buildPayload = () => {
     let parsedContent = form.content;
@@ -1453,6 +1519,26 @@ export const PageSOPEditor = () => {
       setSavedAt(new Date());
     } catch (err) {
       alert('Save failed: ' + (err.message || 'Unknown error'));
+    }
+  };
+
+  const handleSubmitForReview = async () => {
+    if (!form.title.trim()) { alert('กรุณากรอกหัวข้อ SOP'); return; }
+    try {
+      let id = editId;
+      if (!id) {
+        const created = await createSop.mutateAsync(buildPayload());
+        id = created?.id;
+      } else {
+        await updateSop.mutateAsync({ id: editId, ...buildPayload() });
+      }
+      if (id) {
+        await submitForReview.mutateAsync({ id });
+        setStatusLabel('Review');
+        alert('ส่งตรวจสอบแล้ว — รออนุมัติเผยแพร่');
+      }
+    } catch (err) {
+      alert('Submit failed: ' + (err.message || 'Unknown error'));
     }
   };
 
@@ -1505,6 +1591,11 @@ export const PageSOPEditor = () => {
           {savedAt && <span className="muted" style={{ fontSize: 12 }}>· บันทึกร่างเมื่อ {new Date(savedAt).toLocaleTimeString()}</span>}
           <div style={{ flex: 1 }}/>
           <button className="btn btn-secondary btn-sm" onClick={handleSaveDraft} disabled={isSaving || isPublishing}>{isSaving ? 'กำลังบันทึกร่าง…' : 'บันทึกแบบร่าง (Save)'}</button>
+          {statusLabel !== 'Published' && statusLabel !== 'Review' && (
+            <button className="btn btn-secondary btn-sm" onClick={handleSubmitForReview} disabled={isSaving || isPublishing || submitForReview.isPending}>
+              {submitForReview.isPending ? 'กำลังส่ง…' : 'ส่งตรวจสอบ (Review)'}
+            </button>
+          )}
           {statusLabel !== 'Published' && (
             <button className="btn btn-primary btn-sm" onClick={handlePublish} disabled={isSaving || isPublishing}>{isPublishing ? 'กำลังเผยแพร่…' : 'เผยแพร่จริง (Publish)'}</button>
           )}

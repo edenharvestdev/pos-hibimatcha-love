@@ -6,8 +6,8 @@ import {
   posOrders, posOrderItems, posOrderItemOptions, posOrderPayments,
   posMenuItems, posCategories, posBranchInventoryStock,
   posInventoryItems, auditLogs, posOrderRecipeSnapshots,
-  posRecipeIngredients, posExpenseReceipts,
-  masterPaymentMethods, posPaymentMethods, staff,
+  posRecipeIngredients,   posExpenseReceipts,
+  masterPaymentMethods, posPaymentMethods, staff, branches,
 } from "../../drizzle/schema";
 import { router, staffProcedure, staffAdminProcedure } from "../_core/trpc";
 
@@ -138,6 +138,47 @@ export const reportsRouter = router({
       return Array.from(byDay.entries())
         .map(([date, data]) => ({ date, ...data }))
         .sort((a, b) => a.date.localeCompare(b.date));
+    }),
+
+  getMultiBranchRevenueTrend: staffAdminProcedure
+    .input(z.object({ days: z.number().int().min(7).max(90).optional() }).optional())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { labels: [] as string[], series: [] as Array<{ branchId: number; name: string; data: number[] }> };
+
+      const days = input?.days ?? 30;
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      const start = new Date(end);
+      start.setDate(start.getDate() - (days - 1));
+      start.setHours(0, 0, 0, 0);
+
+      const labels: string[] = [];
+      for (let i = 0; i < days; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        labels.push(d.toISOString().split("T")[0]);
+      }
+
+      const allBranches = await db.select().from(branches).where(eq(branches.status, "active"));
+      const storeBranches = allBranches.filter((b) => b.branchType !== "hq").slice(0, 4);
+
+      let orders = await db.select().from(posOrders);
+      orders = orders.filter((o) =>
+        o.createdAt && o.createdAt >= start && o.createdAt <= end &&
+        ["completed", "served"].includes(o.status ?? "")
+      );
+
+      const series = storeBranches.map((b) => {
+        const data = labels.map((dateKey) => {
+          return orders
+            .filter((o) => o.branchId === b.id && o.createdAt!.toISOString().split("T")[0] === dateKey)
+            .reduce((sum, o) => sum + Number(o.totalAmount ?? 0), 0);
+        });
+        return { branchId: b.id, name: b.name, data: data.map((v) => Math.round(v)) };
+      });
+
+      return { labels, series };
     }),
 
   getTopItemsReport: staffAdminProcedure

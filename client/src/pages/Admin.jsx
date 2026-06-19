@@ -126,15 +126,23 @@ const Legend = ({ color, label }) => <span style={{ display: 'inline-flex', alig
   <span style={{ width: 8, height: 8, borderRadius: 2, background: color }}/>{label}
 </span>;
 
+const CHART_COLORS = ['var(--matcha-600)', 'var(--gold)', 'var(--info)', 'var(--text-quaternary)'];
+
 const MultiAreaChart = ({ h = 260 }) => {
-  const series = [
-    { c: 'var(--matcha-600)', d: [4,5,6,7,5,6,8,7,9,8,7,9,10,11,9,10,12,11,13,12,11,10,12,13,14,12,11,13,14,15] },
-    { c: 'var(--gold)', d: [3,4,4,5,4,5,6,5,7,6,5,7,8,9,7,8,10,9,11,10,9,8,10,11,12,10,9,11,12,13] },
-    { c: 'var(--info)', d: [2,3,3,4,3,4,5,4,6,5,4,6,7,8,6,7,9,8,10,9,8,7,9,10,11,9,8,10,11,12] },
-    { c: 'var(--text-quaternary)', d: [1,2,2,3,2,3,4,3,5,4,3,5,6,7,5,6,8,7,9,8,7,6,8,9,10,8,7,9,10,11] },
-  ];
+  const { data, isLoading } = trpc.reports.getMultiBranchRevenueTrend.useQuery({ days: 30 }, { staleTime: 60000 });
   const w = 800;
-  const max = 16;
+  const series = (data?.series ?? []).map((s, idx) => ({
+    c: CHART_COLORS[idx % CHART_COLORS.length],
+    d: s.data.length > 0 ? s.data : Array(30).fill(0),
+    name: s.name,
+  }));
+  const max = Math.max(1, ...series.flatMap((s) => s.d));
+  if (isLoading) {
+    return <div style={{ height: h, display: 'grid', placeItems: 'center' }} className="muted">Loading chart…</div>;
+  }
+  if (series.length === 0) {
+    return <div style={{ height: h, display: 'grid', placeItems: 'center' }} className="muted">No revenue data yet</div>;
+  }
   return (
     <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height: h }}>
       {[0, 0.25, 0.5, 0.75, 1].map((g) => (
@@ -170,6 +178,7 @@ export const PageAdminMenu = () => {
   const [tab, setTab] = useState('basic');
   const [selected, setSelected] = useState(new Set());
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All status');
   const [distributeOpen, setDistributeOpen] = useState(false);
 
   // Form state for the drawer
@@ -206,6 +215,13 @@ export const PageAdminMenu = () => {
   const bulkArchiveItems = trpc.menu.bulkArchive.useMutation({ onSuccess: () => { setSelected(new Set()); refetchMenu(); } });
 
   const items = menuData ?? [];
+  const displayedItems = useMemo(() => items.filter((it) => {
+    if (statusFilter === 'All status') return true;
+    if (statusFilter === 'Available') return it.isActive !== false && !it.isArchived;
+    if (statusFilter === 'Hidden') return it.isActive === false;
+    if (statusFilter === 'Out of stock') return it.isArchived;
+    return true;
+  }), [items, statusFilter]);
   const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories]);
 
   // Hydrate form when loading existing item
@@ -339,7 +355,7 @@ export const PageAdminMenu = () => {
       <TopActionBar
         search={search} onSearch={setSearch}
         filters={<>
-          <Select value="" onChange={() => {}} options={['All status', 'Available', 'Hidden', 'Out of stock']} placeholder="All status"/>
+          <Select value={statusFilter} onChange={setStatusFilter} options={['All status', 'Available', 'Hidden', 'Out of stock']} placeholder="All status"/>
         </>}
         viewMode="grid"
         onViewMode={() => {}}
@@ -380,7 +396,7 @@ export const PageAdminMenu = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--bg-muted)' }}>
-              <th style={{ width: 40, padding: '12px 8px 12px 16px' }}><Checkbox checked={selected.size === items.length} indeterminate={selected.size > 0 && selected.size < items.length} onChange={() => setSelected(selected.size === items.length ? new Set() : new Set(items.map(i => i.id)))}/></th>
+              <th style={{ width: 40, padding: '12px 8px 12px 16px' }}><Checkbox checked={selected.size === displayedItems.length && displayedItems.length > 0} indeterminate={selected.size > 0 && selected.size < displayedItems.length} onChange={() => setSelected(selected.size === displayedItems.length ? new Set() : new Set(displayedItems.map(i => i.id)))}/></th>
               {['Photo', 'Name', 'Category', 'Price', 'Cost', 'Margin', 'Stock', 'Available', 'Modified', ''].map((h) => (
                 <th key={h} style={{ padding: '12px 12px', textAlign: 'left', fontWeight: 500, fontSize: 12, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
               ))}
@@ -389,12 +405,12 @@ export const PageAdminMenu = () => {
           <tbody>
             {menuLoading ? (
               <tr><td colSpan={10} style={{ padding: 40, textAlign: 'center' }} className="muted">Loading menu items…</td></tr>
-            ) : items.length === 0 ? (
+            ) : displayedItems.length === 0 ? (
               <tr><td colSpan={10} style={{ padding: 60, textAlign: 'center', color: 'var(--text-tertiary)' }}>
                 <IconWhisk size={32} style={{ opacity: 0.3 }}/>
                 <p style={{ marginTop: 12 }}>No menu items yet. Add your first item.</p>
               </td></tr>
-            ) : items.map((it) => {
+            ) : displayedItems.map((it) => {
               const price = Number(it.basePrice ?? 0);
               const cost = Number(it.costPrice ?? 0);
               const margin = cost > 0 && price > 0 ? ((price - cost) / price * 100).toFixed(0) : '—';
@@ -1281,6 +1297,9 @@ export const PageAdminStaff = () => {
   const [modal, setModal] = useState(false);
   const [bulkModal, setBulkModal] = useState(false);
   const [staffDetailId, setStaffDetailId] = useState(null);
+  const [staffSearch, setStaffSearch] = useState('');
+  const [branchFilter, setBranchFilter] = useState('All branches');
+  const [roleFilter, setRoleFilter] = useState('All roles');
   const [newStaff, setNewStaff] = useState({ firstName: '', lastName: '', email: '', role: 'staff', pin: '', password: '', branchIds: [] });
 
   const { data: staffList = [], isLoading: staffLoading, refetch: refetchStaff } = trpc.staff.list.useQuery({ branchId: branchId || undefined }, { staleTime: 5000, refetchOnWindowFocus: true });
@@ -1293,6 +1312,17 @@ export const PageAdminStaff = () => {
 
   const roleLabel = { super_admin: 'Super Admin', staff_admin: 'Staff Admin', staff: 'Staff' };
   const roleClass = { super_admin: 'pill-matcha', staff_admin: 'pill-gold', staff: '' };
+
+  const filteredStaff = useMemo(() => staffList.filter((s) => {
+    const q = staffSearch.trim().toLowerCase();
+    if (q && !`${s.firstName} ${s.lastName} ${s.employeeCode} ${s.email ?? ''}`.toLowerCase().includes(q)) return false;
+    if (roleFilter !== 'All roles' && roleLabel[s.role] !== roleFilter) return false;
+    if (branchFilter !== 'All branches') {
+      const b = branchOptions.find((x) => x.name === branchFilter);
+      if (b && s.primaryBranchId !== b.id) return false;
+    }
+    return true;
+  }), [staffList, staffSearch, roleFilter, branchFilter, branchOptions]);
 
   return (
     <div className="page">
@@ -1311,10 +1341,10 @@ export const PageAdminStaff = () => {
       </div>
 
       <TopActionBar
-        search="" onSearch={() => {}}
+        search={staffSearch} onSearch={setStaffSearch}
         filters={<>
-          <Select value="" onChange={() => {}} options={['All branches', ...branchOptions.map(b => b.name)]} placeholder="All branches"/>
-          <Select value="" onChange={() => {}} options={['All roles', 'Super Admin', 'Staff Admin', 'Staff']} placeholder="All roles"/>
+          <Select value={branchFilter} onChange={setBranchFilter} options={['All branches', ...branchOptions.map(b => b.name)]} placeholder="All branches"/>
+          <Select value={roleFilter} onChange={setRoleFilter} options={['All roles', 'Super Admin', 'Staff Admin', 'Staff']} placeholder="All roles"/>
         </>}
         viewMode={view} onViewMode={setView}
         onExport={() => {}} onImport={() => {}}
@@ -1325,12 +1355,12 @@ export const PageAdminStaff = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
           {staffLoading ? (
             [1,2,3,4,5,6].map((i) => <div key={i} className="card" style={{ height: 160, background: 'var(--bg-muted)', animation: 'pulse 1.5s ease-in-out infinite' }}/>)
-          ) : staffList.length === 0 ? (
+          ) : filteredStaff.length === 0 ? (
             <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '80px 0', color: 'var(--text-tertiary)' }}>
               <IconUser size={36} style={{ opacity: 0.3 }}/>
               <p style={{ marginTop: 12 }}>No staff members yet. Invite your first team member.</p>
             </div>
-          ) : staffList.map((s, i) => {
+          ) : filteredStaff.map((s, i) => {
             const fullName = [s.firstName, s.lastName].filter(Boolean).join(' ') || s.employeeCode;
             const isActive = s.status === 'active';
             const lastLogin = s.lastLoginAt ? new Date(s.lastLoginAt).toLocaleDateString() : '—';
@@ -1366,7 +1396,7 @@ export const PageAdminStaff = () => {
               </tr>
             </thead>
             <tbody>
-              {staffList.map((s) => {
+              {filteredStaff.map((s) => {
                 const fullName = [s.firstName, s.lastName].filter(Boolean).join(' ') || s.employeeCode;
                 const isActive = s.status === 'active';
                 const lastLogin = s.lastLoginAt ? new Date(s.lastLoginAt).toLocaleDateString() : '—';

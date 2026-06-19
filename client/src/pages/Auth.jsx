@@ -23,6 +23,8 @@ export const PageLogin = () => {
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState("");
   const [selectedBranchId, setSelectedBranchId] = useState(null);
+  const [totpCode, setTotpCode] = useState("");
+  const [awaitingTotp, setAwaitingTotp] = useState(false);
 
   const { data: bootstrapCheck } = trpc.posAuth.needsBootstrap.useQuery(undefined, { staleTime: 5000 });
   const loginEmployee = trpc.posAuth.loginWithEmployeeCode.useMutation();
@@ -36,9 +38,19 @@ export const PageLogin = () => {
 
   const handleEmployeeLogin = async () => {
     if (!empCode || !pwd) { setError("Please enter your employee code and password"); return; }
+    if (awaitingTotp && totpCode.length !== 6) { setError("Enter 6-digit authenticator code"); return; }
     setError("");
     try {
-      const result = await loginEmployee.mutateAsync({ employeeCode: empCode, password: pwd });
+      const result = await loginEmployee.mutateAsync({
+        employeeCode: empCode,
+        password: pwd,
+        totpCode: awaitingTotp ? totpCode : undefined,
+      });
+      if (result.requiresTotp) {
+        setAwaitingTotp(true);
+        setError("Enter the 6-digit code from your authenticator app");
+        return;
+      }
       setSession({
         id: result.staff.id,
         employeeCode: result.staff.employeeCode,
@@ -195,6 +207,13 @@ export const PageLogin = () => {
                     </button>
                   </div>
                 </Field>
+                {awaitingTotp && (
+                  <Field label="Authenticator code" required>
+                    <input className="input" value={totpCode} onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="000000" inputMode="numeric" maxLength={6} style={{ letterSpacing: 6, textAlign: 'center', fontSize: 18 }}
+                      onKeyDown={(e) => e.key === "Enter" && handleEmployeeLogin()} />
+                  </Field>
+                )}
                 <button className="btn btn-primary btn-lg" style={{ width: "100%", marginTop: 8 }} onClick={handleEmployeeLogin} disabled={isLoading}>
                   {isLoading ? "Signing in…" : <>Sign in <IconChevRight size={16} /></>}
                 </button>

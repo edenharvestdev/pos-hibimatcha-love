@@ -405,6 +405,52 @@ const SettingsNotifications = () => {
   );
 };
 
+const SettingsTotp = () => {
+  const { data: me, refetch } = trpc.posAuth.me.useQuery();
+  const [setup, setSetup] = useState(null);
+  const [code, setCode] = useState('');
+  const [msg, setMsg] = useState(null);
+  const begin = trpc.posAuth.beginTotpSetup.useMutation({
+    onSuccess: (d) => { setSetup(d); setMsg(null); },
+    onError: (e) => setMsg({ type: 'error', text: e.message }),
+  });
+  const enable = trpc.posAuth.enableTotp.useMutation({
+    onSuccess: () => { setSetup(null); setCode(''); setMsg({ type: 'success', text: '2FA enabled' }); refetch(); },
+    onError: (e) => setMsg({ type: 'error', text: e.message }),
+  });
+  const disable = trpc.posAuth.disableTotp.useMutation({
+    onSuccess: () => { setCode(''); setMsg({ type: 'success', text: '2FA disabled' }); refetch(); },
+    onError: (e) => setMsg({ type: 'error', text: e.message }),
+  });
+
+  return (
+    <div>
+      {msg && <div style={{ marginBottom: 12, fontSize: 13, color: msg.type === 'success' ? 'var(--matcha-700)' : 'var(--danger)' }}>{msg.text}</div>}
+      {me?.totpEnabled ? (
+        <div>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>Authenticator app is enabled for this account.</p>
+          <Field label="Code to disable">
+            <input className="input" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" maxLength={6} style={{ maxWidth: 160 }}/>
+          </Field>
+          <button className="btn btn-secondary btn-sm" onClick={() => disable.mutate({ code })} disabled={code.length !== 6 || disable.isPending}>Disable 2FA</button>
+        </div>
+      ) : setup ? (
+        <div>
+          <p style={{ fontSize: 13, marginBottom: 8 }}>Add this secret to your authenticator app:</p>
+          <code style={{ display: 'block', padding: 10, background: 'var(--bg-muted)', borderRadius: 8, marginBottom: 12, wordBreak: 'break-all' }}>{setup.secret}</code>
+          <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{setup.uri}</p>
+          <Field label="Verify code">
+            <input className="input" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" maxLength={6} style={{ maxWidth: 160 }}/>
+          </Field>
+          <button className="btn btn-primary btn-sm" onClick={() => enable.mutate({ code })} disabled={code.length !== 6 || enable.isPending}>Enable 2FA</button>
+        </div>
+      ) : (
+        <button className="btn btn-primary btn-sm" onClick={() => begin.mutate()} disabled={begin.isPending}>Set up authenticator</button>
+      )}
+    </div>
+  );
+};
+
 const SettingsSecurity = () => {
   const session = getSession();
   const forceChange = session?.mustChangePassword || session?.mustChangePin;
@@ -499,6 +545,10 @@ const SettingsSecurity = () => {
         </div>
       </div>
     <div className="card" style={{ padding: 28 }}>
+      <SectionHeader title="Two-factor authentication (TOTP)" desc="Use Google Authenticator or similar apps"/>
+      <SettingsTotp />
+    </div>
+    <div className="card" style={{ padding: 28 }}>
       <SectionHeader title="Account security" desc="Staff login uses employee code + password, and a 4-digit PIN at POS."/>
       <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>
         Two-factor authentication (TOTP/SMS) for staff accounts is planned for a future release.
@@ -529,19 +579,23 @@ const SettingsSecurity = () => {
   );
 };
 
-const SettingsLanguage = () => (
+const SettingsLanguage = () => {
+  const { lang, setLang } = useApp();
+  const langLabel = lang === 'th' ? 'ไทย' : 'English';
+  return (
   <div className="card" style={{ padding: 28 }}>
     <SectionHeader title="Language & Region"/>
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-      <Field label="UI Language"><Select value="English" onChange={() => {}} options={['English', 'ไทย', '日本語', '简体中文']}/></Field>
-      <Field label="Currency"><Select value="THB · Thai Baht" onChange={() => {}} options={['THB · Thai Baht', 'JPY · Japanese Yen', 'USD · US Dollar']}/></Field>
+      <Field label="UI Language">
+        <Select value={langLabel} onChange={(v) => setLang(v === 'ไทย' ? 'th' : 'en')} options={['English', 'ไทย']} />
+      </Field>
+      <Field label="Currency"><Select value="THB · Thai Baht" onChange={() => {}} options={['THB · Thai Baht']} /></Field>
       <Field label="Date format"><Select value="6 Mar 2026" onChange={() => {}} options={['6 Mar 2026', '03/06/2026', '2026-03-06']}/></Field>
       <Field label="Time format"><Select value="24-hour" onChange={() => {}} options={['24-hour', '12-hour']}/></Field>
-      <Field label="Number format"><Select value="1,234.56" onChange={() => {}} options={['1,234.56', '1.234,56', '1 234.56']}/></Field>
-      <Field label="First day of week"><Select value="Monday" onChange={() => {}} options={['Monday', 'Sunday']}/></Field>
     </div>
   </div>
-);
+  );
+};
 
 // Integration configs — URLs for each service's real dashboard/settings
 const INTEGRATION_LINKS = {

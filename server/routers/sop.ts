@@ -160,13 +160,62 @@ export const sopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [current] = await db.select().from(posSops).where(eq(posSops.id, input.id)).limit(1);
+      if (!current) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const nextVersion = current.status === "published" ? (current.version ?? 1) + 1 : (current.version ?? 1);
+
       await db.update(posSops).set({
         status: "published",
         publishedAt: new Date(),
         changeReason: input.changeReason,
+        version: nextVersion,
+        previousVersionId: current.status === "published" ? current.id : current.previousVersionId,
       }).where(eq(posSops.id, input.id));
+
       const [updated] = await db.select().from(posSops).where(eq(posSops.id, input.id)).limit(1);
+
+      // Auto-create ack tasks when published with deadline
+      if (updated?.requiresAcknowledgment && updated.acknowledgmentDeadlineDays) {
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + Number(updated.acknowledgmentDeadlineDays));
+        const dueStr = deadline.toISOString().slice(0, 10);
+
+        let targetStaff = await db.select({ id: staff.id }).from(staff).where(eq(staff.status, "active"));
+        if (updated.branchId) {
+          const branchStaff = await db.select({ staffId: staffBranches.staffId })
+            .from(staffBranches).where(eq(staffBranches.branchId, updated.branchId));
+          const ids = new Set(branchStaff.map((b) => b.staffId));
+          targetStaff = targetStaff.filter((s) => ids.has(s.id));
+        }
+
+        const existingTasks = await db.select().from(posSopTasks).where(eq(posSopTasks.sopId, input.id));
+        const assigned = new Set(existingTasks.map((t) => t.staffId));
+
+        for (const s of targetStaff) {
+          if (assigned.has(s.id)) continue;
+          await db.insert(posSopTasks).values({
+            sopId: input.id,
+            staffId: s.id,
+            dueDate: dueStr as any,
+            status: "pending",
+          });
+        }
+      }
+
       await logAudit({ staff: ctx.staff, action: "publish", entity: "pos_sops", entityId: input.id });
+      return updated;
+    }),
+
+  submitForReview: staffAdminProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(posSops).set({ status: "review" }).where(eq(posSops.id, input.id));
+      await logAudit({ staff: ctx.staff, action: "submit_review", entity: "pos_sops", entityId: input.id });
+      const [updated] = await db.select().from(posSops).where(eq(posSops.id, input.id)).limit(1);
       return updated;
     }),
 
@@ -214,6 +263,19 @@ export const sopRouter = router({
         acknowledgedAt: new Date(),
       }).onDuplicateKeyUpdate({ set: { acknowledgedAt: new Date() } });
       return { success: true };
+    }),
+
+  getMyAcknowledgment: staffProcedure
+    .input(z.object({ sopId: z.number().int() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const [ack] = await db.select().from(posSopAcknowledgments)
+        .where(and(
+          eq(posSopAcknowledgments.sopId, input.sopId),
+          eq(posSopAcknowledgments.staffId, ctx.staff.staffId),
+        )).limit(1);
+      return ack ?? null;
     }),
 
   listAcknowledgments: staffAdminProcedure
@@ -442,9 +504,24 @@ export const sopRouter = router({
       const db = await getDb();
       if (!db) return [];
       const targetId = input?.staffId ?? ctx.staff.staffId;
-      let rows = await db.select().from(posSopTasks).where(eq(posSopTasks.staffId, targetId));
+      let rows = await db.select({
+        id: posSopTasks.id,
+        sopId: posSopTasks.sopId,
+        staffId: posSopTasks.staffId,
+        status: posSopTasks.status,
+        dueDate: posSopTasks.dueDate,
+        startedAt: posSopTasks.startedAt,
+        completedAt: posSopTasks.completedAt,
+        sopTitle: posSops.title,
+      })
+        .from(posSopTasks)
+        .leftJoin(posSops, eq(posSopTasks.sopId, posSops.id))
+        .where(eq(posSopTasks.staffId, targetId));
       if (input?.status) rows = rows.filter((t) => t.status === input.status);
-      return rows;
+      return rows.map((r) => ({
+        ...r,
+        sop: r.sopTitle ? { title: r.sopTitle } : null,
+      }));
     }),
 
   assignTask: staffAdminProcedure

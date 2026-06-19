@@ -339,6 +339,7 @@ const ROUTES = {
   '/sop/new': () => <PageSOPEditor/>,
   '/sop/approval-queue': () => <PageSOPApprovalQueue/>,
   '/sop/acknowledgments': () => <PageSOPCompliance/>,
+  '/sop/compliance': () => <PageSOPCompliance/>,
   '/sop/my-variants': () => <PageSOPVariants/>,
   '/sop/my-tasks': () => <PageSOPMyTasks/>,
   '/sop/material-usage': () => <PageSOPMaterialUsage/>,

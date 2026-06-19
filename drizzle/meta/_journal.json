@@ -162,6 +162,13 @@
       "when": 1781606435876,
       "tag": "0022_clever_ink",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1781700000000,
+      "tag": "0024_gift_vouchers",
+      "breakpoints": true
     }
   ]
 }

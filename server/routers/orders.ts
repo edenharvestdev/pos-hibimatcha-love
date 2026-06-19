@@ -16,6 +16,7 @@ import { logAudit, generateOrderNumber, generateTicketNumber } from "../lib/audi
 import { router, staffProcedure, staffAdminProcedure } from "../_core/trpc";
 import { appendCashRowAsync } from "../lib/sheetsSync";
 import { broadcastToBranch, RealtimeEvents } from "../lib/realtime";
+import { validateCartStockAvailability } from "../lib/orderStockValidation";
 import {
   generatePromptPayQRDataUrl,
   generateOrderSlipHTML,
@@ -90,7 +91,26 @@ export async function deductStockForOrder(
 
     const recipes = await tx.select().from(posRecipeIngredients)
       .where(inArray(posRecipeIngredients.menuItemId, menuItemIds));
-    if (recipes.length === 0) return { success: true, deductions: [] }; // No recipes defined
+
+    const menuRows = await tx.select({
+      id: posMenuItems.id,
+      name: posMenuItems.name,
+      nameThai: posMenuItems.nameThai,
+      trackInventory: posMenuItems.trackInventory,
+    }).from(posMenuItems).where(inArray(posMenuItems.id, menuItemIds));
+
+    const trackedWithoutRecipe = menuRows.filter((m) =>
+      m.trackInventory && !recipes.some((r) => r.menuItemId === m.id)
+    );
+    if (trackedWithoutRecipe.length > 0) {
+      const names = trackedWithoutRecipe.map((m) => m.nameThai || m.name).join(", ");
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: `เมนูต่อไปนี้เปิด track inventory แต่ยังไม่มีสูตร: ${names}`,
+      });
+    }
+
+    if (recipes.length === 0) return { success: true, deductions: [] };
 
     // ─── 4. Build compiled recipes and deduction map ─────────────────────
     const deductions = new Map<number, number>();
@@ -459,6 +479,12 @@ async function deductBranchStockLevel(orderId: number, branchId: number) {
   }
 }
 
+/** Deduct recipe stock + finished-goods counter — call before marking order completed. */
+export async function finalizeOrderStockDeduction(orderId: number, branchId: number, staffId: number) {
+  await deductStockForOrder(orderId, branchId, staffId);
+  await deductBranchStockLevel(orderId, branchId);
+}
+
 const OrderItemInput = z.object({
   menuItemId: z.number().int(),
   quantity: z.number().int().min(1),
@@ -482,6 +508,7 @@ export const ordersRouter = router({
       notes: z.string().optional(),
       items: z.array(OrderItemInput).min(1),
       discountCode: z.string().optional(),
+      manualDiscountAmount: z.number().min(0).optional(),
       memberId: z.number().int().optional().nullable(),
       pointsRedeemed: z.number().optional().nullable(),
     }))
@@ -506,7 +533,12 @@ export const ordersRouter = router({
           .where(eq(posMenuItems.id, item.menuItemId)).limit(1);
         if (!menuItem) throw new TRPCError({ code: "BAD_REQUEST", message: `Menu item ${item.menuItemId} not found` });
 
-        let unitPrice = Number(menuItem.basePrice);
+        const [branchMenu] = await db.select().from(posBranchMenuItems)
+          .where(and(
+            eq(posBranchMenuItems.branchId, input.branchId),
+            eq(posBranchMenuItems.menuItemId, item.menuItemId),
+          )).limit(1);
+        let unitPrice = Number(branchMenu?.priceOverride ?? menuItem.basePrice);
         const resolvedOptions: Array<{ optionId: number; optionName: string; priceAdjustment: string; costAdjustment: string }> = [];
 
         for (const opt of item.options ?? []) {
@@ -557,6 +589,10 @@ export const ordersRouter = router({
         }
       }
 
+      if (input.manualDiscountAmount && input.manualDiscountAmount > 0) {
+        discountAmount += Math.min(input.manualDiscountAmount, subtotal - discountAmount);
+      }
+
       // Calculate member points discount if points are redeemed
       let pointsDiscount = 0;
       if (input.memberId && input.pointsRedeemed && input.pointsRedeemed > 0) {
@@ -580,6 +616,9 @@ export const ordersRouter = router({
 
       const taxAmount = Math.round((subtotal - discountAmount) * 0.07 * 100) / 100;
       const totalAmount = subtotal - discountAmount + taxAmount;
+
+      await validateCartStockAvailability(db, input.branchId, input.items);
+
       const orderNumber = generateOrderNumber();
 
       const [result] = await db.insert(posOrders).values({
@@ -823,8 +862,7 @@ export const ordersRouter = router({
         // Pre-check stock BEFORE closing order (throws if insufficient)
         const [orderForDeduct] = await db.select().from(posOrders).where(eq(posOrders.id, input.orderId)).limit(1);
         if (orderForDeduct?.branchId) {
-          await deductStockForOrder(input.orderId, orderForDeduct.branchId, ctx.staff.staffId);
-          await deductBranchStockLevel(input.orderId, orderForDeduct.branchId);
+          await finalizeOrderStockDeduction(input.orderId, orderForDeduct.branchId, ctx.staff.staffId);
         }
         // Only mark completed AFTER stock deduction succeeds
         await db.update(posOrders)
@@ -894,8 +932,7 @@ export const ordersRouter = router({
 
       // Deduct stock first (transactional — throws if insufficient)
       if (orderCheck.branchId) {
-        await deductStockForOrder(input.orderId, orderCheck.branchId, ctx.staff.staffId);
-        await deductBranchStockLevel(input.orderId, orderCheck.branchId);
+        await finalizeOrderStockDeduction(input.orderId, orderCheck.branchId, ctx.staff.staffId);
       }
 
       // Only mark completed AFTER stock deduction succeeds
@@ -1045,20 +1082,185 @@ export const ordersRouter = router({
     }),
 
   holdOrder: staffProcedure
-    .input(z.object({ orderId: z.number().int() }))
-    .mutation(async ({ input }) => {
+    .input(z.union([
+      z.object({ orderId: z.number().int() }),
+      z.object({
+        branchId: z.number().int(),
+        orderType: z.enum(["dine-in", "takeaway", "delivery"]).optional(),
+        tableNumber: z.string().optional(),
+        customerName: z.string().optional(),
+        customerPhone: z.string().optional(),
+        notes: z.string().optional(),
+        items: z.array(OrderItemInput).min(1),
+        discountCode: z.string().optional(),
+        manualDiscountAmount: z.number().min(0).optional(),
+        memberId: z.number().int().optional().nullable(),
+        pointsRedeemed: z.number().optional().nullable(),
+      }),
+    ]))
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await db.update(posOrders).set({ status: "draft" }).where(eq(posOrders.id, input.orderId));
-      return getFullOrder(db, input.orderId);
+
+      if ("orderId" in input) {
+        await db.update(posOrders).set({ status: "draft" }).where(eq(posOrders.id, input.orderId));
+        return getFullOrder(db, input.orderId);
+      }
+
+      // Create a new draft order (same pricing as create, but no kitchen ticket / loyalty)
+      let subtotal = 0;
+      const resolvedItems: Array<{
+        menuItemId: number;
+        menuItemName: string;
+        menuItemPrice: string;
+        quantity: number;
+        unitPrice: number;
+        totalPrice: number;
+        notes?: string;
+        options: Array<{ optionId: number; optionName: string; priceAdjustment: string; costAdjustment: string }>;
+      }> = [];
+
+      for (const item of input.items) {
+        const [menuItem] = await db.select().from(posMenuItems)
+          .where(eq(posMenuItems.id, item.menuItemId)).limit(1);
+        if (!menuItem) throw new TRPCError({ code: "BAD_REQUEST", message: `Menu item ${item.menuItemId} not found` });
+
+        const [branchMenu] = await db.select().from(posBranchMenuItems)
+          .where(and(
+            eq(posBranchMenuItems.branchId, input.branchId),
+            eq(posBranchMenuItems.menuItemId, item.menuItemId),
+          )).limit(1);
+        let unitPrice = Number(branchMenu?.priceOverride ?? menuItem.basePrice);
+        const resolvedOptions: Array<{ optionId: number; optionName: string; priceAdjustment: string; costAdjustment: string }> = [];
+
+        for (const opt of item.options ?? []) {
+          const [option] = await db.select().from(posOptions)
+            .where(eq(posOptions.id, opt.optionId)).limit(1);
+          if (option) {
+            unitPrice += Number(option.priceAdjustment ?? 0);
+            resolvedOptions.push({
+              optionId: option.id,
+              optionName: option.name ?? opt.optionName ?? "",
+              priceAdjustment: option.priceAdjustment ?? "0",
+              costAdjustment: option.costAdjustment ?? "0",
+            });
+          }
+        }
+
+        const totalPrice = unitPrice * item.quantity;
+        subtotal += totalPrice;
+        resolvedItems.push({
+          menuItemId: menuItem.id,
+          menuItemName: menuItem.name,
+          menuItemPrice: menuItem.basePrice,
+          quantity: item.quantity,
+          unitPrice,
+          totalPrice,
+          notes: item.notes,
+          options: resolvedOptions,
+        });
+      }
+
+      let discountAmount = 0;
+      let discountId: number | undefined;
+      if (input.discountCode) {
+        const [discount] = await db.select().from(posDiscounts)
+          .where(eq(posDiscounts.code, input.discountCode)).limit(1);
+        if (discount?.isActive) {
+          if (discount.discountType === "percentage") {
+            discountAmount = subtotal * (Number(discount.value) / 100);
+          } else if (discount.discountType === "fixed") {
+            discountAmount = Number(discount.value);
+          }
+          if (discount.maxDiscountAmount) discountAmount = Math.min(discountAmount, Number(discount.maxDiscountAmount));
+          discountId = discount.id;
+        }
+      }
+      if (input.manualDiscountAmount && input.manualDiscountAmount > 0) {
+        discountAmount += Math.min(input.manualDiscountAmount, subtotal - discountAmount);
+      }
+
+      const taxAmount = Math.round((subtotal - discountAmount) * 0.07 * 100) / 100;
+      const totalAmount = subtotal - discountAmount + taxAmount;
+
+      await validateCartStockAvailability(db, input.branchId, input.items);
+
+      const orderNumber = generateOrderNumber();
+
+      const [result] = await db.insert(posOrders).values({
+        orderNumber,
+        branchId: input.branchId,
+        staffId: ctx.staff.staffId,
+        orderType: input.orderType ?? "dine-in",
+        tableNumber: input.tableNumber,
+        customerName: input.customerName,
+        customerPhone: input.customerPhone,
+        status: "draft",
+        subtotal: String(subtotal),
+        discountAmount: String(discountAmount),
+        discountId,
+        taxAmount: String(taxAmount),
+        totalAmount: String(totalAmount),
+        notes: input.notes,
+        memberId: input.memberId || null,
+      });
+      const orderId = (result as any).insertId as number;
+
+      for (const item of resolvedItems) {
+        const [itemResult] = await db.insert(posOrderItems).values({
+          orderId,
+          menuItemId: item.menuItemId,
+          menuItemName: item.menuItemName,
+          menuItemPrice: item.menuItemPrice,
+          quantity: item.quantity,
+          unitPrice: String(item.unitPrice),
+          totalPrice: String(item.totalPrice),
+          notes: item.notes,
+          kitchenStatus: "pending",
+        });
+        const orderItemId = (itemResult as any).insertId as number;
+        for (const opt of item.options) {
+          await db.insert(posOrderItemOptions).values({
+            orderItemId,
+            optionId: opt.optionId,
+            optionName: opt.optionName,
+            priceAdjustment: opt.priceAdjustment,
+            costAdjustment: opt.costAdjustment,
+          });
+        }
+      }
+
+      await logAudit({ staff: ctx.staff, action: "hold_order", entity: "pos_orders", entityId: orderId });
+      return getFullOrder(db, orderId);
     }),
 
   resumeOrder: staffProcedure
     .input(z.object({ orderId: z.number().int() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [order] = await db.select().from(posOrders).where(eq(posOrders.id, input.orderId)).limit(1);
+      if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      if (order.status !== "draft") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only draft orders can be resumed" });
+      }
+
       await db.update(posOrders).set({ status: "pending" }).where(eq(posOrders.id, input.orderId));
+
+      const [existingTicket] = await db.select().from(posKitchenTickets)
+        .where(eq(posKitchenTickets.orderId, input.orderId)).limit(1);
+      if (!existingTicket) {
+        await db.insert(posKitchenTickets).values({
+          orderId: input.orderId,
+          ticketNumber: generateTicketNumber(),
+          status: "pending",
+          station: "all",
+          priority: "normal",
+        });
+      }
+
+      await logAudit({ staff: ctx.staff, action: "resume_order", entity: "pos_orders", entityId: input.orderId });
       return getFullOrder(db, input.orderId);
     }),
 
@@ -1204,6 +1406,11 @@ export const ordersRouter = router({
         paidAt: new Date(),
       });
 
+      // Deduct stock before marking completed
+      if (order.branchId) {
+        await finalizeOrderStockDeduction(input.orderId, order.branchId, ctx.staff.staffId);
+      }
+
       // Update order status to completed
       await db.update(posOrders).set({
         status: "completed",
@@ -1231,6 +1438,10 @@ export const ordersRouter = router({
       const [order] = await db.select().from(posOrders).where(eq(posOrders.id, input.orderId)).limit(1);
       if (!order) throw new TRPCError({ code: "NOT_FOUND" });
 
+      if (order.status === "completed") {
+        return { success: true, message: "Order already completed" };
+      }
+
       // Record payment
       await db.insert(posOrderPayments).values({
         orderId: input.orderId,
@@ -1240,6 +1451,11 @@ export const ordersRouter = router({
         status: "completed",
         paidAt: new Date(),
       });
+
+      // Deduct stock before marking completed
+      if (order.branchId) {
+        await finalizeOrderStockDeduction(input.orderId, order.branchId, ctx.staff.staffId);
+      }
 
       // Update order status to completed
       await db.update(posOrders).set({
@@ -1312,11 +1528,17 @@ export const ordersRouter = router({
   getPrintPayload: staffProcedure
     .input(z.object({
       orderId: z.number().int(),
-      documentType: z.enum(["order_slip", "labels", "kitchen_ticket", "receipt"]),
+      documentType: z.enum(["order_slip", "labels", "kitchen_ticket", "receipt"]).optional(),
+      type: z.enum(["order_slip", "labels", "kitchen_ticket", "receipt"]).optional(),
     }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const docType = input.documentType ?? input.type;
+      if (!docType) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "documentType or type is required" });
+      }
 
       const fullOrder = await getFullOrder(db, input.orderId);
       if (!fullOrder) throw new TRPCError({ code: "NOT_FOUND" });
@@ -1334,7 +1556,7 @@ export const ordersRouter = router({
       const settings: BranchPaymentSettings = paySettings || {};
       const orderData = buildOrderData(fullOrder, branch, staffMember);
 
-      switch (input.documentType) {
+      switch (docType) {
         case "order_slip": {
           const qrDataUrl = fullOrder.paymentQrPayload || undefined;
           return { html: await generateOrderSlipHTML(orderData, settings, qrDataUrl) };

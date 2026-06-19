@@ -13,6 +13,7 @@ import { getSession } from "@/lib/authStore";
 export const PageSuppliers = () => {
   const { navigate } = useApp();
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [addDrawer, setAddDrawer] = useState(false);
   const [newSupplier, setNewSupplier] = useState({ companyName: '', contactPerson: '', country: '', province: '', email: '', phone: '' });
 
@@ -26,6 +27,13 @@ export const PageSuppliers = () => {
   });
   const deleteSupplier = trpc.suppliers.delete.useMutation({ onSuccess: () => refetch(), onError: (e) => alert(e.message) });
   const handleDeleteSupplier = (s) => { if (window.confirm(`ลบ Supplier "${s.companyName}"? ข้อมูลจะหายถาวร`)) deleteSupplier.mutate({ id: s.id }); };
+
+  const filteredSuppliers = suppliers.filter((s) => {
+    if (statusFilter === 'All') return true;
+    if (statusFilter === 'Active') return s.isActive !== false;
+    if (statusFilter === 'Inactive') return s.isActive === false;
+    return true;
+  });
 
   return (
     <div className="page">
@@ -45,7 +53,7 @@ export const PageSuppliers = () => {
       <TopActionBar
         search={search} onSearch={setSearch}
         filters={<>
-          <Select value="" onChange={() => {}} options={['Active', 'Inactive', 'All']} placeholder="Active"/>
+          <Select value={statusFilter} onChange={setStatusFilter} options={['All', 'Active', 'Inactive']} placeholder="All"/>
         </>}
         viewMode="grid" onViewMode={() => {}}
         onExport={() => {}}
@@ -55,7 +63,7 @@ export const PageSuppliers = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
           {[1,2,3].map((i) => <div key={i} className="card" style={{ height: 200, background: 'var(--bg-muted)', animation: 'pulse 1.5s ease-in-out infinite' }}/>)}
         </div>
-      ) : suppliers.length === 0 ? (
+      ) : filteredSuppliers.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-tertiary)' }}>
           <EmptyShelf/>
           <p style={{ marginTop: 12, fontWeight: 500 }}>No suppliers yet</p>
@@ -64,7 +72,7 @@ export const PageSuppliers = () => {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-          {suppliers.map((s, i) => (
+          {filteredSuppliers.map((s, i) => (
             <div key={s.id} className="card" style={{ padding: 20, animation: `slideUp 360ms var(--ease-out-expo) ${i * 50}ms both`, transition: 'transform 240ms, box-shadow 240ms' }}
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}>
@@ -661,6 +669,9 @@ export const PageFranchiseNew = () => {
       utils.branches.list.invalidate();
       utils.branches.listPublic.invalidate();
       utils.branches.getMyBranches.invalidate();
+      if (b.distributed?.menuLinks) {
+        alert(`สาขาพร้อมใช้งาน: กระจายเมนู ${b.distributed.menuLinks} รายการ, สต็อก ${b.distributed.stockRows} แถว`);
+      }
       if (b.ownerEmployeeCode) {
         setSuccessData(b);
       } else {

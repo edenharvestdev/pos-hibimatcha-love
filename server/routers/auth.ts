@@ -9,6 +9,7 @@ import {
 } from "../lib/auth";
 import { generateEmployeeCode } from "../lib/audit";
 import { isDefaultPassword, isDefaultPin, DEFAULT_PASSWORDS } from "../lib/defaultCredentials";
+import { createTotpSecret, getTotpUri, verifyTotpCode } from "../lib/totp";
 import { publicProcedure, router, staffProcedure } from "../_core/trpc";
 
 // ─── Rate Limiting for PIN login ────────────────────────────────────────────
@@ -53,7 +54,11 @@ function staffUsesDefaultPassword(passwordHash: string | null | undefined): bool
 
 export const authRouter = router({
   loginWithEmployeeCode: publicProcedure
-    .input(z.object({ employeeCode: z.string().min(1), password: z.string().min(1) }))
+    .input(z.object({
+      employeeCode: z.string().min(1),
+      password: z.string().min(1),
+      totpCode: z.string().length(6).optional(),
+    }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
@@ -67,6 +72,27 @@ export const authRouter = router({
 
       if (!verifyPassword(input.password, member.passwordHash))
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid credentials" });
+
+      if (member.totpEnabled && member.totpSecret) {
+        if (!input.totpCode) {
+          return {
+            requiresTotp: true as const,
+            token: null,
+            mustChangePassword: isDefaultPassword(input.password),
+            staff: {
+              id: member.id,
+              employeeCode: member.employeeCode,
+              firstName: member.firstName,
+              lastName: member.lastName,
+              role: member.role,
+              primaryBranchId: member.primaryBranchId,
+            },
+          };
+        }
+        if (!await verifyTotpCode(member.totpSecret, input.totpCode)) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid authenticator code" });
+        }
+      }
 
       // Re-hash with bcrypt if still using legacy format
       if (member.passwordHash.includes(":") && !member.passwordHash.startsWith("$2")) {
@@ -85,6 +111,7 @@ export const authRouter = router({
       });
 
       return {
+        requiresTotp: false as const,
         token,
         mustChangePassword: isDefaultPassword(input.password),
         staff: {
@@ -185,8 +212,51 @@ export const authRouter = router({
       branchIds: myBranches.map((b) => b.branchId),
       hasPin: !!member.pinHash,
       mustChangePassword: staffUsesDefaultPassword(member.passwordHash),
+      totpEnabled: !!member.totpEnabled,
     };
   }),
+
+  beginTotpSetup: staffProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const secret = createTotpSecret();
+    await db.update(staff).set({ totpSecret: secret, totpEnabled: false })
+      .where(eq(staff.id, ctx.staff.staffId));
+    const [member] = await db.select().from(staff).where(eq(staff.id, ctx.staff.staffId)).limit(1);
+    if (!member) throw new TRPCError({ code: "NOT_FOUND" });
+    return {
+      secret,
+      uri: getTotpUri(member.employeeCode, secret),
+    };
+  }),
+
+  enableTotp: staffProcedure
+    .input(z.object({ code: z.string().length(6) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [member] = await db.select().from(staff).where(eq(staff.id, ctx.staff.staffId)).limit(1);
+      if (!member?.totpSecret) throw new TRPCError({ code: "BAD_REQUEST", message: "Run setup first" });
+      if (!await verifyTotpCode(member.totpSecret, input.code)) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid code" });
+      }
+      await db.update(staff).set({ totpEnabled: true }).where(eq(staff.id, member.id));
+      return { success: true };
+    }),
+
+  disableTotp: staffProcedure
+    .input(z.object({ code: z.string().length(6) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [member] = await db.select().from(staff).where(eq(staff.id, ctx.staff.staffId)).limit(1);
+      if (!member?.totpSecret || !member.totpEnabled) return { success: true };
+      if (!await verifyTotpCode(member.totpSecret, input.code)) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid code" });
+      }
+      await db.update(staff).set({ totpEnabled: false, totpSecret: null }).where(eq(staff.id, member.id));
+      return { success: true };
+    }),
 
   updateMyProfile: staffProcedure
     .input(z.object({

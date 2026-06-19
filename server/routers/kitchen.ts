@@ -1,10 +1,26 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "../db";
-import { posKitchenTickets, posOrders, posOrderItems } from "../../drizzle/schema";
+import {
+  posKitchenTickets, posOrders, posOrderItems,
+  posMenuItems, posCategories,
+} from "../../drizzle/schema";
 import { router, staffProcedure } from "../_core/trpc";
 import { broadcastToBranch, RealtimeEvents } from "../lib/realtime";
+
+const STATION_KEYWORDS: Record<string, string[]> = {
+  drinks: ["drink", "beverage", "matcha", "tea", "coffee", "latte", "เครื่องดื่ม", "ชา"],
+  food: ["food", "snack", "sandwich", "rice", "อาหาร", "ข้าว"],
+  desserts: ["dessert", "sweet", "cake", "pastry", "ของหวาน", "เบเกอรี่"],
+};
+
+function categoryMatchesStation(categoryName: string, station: string): boolean {
+  const keywords = STATION_KEYWORDS[station.toLowerCase()];
+  if (!keywords) return true;
+  const lower = categoryName.toLowerCase();
+  return keywords.some((k) => lower.includes(k));
+}
 
 export const kitchenRouter = router({
   listTickets: staffProcedure
@@ -33,17 +49,40 @@ export const kitchenRouter = router({
       let tickets = await db.select().from(posKitchenTickets);
       tickets = tickets.filter((t) => activeOrderIds.includes(t.orderId));
 
-      if (input.station) tickets = tickets.filter((t) => t.station === input.station || t.station === "all");
       if (input.status) tickets = tickets.filter((t) => t.status === input.status);
 
       // Attach order info to each ticket
       const ordersMap = new Map(orders.map((o) => [o.id, o]));
-      const ticketsWithOrders = await Promise.all(tickets.map(async (ticket) => {
+      let ticketsWithOrders = await Promise.all(tickets.map(async (ticket) => {
         const order = ordersMap.get(ticket.orderId);
         const items = await db.select().from(posOrderItems)
           .where(eq(posOrderItems.orderId, ticket.orderId));
         return { ...ticket, order, items };
       }));
+
+      if (input.station && input.station !== "all") {
+        const menuItemIds = [...new Set(ticketsWithOrders.flatMap((t) =>
+          (t.items ?? []).map((i) => i.menuItemId).filter(Boolean)
+        ))] as number[];
+        const menuRows = menuItemIds.length > 0
+          ? await db.select({ id: posMenuItems.id, categoryId: posMenuItems.categoryId }).from(posMenuItems)
+            .where(inArray(posMenuItems.id, menuItemIds))
+          : [];
+        const categoryIds = [...new Set(menuRows.map((m) => m.categoryId).filter(Boolean))] as number[];
+        const categories = categoryIds.length > 0
+          ? await db.select().from(posCategories).where(inArray(posCategories.id, categoryIds))
+          : [];
+        const catMap = new Map(categories.map((c) => [c.id, c.nameThai || c.name || ""]));
+        const menuCatMap = new Map(menuRows.map((m) => [m.id, m.categoryId ? catMap.get(m.categoryId) ?? "" : ""]));
+
+        ticketsWithOrders = ticketsWithOrders.filter((ticket) =>
+          (ticket.items ?? []).some((item) => {
+            if (!item.menuItemId) return false;
+            const catName = menuCatMap.get(item.menuItemId) ?? "";
+            return categoryMatchesStation(catName, input.station!);
+          })
+        );
+      }
 
       return ticketsWithOrders.sort((a, b) => {
         // Urgent first, then by creation time

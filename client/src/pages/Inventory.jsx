@@ -181,6 +181,7 @@ export const PageInvItems = () => {
   const [itemForm, setItemForm] = useState({ name: '', nameThai: '', sku: '', barcode: '', categoryId: null, unitOfMeasure: 'g', sourceFlag: 'hq_supply', description: '', brand: '', costPerUnit: '', sellingPricePerUnit: '', minStockLevel: '', reorderPoint: '', reorderQuantity: '', leadTimeDays: '', shelfLifeDays: '', storageRequirements: '', allergens: [], attributes: {} });
   const [addOptionModal, setAddOptionModal] = useState({ open: false, attributeId: null, label: '' });
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All status');
   const [selected, setSelected] = useState(new Set());
   const [distributeOpen, setDistributeOpen] = useState(false);
 
@@ -324,7 +325,18 @@ export const PageInvItems = () => {
     }
   };
 
-  const filtered = tab === 'all' ? items : items.filter((it) => catMap.get(it.categoryId) === tab);
+  const filtered = useMemo(() => {
+    let rows = tab === 'all' ? items : items.filter((it) => catMap.get(it.categoryId) === tab);
+    if (statusFilter === 'Active') rows = rows.filter((it) => it.isActive !== false && !it.isArchived);
+    else if (statusFilter === 'Archived') rows = rows.filter((it) => it.isArchived);
+    else if (statusFilter === 'Low stock') rows = rows.filter((it) => {
+      const stock = Number(it.stock?.currentStock ?? 0);
+      const reorder = Number(it.reorderPoint ?? it.minStockLevel ?? 0);
+      return reorder > 0 && stock <= reorder;
+    });
+    else if (statusFilter === 'Out of stock') rows = rows.filter((it) => Number(it.stock?.currentStock ?? 0) <= 0);
+    return rows;
+  }, [items, tab, statusFilter, catMap]);
 
   return (
     <div className="page">
@@ -372,7 +384,7 @@ export const PageInvItems = () => {
       <TopActionBar
         search={search} onSearch={setSearch}
         filters={<>
-          <Select value="" onChange={() => {}} options={['All status', 'Active', 'Low stock', 'Out of stock', 'Archived']} placeholder="All status"/>
+          <Select value={statusFilter} onChange={setStatusFilter} options={['All status', 'Active', 'Low stock', 'Out of stock', 'Archived']} placeholder="All status"/>
         </>}
         onExport={() => {}}
       />

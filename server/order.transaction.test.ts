@@ -298,43 +298,31 @@ describe("Transactional Stock Deduction (Phase 22)", () => {
       await setStock(TEST_BRANCH_ID, TEST_INVENTORY_ITEM_A, 3);
       await setStock(TEST_BRANCH_ID, TEST_INVENTORY_ITEM_B, 1000);
 
-      // Create order
-      const orderId = await createTestOrder(caller);
-      createdOrderIds.push(orderId);
+      // Create order should fail at checkout (pre-check)
+      await expect(caller.orders.create({
+        branchId: TEST_BRANCH_ID,
+        orderType: "dine-in",
+        items: [{ menuItemId: TEST_MENU_ITEM_ID, quantity: 2 }],
+      })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
-      // Attempt to complete — should fail
-      await expect(caller.orders.complete({ orderId }))
-        .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
-
-      // Order should NOT be marked completed
-      const status = await getOrderStatus(orderId);
-      expect(status).not.toBe("completed");
-
-      // Stock should NOT have been deducted (transaction rolled back)
       const matchaStock = await getStock(TEST_BRANCH_ID, TEST_INVENTORY_ITEM_A);
-      expect(matchaStock).toBe(3); // unchanged
-
-      // No movements should have been recorded
-      const movements = await getMovementsForOrder(orderId);
-      expect(movements.length).toBe(0);
+      expect(matchaStock).toBe(3);
     });
 
     it("should include ingredient details in the error message", async () => {
-      // Set insufficient stock for both items
-      await setStock(TEST_BRANCH_ID, TEST_INVENTORY_ITEM_A, 2); // need 10
-      await setStock(TEST_BRANCH_ID, TEST_INVENTORY_ITEM_B, 100); // need 400
-
-      const orderId = await createTestOrder(caller);
-      createdOrderIds.push(orderId);
+      await setStock(TEST_BRANCH_ID, TEST_INVENTORY_ITEM_A, 2);
+      await setStock(TEST_BRANCH_ID, TEST_INVENTORY_ITEM_B, 100);
 
       try {
-        await caller.orders.complete({ orderId });
+        await caller.orders.create({
+          branchId: TEST_BRANCH_ID,
+          orderType: "dine-in",
+          items: [{ menuItemId: TEST_MENU_ITEM_ID, quantity: 2 }],
+        });
         expect.fail("Should have thrown");
       } catch (err: any) {
         expect(err.code).toBe("PRECONDITION_FAILED");
-        // Error message should mention "วัตถุดิบไม่เพียงพอ"
         expect(err.message).toContain("วัตถุดิบไม่เพียงพอ");
-        // Should mention both insufficient items
         expect(err.message).toContain("ต้องการ");
         expect(err.message).toContain("แต่มี");
       }
@@ -343,23 +331,20 @@ describe("Transactional Stock Deduction (Phase 22)", () => {
 
   describe("Transaction atomicity", () => {
     it("should not partially deduct stock when one ingredient is insufficient", async () => {
-      // Matcha is sufficient, milk is NOT
-      await setStock(TEST_BRANCH_ID, TEST_INVENTORY_ITEM_A, 100); // plenty
-      await setStock(TEST_BRANCH_ID, TEST_INVENTORY_ITEM_B, 50); // need 400
+      await setStock(TEST_BRANCH_ID, TEST_INVENTORY_ITEM_A, 100);
+      await setStock(TEST_BRANCH_ID, TEST_INVENTORY_ITEM_B, 50);
 
-      const orderId = await createTestOrder(caller);
-      createdOrderIds.push(orderId);
+      await expect(caller.orders.create({
+        branchId: TEST_BRANCH_ID,
+        orderType: "dine-in",
+        items: [{ menuItemId: TEST_MENU_ITEM_ID, quantity: 2 }],
+      })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
-      // Attempt to complete — should fail
-      await expect(caller.orders.complete({ orderId }))
-        .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
-
-      // Neither ingredient should have been deducted (all-or-nothing)
       const matchaStock = await getStock(TEST_BRANCH_ID, TEST_INVENTORY_ITEM_A);
-      expect(matchaStock).toBe(100); // unchanged
+      expect(matchaStock).toBe(100);
 
       const milkStock = await getStock(TEST_BRANCH_ID, TEST_INVENTORY_ITEM_B);
-      expect(milkStock).toBe(50); // unchanged
+      expect(milkStock).toBe(50);
     });
   });
 });

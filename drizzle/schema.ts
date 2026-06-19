@@ -108,6 +108,8 @@ export const staff = mysqlTable("staff", {
 
   passwordHash: varchar("passwordHash", { length: 255 }),
   pinHash: varchar("pinHash", { length: 255 }),
+  totpSecret: varchar("totpSecret", { length: 255 }),
+  totpEnabled: boolean("totpEnabled").default(false),
 
   role: mysqlEnum("role", ["super_admin", "staff_admin", "staff", "owner", "hq_admin", "branch_admin", "manager", "cashier"]).default("staff"),
   primaryBranchId: int("primaryBranchId"),
@@ -275,6 +277,21 @@ export const posDiscounts = mysqlTable("pos_discounts", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
 });
 export type PosDiscount = typeof posDiscounts.$inferSelect;
+
+// ─── Gift Vouchers / Gift Cards ─────────────────────────────────────────────────
+export const posGiftVouchers = mysqlTable("pos_gift_vouchers", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  initialBalance: decimal("initialBalance", { precision: 10, scale: 2 }).notNull(),
+  currentBalance: decimal("currentBalance", { precision: 10, scale: 2 }).notNull(),
+  branchId: int("branchId"),
+  isActive: boolean("isActive").default(true),
+  expiresAt: timestamp("expiresAt"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+export type PosGiftVoucher = typeof posGiftVouchers.$inferSelect;
 
 // ─── Payment Methods ──────────────────────────────────────────────────────────
 export const posPaymentMethods = mysqlTable("pos_payment_methods", {

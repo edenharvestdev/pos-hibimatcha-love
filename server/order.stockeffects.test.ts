@@ -292,7 +292,7 @@ describe("POS Options Inventory Stock Effects & Dynamic Costing", () => {
     await setStock(TEST_INVENTORY_ITEM_MILK, 1000);
     await setStock(TEST_INVENTORY_ITEM_OAT_MILK, 50);
 
-    const result = await caller.orders.create({
+    const resultPromise = caller.orders.create({
       branchId: TEST_BRANCH_ID,
       orderType: "dine-in",
       items: [
@@ -305,11 +305,8 @@ describe("POS Options Inventory Stock Effects & Dynamic Costing", () => {
         }
       ]
     });
-    createdOrderIds.push(result.id);
 
-    // Attempting to complete should throw PRECONDITION_FAILED due to insufficient oat milk
-    await expect(caller.orders.complete({ orderId: result.id }))
-      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    await expect(resultPromise).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
     // Verify no stock is deducted (matcha remains 100)
     expect(await getStock(TEST_INVENTORY_ITEM_MATCHA)).toBe(100);
