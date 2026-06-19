@@ -8,6 +8,7 @@ import {
   signStaffToken,
 } from "../lib/auth";
 import { generateEmployeeCode } from "../lib/audit";
+import { isDefaultPassword, isDefaultPin, DEFAULT_PASSWORDS } from "../lib/defaultCredentials";
 import { publicProcedure, router, staffProcedure } from "../_core/trpc";
 
 // ─── Rate Limiting for PIN login ────────────────────────────────────────────
@@ -40,6 +41,14 @@ function checkPinRateLimit(branchId: number, pin: string): void {
 
 function resetPinRateLimit(branchId: number): void {
   pinAttempts.delete(`${branchId}`);
+}
+
+function staffUsesDefaultPassword(passwordHash: string | null | undefined): boolean {
+  if (!passwordHash) return false;
+  for (const pw of DEFAULT_PASSWORDS) {
+    if (verifyPassword(pw, passwordHash)) return true;
+  }
+  return false;
 }
 
 export const authRouter = router({
@@ -77,6 +86,7 @@ export const authRouter = router({
 
       return {
         token,
+        mustChangePassword: isDefaultPassword(input.password),
         staff: {
           id: member.id,
           employeeCode: member.employeeCode,
@@ -136,6 +146,7 @@ export const authRouter = router({
 
       return {
         token,
+        mustChangePin: isDefaultPin(input.pin),
         staff: {
           id: matched.id,
           employeeCode: matched.employeeCode,
@@ -173,6 +184,7 @@ export const authRouter = router({
       currentBranchId: ctx.staff.currentBranchId,
       branchIds: myBranches.map((b) => b.branchId),
       hasPin: !!member.pinHash,
+      mustChangePassword: staffUsesDefaultPassword(member.passwordHash),
     };
   }),
 

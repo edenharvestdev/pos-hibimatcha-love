@@ -43,6 +43,7 @@ import {
   posBranchPaymentSettings,
 } from "../../drizzle/schema";
 import { hashPassword, hashPin } from "../lib/auth";
+import { distributeStarterPackToAllStores } from "../lib/distributeToBranch";
 
 const SEED_DIR = join(process.cwd(), "hibi-seed-package", "seed-data");
 
@@ -822,6 +823,13 @@ export async function seed() {
     }
     console.log(`  ${linkCount} item ↔ option-group links`);
   }
+
+  // ──────────────────────────────────────────────────────────────
+  // 9.6 — Distribute menu + starter stock to all store branches
+  // ──────────────────────────────────────────────────────────────
+  console.log("→ Distribute to store branches");
+  const dist = await distributeStarterPackToAllStores(db);
+  console.log(`  ${dist.menuLinks} menu links, ${dist.stockRows} stock rows`);
 
   // ──────────────────────────────────────────────────────────────
   // 10. Payment methods

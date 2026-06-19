@@ -360,11 +360,10 @@ export function generateReceiptHTML(
   .item-table thead th.col-price { text-align: right; width: 18%; }
   .item-table thead th.col-qty { text-align: center; width: 12%; }
   .item-table thead th.col-total { text-align: right; width: 25%; }
-  .item-name-row td { padding: 3px 1px 0; font-weight: bold; font-size: 10px; }
-  .item-price-row td { padding: 0 1px 3px; }
-  .col-price-val { text-align: right; }
-  .col-qty-val { text-align: center; }
-  .col-total-val { text-align: right; }
+  .col-name-cell { text-align: left; padding: 3px 1px; vertical-align: top; font-weight: bold; font-size: 10px; }
+  .col-price-val { text-align: right; padding: 3px 1px; vertical-align: top; }
+  .col-qty-val { text-align: center; padding: 3px 1px; vertical-align: top; }
+  .col-total-val { text-align: right; padding: 3px 1px; vertical-align: top; }
   .option-line { padding-left: 4px; font-size: 9px; color: #333; }
   .totals { width: 100%; margin: 3px 0; border-collapse: collapse; }
   .totals td { padding: 1px 0; font-size: 11px; }
@@ -420,11 +419,8 @@ export function generateReceiptHTML(
           .map(opt => `<tr><td colspan="4" class="option-line">- (${opt.name}${opt.priceAdjustment !== 0 ? ` ${opt.priceAdjustment > 0 ? "+" : ""}${opt.priceAdjustment.toFixed(2)}` : ""})</td></tr>`)
           .join("");
         return `
-          <tr class="item-name-row">
-            <td colspan="4">${skuPrefix}${item.menuItemName}</td>
-          </tr>
-          <tr class="item-price-row">
-            <td></td>
+          <tr>
+            <td class="col-name-cell">${skuPrefix}${item.menuItemName}</td>
             <td class="col-price-val">${item.unitPrice.toFixed(2)}</td>
             <td class="col-qty-val">${item.quantity}</td>
             <td class="col-total-val">${item.totalPrice.toFixed(2)}</td>
@@ -449,12 +445,11 @@ export function generateReceiptHTML(
 
   <table class="totals">
     <tr>
-      <td class="tl">ยอดรวมส่วนลด</td>
-      <td class="tr">${order.discountAmount > 0 ? order.discountAmount.toFixed(2) : "0.00"}</td>
+      <td class="tl bold" colspan="2">ยอดรวมส่วนลด</td>
     </tr>
     <tr>
-      <td class="tl">ปัดเศษ</td>
-      <td class="tr">${roundingAmt !== 0 ? roundingAmt.toFixed(2) : "0.00"}</td>
+      <td class="tl">ส่วนลด</td>
+      <td class="tr">${order.discountAmount > 0 ? order.discountAmount.toFixed(2) : "0.00"}</td>
     </tr>
     <tr>
       <td class="tl">ยอดรวม</td>
@@ -494,6 +489,137 @@ export function generateReceiptHTML(
   <div class="line"></div>
 
   <div class="center" style="margin-top: 4px; font-size: 11px;">${order.branchName}</div>
+
+</body></html>`;
+}
+
+// ─── Requisition Invoice (inter-branch purchase invoice) ──────────────────────
+export function generateRequisitionInvoiceHTML(req: {
+  requestNumber: string;
+  requestingBranchName: string;
+  sourceBranchName: string;
+  type: string;
+  approvedAt?: Date | string | null;
+  invoiceTotal?: number | string | null;
+  paymentStatus?: string | null;
+  paidAmount?: number | string | null;
+  paymentMethod?: string | null;
+  paidAt?: Date | string | null;
+  paidRef?: string | null;
+  items: Array<{
+    itemName: string;
+    approvedQty?: string | number | null;
+    requestedQty: string | number;
+    unitPrice?: string | number | null;
+    unit?: string | null;
+    status: string;
+  }>;
+}): string {
+  const dt = req.approvedAt ? new Date(req.approvedAt) : new Date();
+  const dateStr = `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${dt.getFullYear()}`;
+  const timeStr = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+
+  const approvedItems = req.items.filter(i => i.status === "approved");
+  const calcTotal = approvedItems.reduce((sum, item) => {
+    const qty = Number(item.approvedQty ?? item.requestedQty);
+    const price = Number(item.unitPrice ?? 0);
+    return sum + qty * price;
+  }, 0);
+  const invoiceTotal = req.invoiceTotal ? Number(req.invoiceTotal) : calcTotal;
+  const isPaid = req.paymentStatus === "paid";
+
+  const itemsHtml = approvedItems.map(item => {
+    const qty = Number(item.approvedQty ?? item.requestedQty);
+    const price = Number(item.unitPrice ?? 0);
+    const lineTotal = qty * price;
+    return `
+      <tr>
+        <td class="col-name-cell">${item.itemName}</td>
+        <td class="col-price-val">${price > 0 ? price.toFixed(2) : "—"}</td>
+        <td class="col-qty-val">${qty} ${item.unit ?? ""}</td>
+        <td class="col-total-val">${price > 0 ? lineTotal.toFixed(2) : "—"}</td>
+      </tr>`;
+  }).join("");
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; font-size: 11px; width: 80mm; padding: 3mm; background: white; }
+  .center { text-align: center; }
+  .bold { font-weight: bold; }
+  .h1 { font-size: 18px; font-weight: bold; }
+  .h2 { font-size: 14px; font-weight: bold; }
+  .line { border-top: 1px dashed #000; margin: 5px 0; }
+  .meta { margin: 2px 0; font-size: 11px; }
+  .item-table { width: 100%; border-collapse: collapse; margin: 4px 0; font-size: 10px; }
+  .item-table thead tr { border-bottom: 1px solid #000; }
+  .item-table thead th { padding: 2px 1px; font-weight: bold; font-size: 10px; }
+  .item-table thead th.col-name { text-align: left; width: 38%; }
+  .item-table thead th.col-price { text-align: right; width: 18%; }
+  .item-table thead th.col-qty { text-align: center; width: 22%; }
+  .item-table thead th.col-total { text-align: right; width: 22%; }
+  .col-name-cell { text-align: left; padding: 3px 1px; vertical-align: top; font-weight: bold; }
+  .col-price-val { text-align: right; padding: 3px 1px; vertical-align: top; }
+  .col-qty-val { text-align: center; padding: 3px 1px; vertical-align: top; }
+  .col-total-val { text-align: right; padding: 3px 1px; vertical-align: top; }
+  .totals { width: 100%; margin: 3px 0; border-collapse: collapse; }
+  .totals td { padding: 2px 0; font-size: 11px; }
+  .totals td.tl { text-align: left; }
+  .totals td.tr { text-align: right; }
+  .totals .bold-row td { font-weight: bold; font-size: 13px; }
+  .badge { padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px; display: inline-block; margin-top: 4px; }
+  .badge-paid { background: #d1fae5; color: #065f46; }
+  .badge-unpaid { background: #fef3c7; color: #92400e; }
+  @media print { body { width: 80mm; margin: 0; padding: 2mm; } }
+</style></head><body>
+
+<div class="center h1" style="font-size: 20px; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 6px;">ใบแจ้งหนี้</div>
+<div class="center" style="margin: 4px 0; font-size: 20px;">☕</div>
+<div class="center h2">Hibi Matcha Café</div>
+<div class="center" style="font-size: 12px; margin: 2px 0;">${req.sourceBranchName}</div>
+
+<div class="line"></div>
+
+<div class="meta">เลขที่: ${req.requestNumber}</div>
+<div class="meta">สาขาผู้ซื้อ: ${req.requestingBranchName}</div>
+<div class="meta">ประเภท: ${req.type}</div>
+<div class="meta">วันที่: ${dateStr} ${timeStr}</div>
+
+<div class="line"></div>
+
+<table class="item-table">
+  <thead>
+    <tr>
+      <th class="col-name">สินค้า</th>
+      <th class="col-price">ราคา/หน่วย</th>
+      <th class="col-qty">จำนวน</th>
+      <th class="col-total">รวม</th>
+    </tr>
+  </thead>
+  <tbody>${itemsHtml}</tbody>
+</table>
+
+<div class="line"></div>
+
+<table class="totals">
+  <tr class="bold-row">
+    <td class="tl">ยอดรวมทั้งหมด</td>
+    <td class="tr">${invoiceTotal > 0 ? "฿" + invoiceTotal.toFixed(2) : "—"}</td>
+  </tr>
+</table>
+
+<div class="line"></div>
+
+<div class="center"><span class="badge ${isPaid ? "badge-paid" : "badge-unpaid"}">${isPaid ? "✓ ชำระแล้ว" : "รอชำระเงิน"}</span></div>
+${isPaid ? `
+<div class="meta" style="margin-top: 6px;">วิธีชำระ: ${req.paymentMethod ?? "—"}</div>
+<div class="meta">ยอดชำระ: ฿${Number(req.paidAmount ?? 0).toFixed(2)}</div>
+${req.paidAt ? `<div class="meta">วันที่ชำระ: ${new Date(req.paidAt).toLocaleDateString("th-TH")}</div>` : ""}
+${req.paidRef ? `<div class="meta">อ้างอิง: ${req.paidRef}</div>` : ""}
+` : ""}
+
+<div class="line"></div>
+<div class="center" style="font-size: 10px; margin-top: 4px;">${req.sourceBranchName}</div>
 
 </body></html>`;
 }

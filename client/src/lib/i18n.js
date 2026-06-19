@@ -55,6 +55,8 @@ const translations = {
   'nav.kitchen': { en: 'Kitchen', th: 'ครัว' },
   'nav.staff': { en: 'Staff', th: 'พนักงาน' },
   'nav.reports': { en: 'Reports', th: 'รายงาน' },
+  'nav.pnl': { en: 'P&L Dashboard', th: 'กำไร-ขาดทุน' },
+  'nav.kpi': { en: 'Staff KPI', th: 'KPI พนักงาน' },
   'nav.sop': { en: 'SOPs', th: 'SOP' },
   'nav.settings': { en: 'Settings', th: 'ตั้งค่า' },
   'nav.categories': { en: 'Categories', th: 'หมวดหมู่' },

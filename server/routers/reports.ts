@@ -7,6 +7,7 @@ import {
   posMenuItems, posCategories, posBranchInventoryStock,
   posInventoryItems, auditLogs, posOrderRecipeSnapshots,
   posRecipeIngredients, posExpenseReceipts,
+  masterPaymentMethods, posPaymentMethods, staff,
 } from "../../drizzle/schema";
 import { router, staffProcedure, staffAdminProcedure } from "../_core/trpc";
 
@@ -78,6 +79,15 @@ export const reportsRouter = router({
         aovLast7Days.push(Math.round(dayAOV));
       }
 
+      const hourlyRevenue = Array.from({ length: 24 }, () => 0);
+      const ordersByHour = Array.from({ length: 24 }, () => 0);
+      for (const o of todayOrders) {
+        if (!o.createdAt) continue;
+        const hour = o.createdAt.getHours();
+        hourlyRevenue[hour] += Number(o.totalAmount ?? 0);
+        ordersByHour[hour]++;
+      }
+
       return {
         todayRevenue: Math.round(todayRevenue * 100) / 100,
         todayOrders: todayOrders.length,
@@ -87,6 +97,8 @@ export const reportsRouter = router({
         revenueChange,
         yesterdayRevenue: Math.round(yesterdayRevenue * 100) / 100,
         aovLast7Days,
+        hourlyRevenue: hourlyRevenue.map((v) => Math.round(v)),
+        ordersByHour,
       };
     }),
 
@@ -435,6 +447,102 @@ export const reportsRouter = router({
         })
         .filter((k) => k.staff)
         .sort((a, b) => b.revenue - a.revenue);
+    }),
+
+  getEndOfDayReport: staffAdminProcedure
+    .input(z.object({
+      branchId: z.number().int().optional(),
+      date: z.string().optional(), // YYYY-MM-DD, defaults to today
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const branchId = input.branchId ?? ctx.staff.currentBranchId;
+      const dateStr = input.date ?? new Date().toISOString().slice(0, 10);
+      const dayStart = new Date(dateStr + "T00:00:00.000Z");
+      const dayEnd = new Date(dateStr + "T23:59:59.999Z");
+
+      const allOrders = await db.select().from(posOrders);
+      const dayOrders = allOrders.filter((o) => {
+        if (branchId && o.branchId !== branchId) return false;
+        return o.createdAt && o.createdAt >= dayStart && o.createdAt <= dayEnd;
+      });
+
+      const completed = dayOrders.filter((o) => ["completed", "served"].includes(o.status ?? ""));
+      const cancelled = dayOrders.filter((o) => ["cancelled", "refunded"].includes(o.status ?? ""));
+
+      const totalRevenue = completed.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0);
+      const totalDiscount = completed.reduce((s, o) => s + Number(o.discountAmount ?? 0), 0);
+      const totalTax = completed.reduce((s, o) => s + Number(o.taxAmount ?? 0), 0);
+
+      // Payment method breakdown
+      const completedOrderIds = completed.map((o) => o.id);
+      const payments = completedOrderIds.length
+        ? await db.select().from(posOrderPayments).where(inArray(posOrderPayments.orderId, completedOrderIds))
+        : [];
+
+      const [masterMethods, branchMethods] = await Promise.all([
+        db.select().from(masterPaymentMethods),
+        db.select().from(posPaymentMethods),
+      ]);
+      const methodName = (id: number | null | undefined) => {
+        if (!id) return "ไม่ระบุ";
+        return masterMethods.find((m) => m.id === id)?.name
+          || branchMethods.find((m) => m.id === id)?.name
+          || `Method ${id}`;
+      };
+
+      const paymentBreakdown: Record<string, number> = {};
+      for (const p of payments) {
+        const name = methodName(p.paymentMethodId);
+        paymentBreakdown[name] = (paymentBreakdown[name] ?? 0) + Number(p.amount ?? 0);
+      }
+
+      // Top items
+      const orderItems = completedOrderIds.length
+        ? await db.select().from(posOrderItems).where(inArray(posOrderItems.orderId, completedOrderIds))
+        : [];
+
+      const itemMap: Record<number, { name: string; qty: number; revenue: number }> = {};
+      for (const it of orderItems) {
+        if (!it.menuItemId) continue;
+        if (!itemMap[it.menuItemId]) {
+          itemMap[it.menuItemId] = { name: it.menuItemName ?? `Item ${it.menuItemId}`, qty: 0, revenue: 0 };
+        }
+        itemMap[it.menuItemId].qty += Number(it.quantity ?? 0);
+        itemMap[it.menuItemId].revenue += Number(it.totalPrice ?? 0);
+      }
+      const topItems = Object.values(itemMap)
+        .sort((a, b) => b.qty - a.qty)
+        .slice(0, 10);
+
+      // Staff breakdown
+      const staffList = await db.select().from(staff);
+      const staffMap: Record<number, { name: string; orders: number; revenue: number }> = {};
+      for (const o of completed) {
+        const sid = o.staffId ?? 0;
+        if (!staffMap[sid]) {
+          const s = staffList.find((x) => x.id === sid);
+          staffMap[sid] = { name: s ? `${s.firstName ?? ""} ${s.lastName ?? ""}`.trim() || s.employeeCode || `Staff ${sid}` : "ไม่ระบุ", orders: 0, revenue: 0 };
+        }
+        staffMap[sid].orders++;
+        staffMap[sid].revenue += Number(o.totalAmount ?? 0);
+      }
+      const staffBreakdown = Object.values(staffMap).sort((a, b) => b.revenue - a.revenue);
+
+      return {
+        date: dateStr,
+        totalOrders: completed.length,
+        cancelledOrders: cancelled.length,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalDiscount: Math.round(totalDiscount * 100) / 100,
+        totalTax: Math.round(totalTax * 100) / 100,
+        avgOrderValue: completed.length > 0 ? Math.round((totalRevenue / completed.length) * 100) / 100 : 0,
+        paymentBreakdown,
+        topItems,
+        staffBreakdown,
+      };
     }),
 });
 

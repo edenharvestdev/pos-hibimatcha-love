@@ -40,6 +40,8 @@ const NAV = [
       { path: '/backoffice/orders', icon: 'IconOrders', labelKey: 'nav.orders' },
       { path: '/backoffice/delivery', icon: 'IconTruck', labelKey: 'nav.delivery' },
       { path: '/backoffice/reports', icon: 'IconReports', labelKey: 'nav.reports' },
+      { path: '/backoffice/pnl', icon: 'IconReports', labelKey: 'nav.pnl', roles: ['super', 'admin'] },
+      { path: '/backoffice/kpi', icon: 'IconStaff', labelKey: 'nav.kpi', roles: ['super', 'admin'] },
     ]
   },
   {
@@ -69,9 +71,6 @@ const NAV = [
   {
     labelKey: 'nav.sop', items: [
       { path: '/backoffice/sop', icon: 'IconBook', labelKey: 'sop.library' },
-      { path: '/backoffice/sop/approval-queue', icon: 'IconFlag', labelKey: 'sop.title', badge: 2, roles: ['super'] },
-      { path: '/backoffice/sop/compliance', icon: 'IconCheckCircle', labelKey: 'sop.title', roles: ['super', 'admin'] },
-      { path: '/backoffice/sop/material-usage', icon: 'IconWhisk', labelKey: 'inventory.costPerUnit' },
     ]
   },
   {

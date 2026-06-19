@@ -8,7 +8,7 @@ const ICON_MAP = { IconBell,IconBook,IconBox,IconBrand,IconBuilding,IconGlobe,Ic
 import { useApp,Drawer,Field,Select,Toggle,Checkbox,EmptyState,SectionHeader,Avatar } from "@/components";
 import { Logo } from "@/components/Shell";
 import { trpc } from "@/lib/trpc";
-import { getSession, clearSession } from "@/lib/authStore";
+import { getSession, clearSession, setSession } from "@/lib/authStore";
 import { useAutomation, resetAutomation, AUTOMATION_LABELS } from "@/lib/automationSettings";
 
 
@@ -315,9 +315,50 @@ const SettingsAppearance = ({ theme, setTheme }) => (
   </div>
 );
 
-const SettingsNotifications = () => (
+const NOTIF_PREF_KEY = (staffId) => `hibi_notif_prefs_${staffId}`;
+
+const DEFAULT_NOTIF_PREFS = {
+  rows: [
+    { l: 'New orders', t: [true, true, true, true] },
+    { l: 'Low stock alerts', t: [true, true, true, false] },
+    { l: 'SOP updates', t: [true, false, true, false] },
+    { l: 'PO approvals', t: [true, true, true, false] },
+    { l: 'Staff activity', t: [false, false, true, false] },
+    { l: 'Daily summary', t: [true, false, false, false] },
+    { l: 'Mentions', t: [true, true, true, true] },
+  ],
+  quietHours: { enabled: false, from: '22:00', to: '07:00' },
+};
+
+const SettingsNotifications = () => {
+  const session = getSession();
+  const staffId = session?.id ?? 0;
+  const [prefs, setPrefs] = useState(() => {
+    try {
+      const raw = localStorage.getItem(NOTIF_PREF_KEY(staffId));
+      return raw ? JSON.parse(raw) : DEFAULT_NOTIF_PREFS;
+    } catch { return DEFAULT_NOTIF_PREFS; }
+  });
+  const [saved, setSaved] = useState(false);
+
+  const persist = (next) => {
+    setPrefs(next);
+    localStorage.setItem(NOTIF_PREF_KEY(staffId), JSON.stringify(next));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const toggleCell = (rowIdx, colIdx) => {
+    const rows = prefs.rows.map((row, ri) =>
+      ri === rowIdx ? { ...row, t: row.t.map((v, ci) => (ci === colIdx ? !v : v)) } : row
+    );
+    persist({ ...prefs, rows });
+  };
+
+  return (
   <div className="card" style={{ padding: 28 }}>
     <SectionHeader title="Notifications" desc="Choose what you hear about and how"/>
+    {saved && <div className="pill pill-matcha" style={{ marginBottom: 12, fontSize: 12 }}>✓ Saved</div>}
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
       <thead>
         <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
@@ -328,19 +369,13 @@ const SettingsNotifications = () => (
         </tr>
       </thead>
       <tbody>
-        {[
-          { l: 'New orders', t: [true, true, true, true] },
-          { l: 'Low stock alerts', t: [true, true, true, false] },
-          { l: 'SOP updates', t: [true, false, true, false] },
-          { l: 'PO approvals', t: [true, true, true, false] },
-          { l: 'Staff activity', t: [false, false, true, false] },
-          { l: 'Daily summary', t: [true, false, false, false] },
-          { l: 'Mentions', t: [true, true, true, true] },
-        ].map((row) => (
+        {prefs.rows.map((row, rowIdx) => (
           <tr key={row.l} style={{ borderBottom: '1px solid var(--border-default)' }}>
             <td style={{ padding: '12px 0' }}>{row.l}</td>
-            {row.t.map((v, i) => (
-              <td key={i} style={{ padding: '12px', textAlign: 'center' }}><Checkbox checked={v} onChange={() => {}}/></td>
+            {row.t.map((v, colIdx) => (
+              <td key={colIdx} style={{ padding: '12px', textAlign: 'center' }}>
+                <Checkbox checked={v} onChange={() => toggleCell(rowIdx, colIdx)}/>
+              </td>
             ))}
           </tr>
         ))}
@@ -349,26 +384,49 @@ const SettingsNotifications = () => (
     <div style={{ marginTop: 24 }}>
       <SectionHeader title="Quiet hours"/>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-        <Field label="Enabled"><Toggle checked={true} onChange={() => {}} label="Mute notifications"/></Field>
-        <Field label="From"><input className="input" type="time" defaultValue="22:00"/></Field>
-        <Field label="To"><input className="input" type="time" defaultValue="07:00"/></Field>
+        <Field label="Enabled">
+          <Toggle
+            checked={prefs.quietHours.enabled}
+            onChange={(v) => persist({ ...prefs, quietHours: { ...prefs.quietHours, enabled: v } })}
+            label="Mute notifications"
+          />
+        </Field>
+        <Field label="From">
+          <input className="input" type="time" value={prefs.quietHours.from}
+            onChange={(e) => persist({ ...prefs, quietHours: { ...prefs.quietHours, from: e.target.value } })}/>
+        </Field>
+        <Field label="To">
+          <input className="input" type="time" value={prefs.quietHours.to}
+            onChange={(e) => persist({ ...prefs, quietHours: { ...prefs.quietHours, to: e.target.value } })}/>
+        </Field>
       </div>
     </div>
   </div>
-);
+  );
+};
 
 const SettingsSecurity = () => {
+  const session = getSession();
+  const forceChange = session?.mustChangePassword || session?.mustChangePin;
   const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' });
   const [pinForm, setPinForm] = useState({ current: '', next: '' });
   const [pwdMsg, setPwdMsg] = useState(null);
   const [pinMsg, setPinMsg] = useState(null);
 
   const changePassword = trpc.posAuth.changePassword.useMutation({
-    onSuccess: () => { setPwdMsg({ type: 'success', text: 'Password updated.' }); setPwdForm({ current: '', next: '', confirm: '' }); },
+    onSuccess: () => {
+      setPwdMsg({ type: 'success', text: 'Password updated.' });
+      setPwdForm({ current: '', next: '', confirm: '' });
+      if (session) setSession({ ...session, mustChangePassword: false });
+    },
     onError: (e) => setPwdMsg({ type: 'error', text: e.message || 'Failed to update password' }),
   });
   const changePin = trpc.posAuth.changePin.useMutation({
-    onSuccess: () => { setPinMsg({ type: 'success', text: 'PIN updated.' }); setPinForm({ current: '', next: '' }); },
+    onSuccess: () => {
+      setPinMsg({ type: 'success', text: 'PIN updated.' });
+      setPinForm({ current: '', next: '' });
+      if (session) setSession({ ...session, mustChangePin: false });
+    },
     onError: (e) => setPinMsg({ type: 'error', text: e.message || 'Failed to update PIN' }),
   });
 
@@ -397,6 +455,15 @@ const SettingsSecurity = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {forceChange && (
+        <div style={{
+          padding: '14px 18px', borderRadius: 12,
+          background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.35)',
+          fontSize: 14, color: 'var(--warning)',
+        }}>
+          ⚠️ กรุณาเปลี่ยนรหัสผ่าน/PIN เริ่มต้นก่อนใช้งานระบบ
+        </div>
+      )}
       <div className="card" style={{ padding: 28 }}>
         <SectionHeader title="Password" desc="Update the password used for full system access"/>
         <Msg msg={pwdMsg}/>
@@ -432,16 +499,10 @@ const SettingsSecurity = () => {
         </div>
       </div>
     <div className="card" style={{ padding: 28 }}>
-      <SectionHeader title="Two-factor authentication" action={<span className="pill pill-warning">Not enabled</span>}/>
-      <div className="muted" style={{ marginBottom: 14 }}>Add an extra layer of security to your account.</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-        {[{ l: 'Authenticator app', sub: 'Most secure' }, { l: 'SMS', sub: 'To registered phone' }, { l: 'Email', sub: 'To primary email' }].map((m) => (
-          <div key={m.l} className="card" style={{ padding: 16 }}>
-            <div style={{ fontWeight: 500 }}>{m.l}</div>
-            <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{m.sub}</div>
-            <button className="btn btn-secondary btn-sm" style={{ width: '100%' }}>Set up</button>
-          </div>
-        ))}
+      <SectionHeader title="Account security" desc="Staff login uses employee code + password, and a 4-digit PIN at POS."/>
+      <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>
+        Two-factor authentication (TOTP/SMS) for staff accounts is planned for a future release.
+        For now, change your default password and PIN below, and contact your super admin if you are locked out.
       </div>
     </div>
     <div className="card" style={{ padding: 28 }}>

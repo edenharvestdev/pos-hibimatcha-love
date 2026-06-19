@@ -17,5 +17,8 @@ export default defineConfig({
     include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
     testTimeout: 30000,
     setupFiles: ["server/test-setup.ts"],
+    fileParallelism: false,
+    pool: "forks",
+    maxWorkers: 1,
   },
 });

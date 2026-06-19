@@ -3132,6 +3132,8 @@ export const PageReceipt = () => {
   const { navigate, t } = useApp();
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [paperSize, setPaperSize] = useState('80mm'); // 80mm, 58mm, A4
+  const getPrintPayload = trpc.orders.getPrintPayload.useMutation();
+  const [printLoading, setPrintLoading] = useState(null); // 'receipt'|'labels'|'kitchen'|null
 
   const hash = location.hash.replace(/^#/, '');
   const qs = hash.includes('?') ? hash.split('?')[1] : '';
@@ -3229,6 +3231,24 @@ export const PageReceipt = () => {
     setShowPrintModal(false);
   };
 
+  const handleServerPrint = async (type) => {
+    if (!orderId) return;
+    setPrintLoading(type);
+    try {
+      const payload = await getPrintPayload.mutateAsync({ orderId: Number(orderId), type });
+      if (payload?.html) {
+        const w = window.open('', '_blank', 'width=420,height=700');
+        if (!w) { alert('Popup blocked — please allow popups'); return; }
+        w.document.write(payload.html);
+        w.document.close();
+      }
+    } catch (e) {
+      alert('พิมพ์ไม่สำเร็จ: ' + (e.message || 'Unknown error'));
+    } finally {
+      setPrintLoading(null);
+    }
+  };
+
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', padding: '32px 24px', display: 'grid', placeItems: 'center', position: 'relative', overflow: 'hidden' }}>
       {/* Confetti */}
@@ -3308,9 +3328,23 @@ export const PageReceipt = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 16 }}>
               <button
                 className="btn btn-secondary"
+                onClick={() => handleServerPrint('receipt')}
+                disabled={printLoading === 'receipt'}
+              ><IconPrint size={16}/> {printLoading === 'receipt' ? 'กำลังโหลด...' : 'ใบเสร็จ + QR'}</button>
+              <button
+                className="btn btn-secondary"
                 onClick={() => setShowPrintModal(true)}
-              ><IconPrint size={16}/> {t('receipt.print')}</button>
-              <button className="btn btn-secondary" disabled title="Email receipt — coming soon"><IconShare size={16}/> Email</button>
+              ><IconPrint size={16}/> ใบเสร็จ (กำหนดขนาด)</button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => handleServerPrint('labels')}
+                disabled={printLoading === 'labels'}
+              >🏷️ {printLoading === 'labels' ? 'กำลังโหลด...' : 'ป้ายติดแก้ว'}</button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => handleServerPrint('kitchen_ticket')}
+                disabled={printLoading === 'kitchen_ticket'}
+              >🍵 {printLoading === 'kitchen_ticket' ? 'กำลังโหลด...' : 'ใบครัว'}</button>
             </div>
           </>
         )}

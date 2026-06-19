@@ -13,8 +13,11 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
-    "db:push": "drizzle-kit generate && drizzle-kit migrate",
-    "seed": "tsx server/seed/index.ts"
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx server/scripts/apply-pending-migrations.ts",
+    "seed": "tsx server/seed/index.ts",
+    "seed:distribute": "tsx server/seed/distribute-to-stores.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

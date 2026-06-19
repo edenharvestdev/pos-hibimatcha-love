@@ -295,8 +295,11 @@ const CreateRequisitionDrawer = ({ onClose, branchId }) => {
 // ─── Requisition Detail Drawer ───────────────────────────────────────────────
 const RequisitionDetailDrawer = ({ req, onClose, role }) => {
   const toast = useToast();
-  const { data: detail } = trpc.requisitions.getById.useQuery({ id: req.id });
+  const { data: detail, refetch: refetchDetail } = trpc.requisitions.getById.useQuery({ id: req.id });
   const [editItems, setEditItems] = useState([]);
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceItems, setInvoiceItems] = useState([]);
 
   useEffect(() => {
     if (detail?.items) {
@@ -307,9 +310,19 @@ const RequisitionDetailDrawer = ({ req, onClose, role }) => {
           itemName: item.itemName,
           requestedQty: item.requestedQty,
           approvedQty: item.approvedQty ?? item.requestedQty,
+          unitPrice: item.unitPrice ?? '',
           unit: item.unit,
           notes: item.notes ?? "",
           status: item.status === "rejected" ? "rejected" : "approved",
+        }))
+      );
+      setInvoiceItems(
+        detail.items.map((item) => ({
+          id: item.id,
+          itemName: item.itemName,
+          approvedQty: item.approvedQty ?? item.requestedQty,
+          unitPrice: item.unitPrice ?? '',
+          unit: item.unit,
         }))
       );
     }
@@ -329,6 +342,30 @@ const RequisitionDetailDrawer = ({ req, onClose, role }) => {
     onSuccess: () => { toast.success('ยกเลิกใบขอแล้ว'); onClose(); },
     onError: (err) => toast.error(err.message),
   });
+
+  const setInvoiceMutation = trpc.requisitions.setInvoiceTotal.useMutation({
+    onSuccess: () => { toast.success('บันทึกราคาใบแจ้งหนี้แล้ว'); refetchDetail(); setShowInvoiceModal(false); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const printInvoiceMutation = trpc.requisitions.printInvoice.useMutation({
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handlePrintInvoice = async () => {
+    const result = await printInvoiceMutation.mutateAsync({ id: req.id });
+    if (result?.html) {
+      const w = window.open('', '_blank', 'width=420,height=700');
+      if (!w) { alert('Popup blocked'); return; }
+      w.document.write(result.html);
+      w.document.close();
+    }
+  };
+
+  const calcInvoiceTotal = () =>
+    invoiceItems.reduce((sum, item) => {
+      return sum + Number(item.approvedQty ?? 0) * Number(item.unitPrice || 0);
+    }, 0);
 
   const handlePrint = () => {
     if (!detail) return;
@@ -380,16 +417,70 @@ const RequisitionDetailDrawer = ({ req, onClose, role }) => {
 
   if (!detail) return <Drawer open onClose={onClose} title="Loading..."><div style={{ padding: 20 }}>กำลังโหลด...</div></Drawer>;
 
+  const isFulfilled = ['fulfilled', 'approved', 'partially_approved'].includes(detail.status);
+  const isPaid = detail.paymentStatus === 'paid';
+
   return (
-    <Drawer open onClose={onClose} title={`ใบขอ ${detail.requestNumber}`} width={500}>
+    <Drawer open onClose={onClose} title={`ใบขอ ${detail.requestNumber}`} width={520}>
       <div style={{ padding: 20 }}>
-        {/* Header info */}
+        {/* Header actions */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>รายละเอียดใบขอ</div>
-          <button className="btn btn-secondary btn-sm" onClick={handlePrint}>
-            <IconReceipt size={14} style={{ marginRight: 4 }}/> พิมพ์ใบเบิก
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {isFulfilled && (
+              <button className="btn btn-secondary btn-sm" onClick={handlePrintInvoice} disabled={printInvoiceMutation.isPending}>
+                <IconReceipt size={14} style={{ marginRight: 4 }}/> ใบแจ้งหนี้
+              </button>
+            )}
+            <button className="btn btn-secondary btn-sm" onClick={handlePrint}>
+              <IconReceipt size={14} style={{ marginRight: 4 }}/> ใบเบิก
+            </button>
+          </div>
         </div>
+
+        {/* Invoice / payment banner */}
+        {isFulfilled && (
+          <div style={{
+            padding: '10px 14px', borderRadius: 'var(--r-default)', marginBottom: 16,
+            background: isPaid ? 'var(--matcha-50)' : 'var(--gold-50, #fffbeb)',
+            border: `1px solid ${isPaid ? 'var(--matcha-200)' : 'var(--gold, #f59e0b)'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                {isPaid ? 'ชำระแล้ว' : 'ยอดค้างชำระ'}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: isPaid ? 'var(--matcha-700)' : 'var(--gold, #92400e)' }}>
+                {detail.invoiceTotal ? `฿${Number(detail.invoiceTotal).toFixed(2)}` : 'ยังไม่ได้กำหนดราคา'}
+              </div>
+              {isPaid && (
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                  {detail.paymentMethod} · {detail.paidAt ? new Date(detail.paidAt).toLocaleDateString('th-TH') : ''}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {role === 'super' && (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setShowInvoiceModal(true)}
+                  style={{ fontSize: 12 }}
+                >
+                  กำหนดราคา
+                </button>
+              )}
+              {!isPaid && detail.invoiceTotal && (
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setShowPayModal(true)}
+                  style={{ fontSize: 12 }}
+                >
+                  จ่ายเงิน
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
           <div>
@@ -439,21 +530,33 @@ const RequisitionDetailDrawer = ({ req, onClose, role }) => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: item.status === 'rejected' ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: item.status === 'rejected' ? 'line-through' : 'none' }}>{item.itemName}</span>
                   <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>(ขอ {item.requestedQty} {item.unit})</span>
-                  
+
                   {item.status === 'approved' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>อนุมัติ:</span>
                       <input
                         type="number"
                         className="input"
-                        style={{ width: 80, textAlign: 'center', height: 32 }}
+                        style={{ width: 70, textAlign: 'center', height: 32 }}
                         value={item.approvedQty}
                         onChange={(e) => {
                           const val = e.target.value;
                           setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, approvedQty: val } : it));
                         }}
                       />
-                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', minWidth: 30 }}>{item.unit}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', minWidth: 20 }}>{item.unit}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>฿/หน่วย:</span>
+                      <input
+                        type="number"
+                        className="input"
+                        style={{ width: 70, textAlign: 'center', height: 32 }}
+                        value={item.unitPrice}
+                        placeholder="0.00"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, unitPrice: val } : it));
+                        }}
+                      />
                     </div>
                   ) : (
                     <span style={{ fontSize: 12, color: 'var(--red)', fontWeight: 500 }}>ปฏิเสธแล้ว</span>
@@ -474,7 +577,7 @@ const RequisitionDetailDrawer = ({ req, onClose, role }) => {
                     {item.status === 'approved' ? 'ปฏิเสธ' : 'อนุมัติ'}
                   </button>
                 </div>
-                
+
                 <input
                   className="input"
                   style={{ height: 32, fontSize: 12 }}
@@ -536,7 +639,8 @@ const RequisitionDetailDrawer = ({ req, onClose, role }) => {
                       itemId: it.itemId,
                       approvedQty: String(it.approvedQty),
                       status: it.status,
-                      notes: it.notes || undefined
+                      notes: it.notes || undefined,
+                      unitPrice: it.unitPrice ? String(it.unitPrice) : undefined,
                     }))
                   })}
                   disabled={approveMutation.isPending}
@@ -567,7 +671,144 @@ const RequisitionDetailDrawer = ({ req, onClose, role }) => {
           </div>
         )}
       </div>
+
+      {/* Set Invoice Modal */}
+      {showInvoiceModal && (
+        <SetInvoiceModal
+          items={invoiceItems}
+          onItemChange={(idx, field, val) =>
+            setInvoiceItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: val } : it))
+          }
+          calcTotal={calcInvoiceTotal()}
+          onConfirm={() => {
+            const total = calcInvoiceTotal();
+            setInvoiceMutation.mutate({
+              id: detail.id,
+              invoiceTotal: total,
+              items: invoiceItems.map(it => ({ id: it.id, unitPrice: Number(it.unitPrice || 0) })),
+            });
+          }}
+          isPending={setInvoiceMutation.isPending}
+          onClose={() => setShowInvoiceModal(false)}
+        />
+      )}
+
+      {/* Payment Modal */}
+      {showPayModal && (
+        <PaymentModal
+          invoiceTotal={Number(detail.invoiceTotal ?? 0)}
+          reqId={detail.id}
+          onClose={() => { setShowPayModal(false); refetchDetail(); }}
+        />
+      )}
     </Drawer>
+  );
+};
+
+// ─── Set Invoice Modal ────────────────────────────────────────────────────────
+const SetInvoiceModal = ({ items, onItemChange, calcTotal, onConfirm, isPending, onClose }) => (
+  <Modal open onClose={onClose} title="กำหนดราคาใบแจ้งหนี้">
+    <div style={{ padding: 20 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+        {items.map((item, idx) => (
+          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ flex: 1, fontSize: 13 }}>{item.itemName}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', minWidth: 60 }}>
+              {Number(item.approvedQty).toFixed(2)} {item.unit}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>฿/หน่วย</span>
+            <input
+              type="number"
+              className="input"
+              style={{ width: 90, textAlign: 'right', height: 32 }}
+              value={item.unitPrice}
+              placeholder="0.00"
+              onChange={e => onItemChange(idx, 'unitPrice', e.target.value)}
+            />
+          </div>
+        ))}
+      </div>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '10px 14px', background: 'var(--bg-muted)', borderRadius: 'var(--r-default)',
+        marginBottom: 16, fontWeight: 600,
+      }}>
+        <span>ยอดรวมทั้งหมด</span>
+        <span>฿{calcTotal.toFixed(2)}</span>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="btn btn-primary" onClick={onConfirm} disabled={isPending} style={{ flex: 1 }}>
+          {isPending ? 'กำลังบันทึก...' : 'บันทึกราคา'}
+        </button>
+        <button className="btn btn-secondary" onClick={onClose}>ยกเลิก</button>
+      </div>
+    </div>
+  </Modal>
+);
+
+// ─── Payment Modal ────────────────────────────────────────────────────────────
+const PaymentModal = ({ invoiceTotal, reqId, onClose }) => {
+  const toast = useToast();
+  const [method, setMethod] = useState('เงินโอน');
+  const [amount, setAmount] = useState(String(invoiceTotal));
+  const [ref, setRef] = useState('');
+
+  const payMutation = trpc.requisitions.recordPayment.useMutation({
+    onSuccess: () => { toast.success('บันทึกการชำระเงินสำเร็จ'); onClose(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  return (
+    <Modal open onClose={onClose} title="บันทึกการชำระเงิน">
+      <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{
+          padding: '10px 14px', background: 'var(--matcha-50)', borderRadius: 'var(--r-default)',
+          fontWeight: 600, fontSize: 15, textAlign: 'center',
+        }}>
+          ยอดที่ต้องชำระ: ฿{invoiceTotal.toFixed(2)}
+        </div>
+        <Field label="วิธีชำระเงิน">
+          <Select
+            value={method}
+            onChange={setMethod}
+            options={['เงินสด', 'เงินโอน', 'PromptPay', 'เช็ค', 'อื่นๆ']}
+          />
+        </Field>
+        <Field label="ยอดชำระ (฿)">
+          <input
+            type="number"
+            className="input"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            step="0.01"
+          />
+        </Field>
+        <Field label="เลขอ้างอิง / หมายเหตุ">
+          <input
+            className="input"
+            value={ref}
+            onChange={e => setRef(e.target.value)}
+            placeholder="เลขที่โอน, เลขเช็ค, ฯลฯ"
+          />
+        </Field>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="btn btn-primary"
+            style={{ flex: 1 }}
+            disabled={payMutation.isPending || !amount}
+            onClick={() => payMutation.mutate({
+              id: reqId,
+              paymentMethod: method,
+              paidAmount: Number(amount),
+              paidRef: ref || undefined,
+            })}
+          >
+            <IconCheck size={16}/> {payMutation.isPending ? 'กำลังบันทึก...' : 'ยืนยันชำระเงิน'}
+          </button>
+          <button className="btn btn-secondary" onClick={onClose}>ยกเลิก</button>
+        </div>
+      </div>
+    </Modal>
   );
 };
 

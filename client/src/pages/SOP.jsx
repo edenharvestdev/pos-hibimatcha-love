@@ -28,12 +28,53 @@ const Stat = ({ label, value, color }) => (
   </div>
 );
 
+// ----- SOP Sub Navigation -----
+const SOPSubNav = ({ active }) => {
+  const { navigate, role } = useApp();
+  const base = role === 'staff' ? '/sop' : '/backoffice/sop';
+  const tabs = [
+    { key: 'library',    label: '📚 คู่มือ SOP',  path: base },
+    { key: 'tasks',      label: '✅ งานของฉัน',   path: `${base}/my-tasks` },
+    { key: 'variants',   label: '🔧 สูตรสาขา',   path: `${base}/my-variants` },
+    { key: 'material',   label: '🧪 ต้นทุนสูตร', path: `${base}/material-usage` },
+    { key: 'compliance', label: '📊 มาตรฐาน',    path: `${base}/compliance`, roles: ['super', 'admin'] },
+    { key: 'approval',   label: '⏳ รออนุมัติ',  path: `${base}/approval-queue`, roles: ['super'] },
+  ];
+  const visible = tabs.filter((t) => !t.roles || t.roles.includes(role));
+  return (
+    <div style={{ display: 'flex', gap: 2, borderBottom: '2px solid var(--border-default)', marginBottom: 24, overflowX: 'auto' }}>
+      {visible.map((tab) => (
+        <button
+          key={tab.key}
+          onClick={() => navigate(tab.path)}
+          style={{
+            padding: '10px 16px',
+            fontSize: 13,
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            color: active === tab.key ? 'var(--matcha-700)' : 'var(--text-secondary)',
+            background: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
+            borderBottom: active === tab.key ? '2.5px solid var(--matcha-600)' : '2.5px solid transparent',
+            cursor: 'pointer',
+            marginBottom: -2,
+            transition: 'color 150ms ease',
+          }}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 // ----- SOP Library -----
 export const PageSOPLibrary = () => {
   const { navigate, role, route, branch } = useApp();
   const [search, setSearch] = useState('');
   const [activeCat, setActiveCat] = useState('all');
-  const [activeTab, setActiveTab] = useState('library'); // 'library' | 'hq_audit'
   const [searchFocused, setSearchFocused] = useState(false);
 
   const isStaffView = role === 'staff' || (route || '').startsWith('/sop');
@@ -46,11 +87,6 @@ export const PageSOPLibrary = () => {
     { staleTime: 15000 }
   );
   const { data: categories = [] } = trpc.sop.listCategories.useQuery(undefined, { staleTime: 5000, refetchOnWindowFocus: true });
-
-  const { data: complianceReport, isLoading: complianceLoading } = trpc.sop.getComplianceReport.useQuery(
-    {},
-    { enabled: activeTab === 'hq_audit' && role === 'super', staleTime: 15000 }
-  );
 
   const filtered = activeCat === 'all' ? sops : sops.filter((s) => s.categoryId === activeCat);
   const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories]);
@@ -82,51 +118,8 @@ export const PageSOPLibrary = () => {
         </div>
       </div>
 
-      {role === 'super' && (
-        <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--border-default)', marginBottom: 24 }}>
-          <button
-            onClick={() => setActiveTab('library')}
-            style={{
-              padding: '12px 20px',
-              fontSize: 14,
-              fontWeight: 600,
-              color: activeTab === 'library' ? 'var(--matcha-700)' : 'var(--text-secondary)',
-              borderBottom: activeTab === 'library' ? '2.5px solid var(--matcha-600)' : '2.5px solid transparent',
-              background: 'none',
-              borderTop: 'none',
-              borderLeft: 'none',
-              borderRight: 'none',
-              cursor: 'pointer',
-              marginBottom: -1,
-              transition: 'all 200ms ease',
-            }}
-          >
-            SOP Library
-          </button>
-          <button
-            onClick={() => setActiveTab('hq_audit')}
-            style={{
-              padding: '12px 20px',
-              fontSize: 14,
-              fontWeight: 600,
-              color: activeTab === 'hq_audit' ? 'var(--matcha-700)' : 'var(--text-secondary)',
-              borderBottom: activeTab === 'hq_audit' ? '2.5px solid var(--matcha-600)' : '2.5px solid transparent',
-              background: 'none',
-              borderTop: 'none',
-              borderLeft: 'none',
-              borderRight: 'none',
-              cursor: 'pointer',
-              marginBottom: -1,
-              transition: 'all 200ms ease',
-            }}
-          >
-            HQ Audit Dashboard (ประเมินสาขา)
-          </button>
-        </div>
-      )}
+      <SOPSubNav active="library" />
 
-      {activeTab === 'library' && (
-        <>
           {/* Search Box Panel */}
           <div 
             style={{ 
@@ -317,111 +310,6 @@ export const PageSOPLibrary = () => {
               })}
             </div>
           )}
-        </>
-      )}
-
-      {activeTab === 'hq_audit' && (
-        <div style={{ animation: 'fadeIn 240ms ease-out' }}>
-          {complianceLoading ? (
-            <div style={{ textAlign: 'center', padding: '60px 0' }} className="muted">กำลังโหลดรายงานการยอมรับคู่มือ...</div>
-          ) : !complianceReport ? (
-            <div style={{ textAlign: 'center', padding: '60px 0' }} className="muted">ไม่สามารถดึงข้อมูลรายงานได้</div>
-          ) : (
-            <div>
-              {/* Summary Stats cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-                <div style={{
-                  padding: '20px',
-                  background: 'var(--bg-surface)',
-                  borderRadius: 'var(--r-lg)',
-                  border: '1px solid var(--border-default)',
-                  boxShadow: 'var(--shadow-xs)'
-                }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: '0.06em' }}>OVERALL COMPLIANCE (อัตราการเข้าอ่าน)</div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 8 }}>
-                    <span style={{ fontSize: 36, fontWeight: 800, color: 'var(--matcha-600)' }}>{complianceReport.rate}%</span>
-                  </div>
-                  <div style={{ height: 6, background: 'var(--bg-subtle)', borderRadius: 99, overflow: 'hidden', marginTop: 12 }}>
-                    <div style={{ width: `${complianceReport.rate}%`, height: '100%', background: 'linear-gradient(90deg, var(--matcha-500), var(--matcha-600))' }}/>
-                  </div>
-                </div>
-                <Stat label="Total Active SOPs" value={complianceReport.totalSops} />
-                <Stat label="Staff Members" value={complianceReport.totalStaff} />
-                <div style={{
-                  padding: '20px',
-                  background: 'var(--bg-surface)',
-                  borderRadius: 'var(--r-lg)',
-                  border: '1px solid var(--border-default)',
-                  boxShadow: 'var(--shadow-xs)'
-                }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 600, letterSpacing: '0.06em' }}>ACKNOWLEDGED / PENDING</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, marginTop: 14, display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span style={{ color: 'var(--matcha-600)' }}>{complianceReport.acknowledged}</span>
-                    <span style={{ fontSize: 14, color: 'var(--text-quaternary)' }}>/</span>
-                    <span style={{ color: 'var(--danger)' }}>{complianceReport.pending}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Compliance Matrix Table */}
-              <div className="card" style={{ padding: 24, overflowX: 'auto', border: '1px solid var(--border-default)', borderRadius: 'var(--r-lg)', background: 'var(--bg-surface)' }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>ตารางการยืนยันการรับทราบข้อมูลคู่มือ (Acknowledgment Compliance Matrix)</h3>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 600 }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid var(--border-default)' }}>
-                      <th style={{ padding: '12px 8px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)' }}>พนักงาน (Staff)</th>
-                      {complianceReport.items.map((it) => (
-                        <th key={it.sop.id} style={{ padding: '12px 8px', fontWeight: 600, fontSize: 12, color: 'var(--text-secondary)', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={it.sop.title}>
-                          {it.sop.title}
-                        </th>
-                      ))}
-                      <th style={{ padding: '12px 8px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)', textAlign: 'right' }}>ความคืบหน้า (Progress)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {complianceReport.staffList.map((st) => {
-                      const staffAcks = complianceReport.acknowledgments.filter((a) => a.staffId === st.id);
-                      const requiredSops = complianceReport.items.map((it) => it.sop);
-                      const ackedCount = requiredSops.filter((sop) => staffAcks.some((a) => a.sopId === sop.id)).length;
-                      const pct = requiredSops.length > 0 ? Math.round((ackedCount / requiredSops.length) * 100) : 100;
-
-                      return (
-                        <tr key={st.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 150ms' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-muted)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                          <td style={{ padding: '14px 8px', fontSize: 13, fontWeight: 500 }}>
-                            <div style={{ color: 'var(--text-primary)' }}>{st.firstName} {st.lastName}</div>
-                            <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>รหัสพนักงาน: {st.employeeCode || '#'+st.id}</div>
-                          </td>
-                          {requiredSops.map((sop) => {
-                            const hasAck = staffAcks.some((a) => a.sopId === sop.id);
-                            return (
-                              <td key={sop.id} style={{ padding: '14px 8px' }}>
-                                {hasAck ? (
-                                  <span style={{ color: 'var(--matcha-600)', display: 'inline-flex', alignItems: 'center' }} title="ยืนยันแล้ว">
-                                    <IconCheckCircle size={18} />
-                                  </span>
-                                ) : (
-                                  <span style={{ color: 'var(--text-quaternary)', display: 'inline-flex', alignItems: 'center' }} title="ยังไม่ยืนยัน">
-                                    <IconError size={18} />
-                                  </span>
-                                )}
-                              </td>
-                            );
-                          })}
-                          <td style={{ padding: '14px 8px', fontSize: 13, fontWeight: 600, textAlign: 'right' }}>
-                            <div style={{ color: pct === 100 ? 'var(--matcha-700)' : 'var(--text-secondary)' }}>
-                              {ackedCount}/{requiredSops.length} ({pct}%)
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };
@@ -2427,6 +2315,8 @@ export const PageSOPApprovalQueue = () => {
         </div>
       </div>
 
+      <SOPSubNav active="approval" />
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
         <div className="card" style={{ padding: 18, border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
           <div className="t-caption" style={{ fontSize: 11, color: 'var(--warning)', fontWeight: 700 }}>รอตรวจสอบ (Pending Review)</div>
@@ -2527,6 +2417,8 @@ export const PageSOPCompliance = () => {
           </div>
         </div>
       </div>
+
+      <SOPSubNav active="compliance" />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 20, marginBottom: 24 }} className="inv-grid">
         <div className="card" style={{ padding: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', border: '1px solid var(--border-default)', background: 'var(--bg-surface)' }}>
@@ -2645,6 +2537,8 @@ export const PageSOPVariants = () => {
         </div>
       </div>
 
+      <SOPSubNav active="variants" />
+
       <div style={{ marginBottom: 16 }}>
         <Tabs items={[
           { value: 'all', label: 'ทั้งหมด', count: counts.all },
@@ -2760,6 +2654,8 @@ export const PageSOPMyTasks = () => {
         </div>
       </div>
 
+      <SOPSubNav active="tasks" />
+
       {isLoading ? (
         <div style={{ padding: 40, textAlign: 'center' }} className="muted">กำลังดึงข้อมูลพนักงานฝึกงาน…</div>
       ) : sections.length === 0 ? (
@@ -2868,6 +2764,8 @@ export const PageSOPMaterialUsage = () => {
           </div>
         </div>
       </div>
+
+      <SOPSubNav active="material" />
 
       <div style={{ marginBottom: 20 }}>
         <Tabs

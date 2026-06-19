@@ -187,18 +187,33 @@ const PageHelp = () => (
     <SectionHeader title="Frequently asked"/>
     <div className="card" style={{ overflow: 'hidden' }}>
       {[
-        'How do I receive stock from a PO?',
-        'Can I sync menu changes across branches?',
-        'How do SOP variants work?',
-        'What if my internet goes down?',
-        'How do I add a new payment method?',
-      ].map((q, i) => (
+        {
+          q: 'How do I receive stock from a PO?',
+          a: 'Go to Inventory → Receiving, select the approved PO, confirm quantities received, and submit. Stock updates automatically at your branch.',
+        },
+        {
+          q: 'Can I sync menu changes across branches?',
+          a: 'Menu items are managed at HQ. After creating or editing an item, use Distribute Center (or Franchise → branch → Menu tab) to push items to target branches.',
+        },
+        {
+          q: 'How do SOP variants work?',
+          a: 'Each branch can request a variant of the standard SOP. Submit a variant from SOP → My Variants; HQ reviews and approves in the Approval Queue.',
+        },
+        {
+          q: 'What if my internet goes down?',
+          a: 'POS caches your session locally. You can continue taking orders; sync resumes when connectivity returns. Install as PWA on iPad for best offline resilience.',
+        },
+        {
+          q: 'How do I add a new payment method?',
+          a: 'Super Admin: Backoffice → Payment Methods → Add method, then enable it per branch under branch payment settings.',
+        },
+      ].map(({ q, a }, i) => (
         <details key={i} style={{ padding: '14px 20px', borderTop: i === 0 ? 'none' : '1px solid var(--border-default)' }}>
           <summary style={{ cursor: 'pointer', fontWeight: 500, listStyle: 'none', display: 'flex', justifyContent: 'space-between' }}>
             {q}
             <IconChevDown size={16} style={{ color: 'var(--text-tertiary)' }}/>
           </summary>
-          <div className="muted" style={{ paddingTop: 10, fontSize: 14 }}>Answer placeholder — operations team will fill in.</div>
+          <div className="muted" style={{ paddingTop: 10, fontSize: 14, lineHeight: 1.6 }}>{a}</div>
         </details>
       ))}
     </div>
@@ -279,6 +294,7 @@ const ROUTES = {
   '/backoffice/sop/approval-queue': () => <PageSOPApprovalQueue/>,
   '/backoffice/sop/compliance': () => <PageSOPCompliance/>,
   '/backoffice/sop/my-variants': () => <PageSOPVariants/>,
+  '/backoffice/sop/my-tasks': () => <PageSOPMyTasks/>,
   '/backoffice/sop/material-usage': () => <PageSOPMaterialUsage/>,
   '/backoffice/settings': () => <PageSettings/>,
   '/backoffice/settings/master-data': () => <PageMasterData/>,
@@ -548,6 +564,14 @@ const App = () => {
     // Logged in → enforce role permissions
     if (!isPathAllowedForRole(path, role)) {
       setRoute(landingPathForRole(role));
+      return;
+    }
+    // Force password/PIN change before using the system
+    const liveSession = authStoreRef.getSession();
+    const mustChangePwd = liveSession?.mustChangePassword;
+    const mustChangePin = liveSession?.mustChangePin;
+    if ((mustChangePwd || mustChangePin) && !path.startsWith('/settings/security')) {
+      setRoute('/settings/security?force=1');
     }
   }, [route, role, staffSession]);
   useEffect(() => { localStorage.setItem('hibi-lang', lang); document.documentElement.lang = lang; }, [lang]);

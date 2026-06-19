@@ -10,6 +10,7 @@ import {
   posBranchPaymentSettings,
   posRecipeIngredients, posBranchInventoryStock, posInventoryMovements,
   posInventoryItems, memberPoints, members, posOrderRecipeSnapshots,
+  posBranchMenuItems,
 } from "../../drizzle/schema";
 import { logAudit, generateOrderNumber, generateTicketNumber } from "../lib/audit";
 import { router, staffProcedure, staffAdminProcedure } from "../_core/trpc";
@@ -438,6 +439,26 @@ export async function deductStockForOrder(
   return result;
 }
 
+// Deduct posBranchMenuItems.stockLevel when an order is completed (finished goods counter)
+async function deductBranchStockLevel(orderId: number, branchId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const items = await db
+    .select({ menuItemId: posOrderItems.menuItemId, qty: posOrderItems.quantity })
+    .from(posOrderItems)
+    .where(eq(posOrderItems.orderId, orderId));
+
+  for (const { menuItemId, qty } of items) {
+    if (!menuItemId) continue;
+    await db.update(posBranchMenuItems)
+      .set({ stockLevel: sql`GREATEST(0, COALESCE(stockLevel, 0) - ${qty})` })
+      .where(and(
+        eq(posBranchMenuItems.branchId, branchId),
+        eq(posBranchMenuItems.menuItemId, menuItemId),
+      ));
+  }
+}
+
 const OrderItemInput = z.object({
   menuItemId: z.number().int(),
   quantity: z.number().int().min(1),
@@ -802,9 +823,8 @@ export const ordersRouter = router({
         // Pre-check stock BEFORE closing order (throws if insufficient)
         const [orderForDeduct] = await db.select().from(posOrders).where(eq(posOrders.id, input.orderId)).limit(1);
         if (orderForDeduct?.branchId) {
-          // This runs in a transaction: if stock deduction fails, it rolls back
-          // The order status update is also inside the transaction
           await deductStockForOrder(input.orderId, orderForDeduct.branchId, ctx.staff.staffId);
+          await deductBranchStockLevel(input.orderId, orderForDeduct.branchId);
         }
         // Only mark completed AFTER stock deduction succeeds
         await db.update(posOrders)
@@ -875,6 +895,7 @@ export const ordersRouter = router({
       // Deduct stock first (transactional — throws if insufficient)
       if (orderCheck.branchId) {
         await deductStockForOrder(input.orderId, orderCheck.branchId, ctx.staff.staffId);
+        await deductBranchStockLevel(input.orderId, orderCheck.branchId);
       }
 
       // Only mark completed AFTER stock deduction succeeds

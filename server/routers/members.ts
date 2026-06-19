@@ -9,6 +9,7 @@ import {
   members, memberPoints, branches, pdpaConsents,
 } from "../../drizzle/schema";
 import { router, publicProcedure, staffProcedure, staffAdminProcedure } from "../_core/trpc";
+import { sendSms, isSmsConfigured } from "../lib/sms";
 
 // ── JWT helpers for member tokens ──────────────────────────────────────────
 import { SignJWT, jwtVerify } from "jose";
@@ -133,9 +134,12 @@ export const membersRouter = router({
     .mutation(async ({ input }) => {
       const otp = generateOtp();
       storeOtp(input.phone, otp);
-      // TODO: Send via SMS (Twilio/PromptPay SMS) — mock in dev
-      console.log(`[OTP] Phone: ${input.phone} Code: ${otp}`);
-      return { success: true, devOtp: process.env.NODE_ENV === "development" ? otp : undefined };
+      const message = `Hibi Matcha: รหัส OTP ของคุณคือ ${otp} (หมดอายุใน 5 นาที)`;
+      await sendSms(input.phone, message);
+      return {
+        success: true,
+        devOtp: !isSmsConfigured() && process.env.NODE_ENV !== "production" ? otp : undefined,
+      };
     }),
 
   // ── Register or Login with OTP ─────────────────────────────────────────────

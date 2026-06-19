@@ -6,12 +6,13 @@ import {
   branches, staff, staffBranches,
   posMenuItems, posBranchMenuItems,
   posInventoryItems, posBranchInventoryStock, posInventoryMovements,
-  posSops, posCategories,
+  posSops,
 } from "../../drizzle/schema";
 import { sql } from "drizzle-orm";
 import { logAudit } from "../lib/audit";
 import { publicProcedure, router, staffProcedure, staffAdminProcedure, superAdminProcedure } from "../_core/trpc";
 import { hashPassword, hashPin } from "../lib/auth";
+import { distributeStarterPackToBranch } from "../lib/distributeToBranch";
 
 const BranchInput = z.object({
   name: z.string().min(1),
@@ -139,31 +140,10 @@ export const branchesRouter = router({
       } as any);
       const id = (result as any).insertId as number;
 
-      // Auto-link all active menu items to this new branch so the POS works immediately
-      const activeMenuItems = await db.select().from(posMenuItems)
-        .where(eq(posMenuItems.isArchived, false));
-      if (activeMenuItems.length > 0) {
-        for (const item of activeMenuItems) {
-          await db.insert(posBranchMenuItems).values({
-            branchId: id,
-            menuItemId: item.id,
-            isAvailable: true,
-          }).onDuplicateKeyUpdate({ set: { isAvailable: true } });
-        }
-      }
-
-      // Auto-link all active inventory items to the new branch with 0 stock
-      const activeInventoryItems = await db.select().from(posInventoryItems)
-        .where(eq(posInventoryItems.isActive, true));
-      if (activeInventoryItems.length > 0) {
-        for (const item of activeInventoryItems) {
-          await db.insert(posBranchInventoryStock).values({
-            branchId: id,
-            inventoryItemId: item.id,
-            currentStock: "0",
-            reservedStock: "0",
-          }).onDuplicateKeyUpdate({ set: { currentStock: "0" } });
-        }
+      // Auto-provision menu + starter stock for new store branches (not HQ).
+      let distributeResult = { menuLinks: 0, stockRows: 0 };
+      if (branchData.branchType !== "hq") {
+        distributeResult = await distributeStarterPackToBranch(db, id);
       }
 
       // Link owner to branch
@@ -181,6 +161,7 @@ export const branchesRouter = router({
       return {
         ...created,
         ownerEmployeeCode: empCode,
+        distributed: distributeResult,
       };
     }),
 

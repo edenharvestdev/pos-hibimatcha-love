@@ -8,6 +8,7 @@ import {
   posBranchMenuItems,
 } from "../../drizzle/schema";
 import { logAudit } from "../lib/audit";
+import { generateRequisitionInvoiceHTML } from "../lib/printPayloads";
 import { router, staffProcedure, staffAdminProcedure, superAdminProcedure } from "../_core/trpc";
 import { notifyOwner } from "../_core/notification";
 
@@ -141,6 +142,7 @@ export const requisitionsRouter = router({
         approvedQty: z.string(),
         status: z.enum(["approved", "rejected"]),
         notes: z.string().optional(),
+        unitPrice: z.string().optional(),
       })).optional(), // if not provided, approve all as-is
     }))
     .mutation(async ({ ctx, input }) => {
@@ -159,10 +161,11 @@ export const requisitionsRouter = router({
           const item = items.find(i => i.itemId === update.itemId);
           if (item) {
             await db.update(posRequisitionItems)
-              .set({ 
-                approvedQty: update.approvedQty, 
+              .set({
+                approvedQty: update.approvedQty,
                 status: update.status,
                 notes: update.notes ?? item.notes,
+                ...(update.unitPrice !== undefined ? { unitPrice: update.unitPrice } : {}),
               })
               .where(eq(posRequisitionItems.id, item.id));
           }
@@ -250,21 +253,36 @@ export const requisitionsRouter = router({
           } as any);
         }
 
-        // Auto-assign menu items for approved menu requests
+        // Auto-assign menu items + set stockLevel for approved menu requests
         const approvedMenuItems = updatedItems.filter(i => i.status === "approved" && i.itemType === "menu");
         for (const item of approvedMenuItems) {
+          const qty = Number(item.approvedQty ?? item.requestedQty) || 0;
           await db.insert(posBranchMenuItems).values({
             branchId: req.requestingBranchId,
             menuItemId: item.itemId,
             isAvailable: true,
-          }).onDuplicateKeyUpdate({ set: { isAvailable: true } });
+            stockLevel: qty,
+          }).onDuplicateKeyUpdate({
+            set: {
+              isAvailable: true,
+              stockLevel: sql`COALESCE(stockLevel, 0) + ${qty}`,
+            },
+          });
         }
+
+        // Compute invoiceTotal from unitPrices on items
+        const fulfilledItems = await db.select().from(posRequisitionItems)
+          .where(eq(posRequisitionItems.requisitionId, input.id));
+        const calcTotal = fulfilledItems
+          .filter(i => i.status === "approved")
+          .reduce((sum, i) => sum + Number(i.approvedQty ?? i.requestedQty) * Number(i.unitPrice ?? 0), 0);
 
         // Mark as fulfilled
         await db.update(posRequisitions).set({
           status: "fulfilled",
           fulfilledAt: new Date(),
           updatedAt: new Date(),
+          ...(calcTotal > 0 ? { invoiceTotal: String(calcTotal) } : {}),
         }).where(eq(posRequisitions.id, input.id));
       }
 
@@ -339,6 +357,77 @@ export const requisitionsRouter = router({
       });
 
       return { success: true };
+    }),
+
+  // Set / update invoice total and per-item prices (HQ adjusts after fulfillment)
+  setInvoiceTotal: superAdminProcedure
+    .input(z.object({
+      id: z.number().int(),
+      invoiceTotal: z.number(),
+      items: z.array(z.object({
+        id: z.number().int(),
+        unitPrice: z.number(),
+      })).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(posRequisitions)
+        .set({ invoiceTotal: String(input.invoiceTotal), updatedAt: new Date() })
+        .where(eq(posRequisitions.id, input.id));
+      if (input.items) {
+        for (const item of input.items) {
+          await db.update(posRequisitionItems)
+            .set({ unitPrice: String(item.unitPrice) })
+            .where(eq(posRequisitionItems.id, item.id));
+        }
+      }
+      return { success: true };
+    }),
+
+  // Record payment from branch
+  recordPayment: staffProcedure
+    .input(z.object({
+      id: z.number().int(),
+      paymentMethod: z.string(),
+      paidAmount: z.number(),
+      paidRef: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [req] = await db.select().from(posRequisitions).where(eq(posRequisitions.id, input.id)).limit(1);
+      if (!req) throw new TRPCError({ code: "NOT_FOUND" });
+      if (req.paymentStatus === "paid") throw new TRPCError({ code: "BAD_REQUEST", message: "Already paid" });
+      await db.update(posRequisitions).set({
+        paymentStatus: "paid",
+        paymentMethod: input.paymentMethod,
+        paidAmount: String(input.paidAmount),
+        paidAt: new Date(),
+        paidRef: input.paidRef ?? null,
+        updatedAt: new Date(),
+      }).where(eq(posRequisitions.id, input.id));
+      return { success: true };
+    }),
+
+  // Print invoice HTML for a requisition
+  printInvoice: staffProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [req] = await db.select().from(posRequisitions).where(eq(posRequisitions.id, input.id)).limit(1);
+      if (!req) throw new TRPCError({ code: "NOT_FOUND" });
+      const items = await db.select().from(posRequisitionItems).where(eq(posRequisitionItems.requisitionId, input.id));
+      const [reqBranch] = await db.select().from(branches).where(eq(branches.id, req.requestingBranchId)).limit(1);
+      const [srcBranch] = await db.select().from(branches).where(eq(branches.id, req.sourceBranchId)).limit(1);
+      const html = generateRequisitionInvoiceHTML({
+        ...req,
+        items,
+        requestingBranchName: reqBranch?.name ?? "Unknown",
+        sourceBranchName: srcBranch?.name ?? "Hibi House",
+      });
+      return { html };
     }),
 
   // Count pending (for badge in sidebar)

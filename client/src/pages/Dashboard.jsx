@@ -8,6 +8,98 @@ import { useApp, Checkbox, CountUp, Avatar, Sparkline, BarChart } from "@/compon
 import { trpc } from "@/lib/trpc";
 import { getSession } from "@/lib/authStore";
 
+const fmt = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function EndOfDayModal({ branchId, onClose }) {
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const { data: eod, isLoading } = trpc.reports.getEndOfDayReport.useQuery(
+    { branchId, date },
+    { staleTime: 0 }
+  );
+  const handlePrint = () => window.print();
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: 'var(--bg-card)', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto', padding: 28, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ margin: 0, fontSize: 20 }}>📋 สรุปปิดร้านประจำวัน</h2>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20, alignItems: 'center' }}>
+          <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>วันที่</label>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, background: 'var(--bg-subtle)' }}/>
+          <button className="btn btn-ghost btn-sm" onClick={handlePrint}>🖨️ พิมพ์</button>
+        </div>
+
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>กำลังโหลด...</div>
+        ) : eod ? (
+          <>
+            {/* Summary cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 20 }}>
+              {[
+                { label: 'ยอดรวม', value: fmt(eod.totalRevenue), color: 'var(--matcha-600)' },
+                { label: 'จำนวนบิล', value: eod.totalOrders + ' บิล', color: 'var(--text-primary)' },
+                { label: 'เฉลี่ย/บิล', value: fmt(eod.avgOrderValue), color: 'var(--text-primary)' },
+                { label: 'ส่วนลดรวม', value: fmt(eod.totalDiscount), color: 'var(--warning)' },
+                { label: 'ภาษีรวม', value: fmt(eod.totalTax), color: 'var(--text-secondary)' },
+                { label: 'ยกเลิก/คืนเงิน', value: eod.cancelledOrders + ' บิล', color: 'var(--danger)' },
+              ].map(({ label, value, color }) => (
+                <div key={label} style={{ background: 'var(--bg-subtle)', borderRadius: 10, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color }}>{value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Payment breakdown */}
+            {Object.keys(eod.paymentBreakdown).length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1 }}>ช่องทางชำระเงิน</h4>
+                {Object.entries(eod.paymentBreakdown).map(([method, amount]) => (
+                  <div key={method} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 14 }}>
+                    <span>{method}</span><span style={{ fontWeight: 600 }}>{fmt(amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Top items */}
+            {eod.topItems.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1 }}>สินค้าขายดี</h4>
+                {eod.topItems.slice(0, 5).map((it, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 13 }}>
+                    <span>{i + 1}. {it.name}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{it.qty} ชิ้น · {fmt(it.revenue)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Staff breakdown */}
+            {eod.staffBreakdown.length > 0 && (
+              <div>
+                <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1 }}>พนักงาน</h4>
+                {eod.staffBreakdown.map((s, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--border-subtle)', fontSize: 13 }}>
+                    <span>{s.name}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{s.orders} บิล · {fmt(s.revenue)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>ไม่มีข้อมูลวันนี้</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const greeting = () => {
   const h = new Date().getHours();
   if (h < 5) return { en: 'Good night', jp: '夜', icon: '🌙' };
@@ -21,6 +113,7 @@ export const PageDashboard = () => {
   const { branch, navigate, staff, t } = useApp();
   const session = getSession();
   const branchId = branch?.id || session?.currentBranchId || undefined;
+  const [showEOD, setShowEOD] = useState(false);
   const g = greeting();
 
   const { data: stats, isLoading: statsLoading } = trpc.reports.getDashboardStats.useQuery(
@@ -40,7 +133,18 @@ export const PageDashboard = () => {
     { enabled: !!branchId, staleTime: 60000 }
   );
 
-  const revData = [320,440,520,610,720,890,1020,1180,1340,1520,1680,1490,1320,1180,1090,980,1110,1250,1420,1380,1280,1100,890,720];
+  const revData = useMemo(() => {
+    const hourly = stats?.hourlyRevenue;
+    if (hourly?.some((v) => v > 0)) return hourly;
+    // Flat line when no sales yet today — chart still renders
+    return Array.from({ length: 24 }, () => 0);
+  }, [stats?.hourlyRevenue]);
+
+  const ordersSparkData = useMemo(() => {
+    const byHour = stats?.ordersByHour;
+    if (byHour?.some((v) => v > 0)) return byHour.slice(0, 12);
+    return (stats?.aovLast7Days ?? []).slice(0, 12);
+  }, [stats?.ordersByHour, stats?.aovLast7Days]);
   const todayRevenue = stats?.todayRevenue ?? 0;
   const todayOrders = stats?.todayOrders ?? 0;
   const avgOrderValue = stats?.averageOrderValue ?? 0;
@@ -76,6 +180,7 @@ export const PageDashboard = () => {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-secondary" onClick={() => navigate('/backoffice/reports')}>📊 Reports</button>
+            <button className="btn btn-ghost" onClick={() => setShowEOD(true)}>📋 ปิดร้าน</button>
             <button className="btn btn-primary" onClick={() => navigate('/pos/terminal')}><IconPlus size={16}/> {t('receipt.newOrder')}</button>
           </div>
         </div>
@@ -152,7 +257,7 @@ export const PageDashboard = () => {
             <div className="tabular" style={{ fontSize: 40, fontWeight: 600, letterSpacing: '-0.025em', lineHeight: 1 }}>
               {statsLoading ? '–' : <CountUp to={todayOrders}/>}
             </div>
-            <div style={{ marginTop: 10 }}><BarChart data={revData.slice(0, 12)} w={240} h={32}/></div>
+            <div style={{ marginTop: 10 }}><BarChart data={ordersSparkData} w={240} h={32}/></div>
           </div>
 
           <div className="card" style={{
@@ -301,6 +406,8 @@ export const PageDashboard = () => {
         </div>
 
       </div>
+
+      {showEOD && <EndOfDayModal branchId={branchId} onClose={() => setShowEOD(false)} />}
 
       <style>{`
         @media (max-width: 900px) {

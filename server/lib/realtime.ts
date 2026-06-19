@@ -16,6 +16,19 @@ export const RealtimeEvents = {
   STOCK_LOW: "stock_low",
 };
 
+export function isPusherConfigured(): boolean {
+  const key = process.env.PUSHER_KEY ?? "";
+  const appId = process.env.PUSHER_APP_ID ?? "";
+  return !!(
+    appId &&
+    key &&
+    process.env.PUSHER_SECRET &&
+    !key.includes("your-pusher") &&
+    !appId.includes("mock") &&
+    key !== "mock_key"
+  );
+}
+
 /**
  * Broadcasts a real-time event to a specific branch channel.
  * @param branchId The ID of the branch
@@ -25,13 +38,12 @@ export const RealtimeEvents = {
 export async function broadcastToBranch(branchId: number, event: string, payload: any) {
   const channel = `branch-${branchId}`;
   try {
-    if (process.env.PUSHER_APP_ID) {
+    if (isPusherConfigured()) {
       await pusherClient.trigger(channel, event, payload);
     } else {
-      // In local dev without Pusher credentials, just log it.
       console.log(`[Realtime Mock] Channel: ${channel} | Event: ${event}`, payload);
     }
   } catch (error) {
-    console.error("[Realtime] Failed to broadcast event", error);
+    console.warn("[Realtime] Broadcast skipped:", (error as Error).message);
   }
 }

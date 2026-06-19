@@ -48,10 +48,14 @@ export const PageLogin = () => {
         primaryBranchId: result.staff.primaryBranchId ?? null,
         currentBranchId: result.staff.primaryBranchId ?? null,
         token: result.token,
+        mustChangePassword: result.mustChangePassword ?? false,
       });
       setStaff?.(result.staff);
-      // Invalidate all cached queries for fresh data
       queryClient.invalidateQueries();
+      if (result.mustChangePassword) {
+        navigate("/settings/security?force=1");
+        return;
+      }
       // Admin/super_admin → branch select first, staff → POS terminal
       if (result.staff.role === "super_admin" || result.staff.role === "staff_admin") {
         navigate("/branch-select");
@@ -84,6 +88,7 @@ export const PageLogin = () => {
         primaryBranchId: result.staff.primaryBranchId ?? null,
         currentBranchId: branchId,
         token: result.token,
+        mustChangePin: result.mustChangePin ?? false,
       });
       setStaff?.(result.staff);
       // Sync App Context branch so POS pages read the correct branchId immediately
@@ -101,6 +106,10 @@ export const PageLogin = () => {
       }
       // Invalidate all cached queries for the new branch
       queryClient.invalidateQueries();
+      if (result.mustChangePin) {
+        navigate("/settings/security?forcePin=1");
+        return;
+      }
       navigate("/pos/terminal");
     } catch (err) {
       setError(err.message || "Invalid PIN");

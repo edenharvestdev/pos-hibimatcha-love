@@ -228,7 +228,12 @@ export const enterpriseRouter = router({
       if (!db) return [];
       const masterList = await db.select().from(masterPaymentMethods);
       const branchEnabled = await db.select().from(branchPaymentMethods).where(eq(branchPaymentMethods.branchId, input.branchId));
-      
+
+      // If no branch config exists yet, all active master methods are enabled by default.
+      if (branchEnabled.length === 0) {
+        return masterList.map(m => ({ ...m, isEnabledForBranch: m.isActive !== false }));
+      }
+
       const enabledIds = new Set(branchEnabled.filter(b => b.isActive).map(b => b.paymentMethodId));
       return masterList.map(m => ({
         ...m,

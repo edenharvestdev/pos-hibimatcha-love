@@ -12,6 +12,8 @@ export type StaffSession = {
   primaryBranchId: number | null;
   currentBranchId: number | null;
   token: string;
+  mustChangePassword?: boolean;
+  mustChangePin?: boolean;
 };
 
 let _session: StaffSession | null = null;

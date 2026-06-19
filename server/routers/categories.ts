@@ -1,9 +1,10 @@
 import { TRPCError } from "@trpc/server";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "../db";
 import { posCategories } from "../../drizzle/schema";
 import { logAudit } from "../lib/audit";
+import { assertCategoryAccessible } from "../lib/branchAccess";
 import { router, staffProcedure, staffAdminProcedure } from "../_core/trpc";
 
 const CategoryInput = z.object({
@@ -63,14 +64,10 @@ export const categoriesRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const targetBranchId = ctx.staff.role === "super_admin" ? input.branchId : ctx.staff.currentBranchId;
-      if (ctx.staff.role !== "super_admin" && !targetBranchId) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
-      }
-
+      // Categories are always global (House-owned) so all branches see them.
       const [result] = await db.insert(posCategories).values({
         ...input,
-        branchId: targetBranchId ?? null,
+        branchId: null,
       } as any);
       const id = (result as any).insertId as number;
       const [created] = await db.select().from(posCategories).where(eq(posCategories.id, id)).limit(1);
@@ -88,11 +85,7 @@ export const categoriesRouter = router({
       const [existing] = await db.select().from(posCategories).where(eq(posCategories.id, id)).limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
-      if (ctx.staff.role !== "super_admin") {
-        if (existing.branchId !== ctx.staff.currentBranchId) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "You can only modify your branch specific categories" });
-        }
-      }
+      assertCategoryAccessible(ctx.staff, existing);
 
       await db.update(posCategories).set(data as any).where(eq(posCategories.id, id));
       const [updated] = await db.select().from(posCategories).where(eq(posCategories.id, id)).limit(1);
@@ -109,11 +102,7 @@ export const categoriesRouter = router({
       const [existing] = await db.select().from(posCategories).where(eq(posCategories.id, input.id)).limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
-      if (ctx.staff.role !== "super_admin") {
-        if (existing.branchId !== ctx.staff.currentBranchId) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "You can only archive your branch specific categories" });
-        }
-      }
+      assertCategoryAccessible(ctx.staff, existing);
 
       await db.update(posCategories).set({ isArchived: true, isActive: false }).where(eq(posCategories.id, input.id));
       await logAudit({ staff: ctx.staff, action: "archive", entity: "pos_categories", entityId: input.id });
@@ -129,11 +118,7 @@ export const categoriesRouter = router({
       const [existing] = await db.select().from(posCategories).where(eq(posCategories.id, input.id)).limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
-      if (ctx.staff.role !== "super_admin") {
-        if (existing.branchId !== ctx.staff.currentBranchId) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "You can only restore your branch specific categories" });
-        }
-      }
+      assertCategoryAccessible(ctx.staff, existing);
 
       await db.update(posCategories).set({ isArchived: false, isActive: true }).where(eq(posCategories.id, input.id));
       return { success: true };
@@ -144,19 +129,6 @@ export const categoriesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-      if (ctx.staff.role !== "super_admin") {
-        if (!ctx.staff.currentBranchId) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
-        }
-        if (input.categoryIds.length > 0) {
-          const matched = await db.select().from(posCategories)
-            .where(and(inArray(posCategories.id, input.categoryIds), eq(posCategories.branchId, ctx.staff.currentBranchId)));
-          if (matched.length !== input.categoryIds.length) {
-            throw new TRPCError({ code: "FORBIDDEN", message: "You can only reorder your branch specific categories" });
-          }
-        }
-      }
 
       for (let i = 0; i < input.categoryIds.length; i++) {
         await db.update(posCategories).set({ sortOrder: i }).where(eq(posCategories.id, input.categoryIds[i]));
@@ -170,17 +142,6 @@ export const categoriesRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       if (input.ids.length === 0) return { success: true };
-
-      if (ctx.staff.role !== "super_admin") {
-        if (!ctx.staff.currentBranchId) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Branch context required" });
-        }
-        const matched = await db.select().from(posCategories)
-          .where(and(inArray(posCategories.id, input.ids), eq(posCategories.branchId, ctx.staff.currentBranchId)));
-        if (matched.length !== input.ids.length) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "You can only archive your branch specific categories" });
-        }
-      }
 
       await db.update(posCategories)
         .set({ isArchived: true, isActive: false })
@@ -197,11 +158,7 @@ export const categoriesRouter = router({
       const [existing] = await db.select().from(posCategories).where(eq(posCategories.id, input.id)).limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
 
-      if (ctx.staff.role !== "super_admin") {
-        if (existing.branchId !== ctx.staff.currentBranchId) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "You can only delete your branch specific categories" });
-        }
-      }
+      assertCategoryAccessible(ctx.staff, existing);
 
       await db.delete(posCategories).where(eq(posCategories.id, input.id));
       await logAudit({ staff: ctx.staff, action: "delete", entity: "pos_categories", entityId: input.id });

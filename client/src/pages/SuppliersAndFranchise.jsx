@@ -534,10 +534,21 @@ export const PagePurchaseOrders = () => {
 // ----- Franchise: Branch directory -----
 export const PageFranchise = () => {
   const [view, setView] = useState('grid');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All status');
+  const [typeFilter, setTypeFilter] = useState('All types');
   const { navigate } = useApp();
   const { data: branches = [], isLoading, refetch: refetchBranches } = trpc.branches.list.useQuery({}, { staleTime: 5000, refetchOnWindowFocus: true });
   const deleteBranch = trpc.branches.delete.useMutation({ onSuccess: () => refetchBranches(), onError: (e) => alert(e.message) });
   const handleDeleteBranch = (b) => { if (window.confirm(`ลบสาขา "${b.name}"? ข้อมูลจะหายถาวร`)) deleteBranch.mutate({ id: b.id }); };
+
+  const filtered = branches.filter((b) => {
+    const q = search.trim().toLowerCase();
+    if (q && !`${b.name} ${b.branchCode} ${b.province ?? ''}`.toLowerCase().includes(q)) return false;
+    if (statusFilter !== 'All status' && b.status !== statusFilter.toLowerCase()) return false;
+    if (typeFilter !== 'All types' && b.branchType !== typeFilter) return false;
+    return true;
+  });
 
   return (
     <div className="page">
@@ -546,17 +557,17 @@ export const PageFranchise = () => {
         <div className="page-title-row">
           <div>
             <h1 className="page-title">All Branches</h1>
-            <p className="page-desc">{branches.length} branches</p>
+            <p className="page-desc">{filtered.length} of {branches.length} branches</p>
           </div>
           <button className="btn btn-primary" onClick={() => navigate('/backoffice/franchise/new')}><IconPlus size={16}/> Open New Branch</button>
         </div>
       </div>
 
       <TopActionBar
-        search="" onSearch={() => {}}
+        search={search} onSearch={setSearch}
         filters={<>
-          <Select value="" onChange={() => {}} options={['All status', 'Active', 'Pre-launch', 'Closed']} placeholder="All status"/>
-          <Select value="" onChange={() => {}} options={['All types', 'hq', 'company-owned', 'franchise']} placeholder="All types"/>
+          <Select value={statusFilter} onChange={setStatusFilter} options={['All status', 'Active', 'Inactive', 'Closed']} placeholder="All status"/>
+          <Select value={typeFilter} onChange={setTypeFilter} options={['All types', 'hq', 'company-owned', 'franchise']} placeholder="All types"/>
         </>}
         viewMode={view} onViewMode={setView}
         onExport={() => {}}
@@ -564,7 +575,7 @@ export const PageFranchise = () => {
 
       {isLoading ? (
         <div style={{ padding: 40, textAlign: 'center' }} className="muted">Loading branches…</div>
-      ) : branches.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-tertiary)' }}>
           <EmptyZen/>
           <p style={{ marginTop: 12, fontWeight: 500 }}>No branches yet</p>
@@ -572,7 +583,7 @@ export const PageFranchise = () => {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-          {branches.map((b, i) => (
+          {filtered.map((b, i) => (
             <div key={b.id} className="card" style={{ overflow: 'hidden', animation: `slideUp 360ms var(--ease-out-expo) ${i * 60}ms both` }}>
               <Placeholder h={140} radius={0} label={b.branchType === 'hq' ? 'HQ' : 'Branch'}/>
               <div style={{ padding: 18 }}>
@@ -1016,18 +1027,14 @@ export const PageFranchiseNew = () => {
           <>
             <div className="t-h2" style={{ fontWeight: 600, marginBottom: 6 }}>Inventory</div>
             <p className="muted" style={{ marginBottom: 24 }}>Initial inventory allocation for this branch.</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <Field label="Inventory mode">
-                <Select value={form.inventoryMode || 'shared'} onChange={(v) => setField('inventoryMode', v)} options={['shared', 'independent']}/>
-              </Field>
-              <Field label="Auto-reorder">
-                <div style={{ paddingTop: 8 }}><Toggle checked={form.autoReorder || false} onChange={(v) => setField('autoReorder', v)}/></div>
-              </Field>
-              <Field label="Reorder from">
-                <Select value={form.reorderFrom || 'hq'} onChange={(v) => setField('reorderFrom', v)} options={['hq', 'supplier-direct']}/>
-              </Field>
+            <div style={{
+              padding: '16px 20px', borderRadius: 'var(--r-md)',
+              background: 'var(--bg-muted)', border: '1px solid var(--border-default)',
+              fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6,
+            }}>
+              สาขาใหม่เริ่มต้นโดยไม่มี stock และ menu ใดๆ<br/>
+              HQ (Hibi House) จะเป็นผู้จัดส่ง stock และ menu ให้สาขาผ่าน <strong>Distribute Center</strong> หลังจากสร้างสาขาเสร็จแล้ว
             </div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 12 }}>Stock can be transferred from HQ after branch creation via the Distribute Center.</div>
           </>
         )}
         {step === 6 && (
