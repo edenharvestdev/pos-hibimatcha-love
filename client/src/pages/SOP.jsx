@@ -697,13 +697,12 @@ export const PageSOPDetail = () => {
     });
   };
 
-  const myAck = useMemo(() => {
-    const session = getSession();
-    return acks.find(a => a.staffId === session?.id);
-  }, [acks]);
+  const myAckRecord = canWrite
+    ? acks.find((a) => a.staffId === getSession()?.id)
+    : myAck;
 
-  const ackedTimeStr = myAck?.acknowledgedAt 
-    ? new Date(myAck.acknowledgedAt).toLocaleString('th-TH') 
+  const ackedTimeStr = myAckRecord?.acknowledgedAt
+    ? new Date(myAckRecord.acknowledgedAt).toLocaleString('th-TH')
     : new Date().toLocaleString('th-TH');
 
   const archiveSop = trpc.sop.archive.useMutation();
