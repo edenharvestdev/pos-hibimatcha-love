@@ -106,6 +106,7 @@ jobs:
             --set-env-vars="OMISE_SECRET_KEY=${{ secrets.OMISE_SECRET_KEY }}" \
             --set-env-vars="GOOGLE_SHEET_ID=${{ secrets.GOOGLE_SHEET_ID }}" \
             --set-env-vars="GOOGLE_SHEETS_SA_KEY_BASE64=${{ secrets.GOOGLE_SHEETS_SA_KEY_BASE64 }}" \
+            --set-env-vars="PROMPTPAY_WEBHOOK_SECRET=${{ secrets.PROMPTPAY_WEBHOOK_SECRET }}" \
             --quiet
 
       # ── 7. Report deployed URL ────────────────────────────────────────

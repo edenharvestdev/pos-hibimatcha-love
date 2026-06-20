@@ -10,12 +10,30 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: hibi_matcha_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ptest"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: mysql://root:test@127.0.0.1:3306/hibi_matcha_test
+      JWT_SECRET: ci-test-jwt-secret-minimum-32-characters
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "20.x"
 
@@ -24,6 +42,18 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Wait for MySQL
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq default-mysql-client > /dev/null
+          for i in $(seq 1 30); do
+            mysqladmin ping -h 127.0.0.1 -ptest --silent && exit 0
+            sleep 2
+          done
+          echo "MySQL did not become ready" && exit 1
+
+      - name: Apply migrations
+        run: pnpm db:migrate
 
       - name: Type Check (TypeScript)
         run: pnpm check

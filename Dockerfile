@@ -44,8 +44,10 @@ RUN pnpm install --prod --frozen-lockfile
 
 # Copy the built artifacts from the builder stage
 COPY --from=builder /app/dist ./dist
-# Drizzle schema (needed for runtime db connections if not bundled)
+# Copy migration SQL files
 COPY --from=builder /app/drizzle ./drizzle
+COPY scripts/docker-start.sh ./scripts/docker-start.sh
+RUN chmod +x ./scripts/docker-start.sh
 
 # Set environment variables
 ENV NODE_ENV=production
@@ -54,5 +56,5 @@ ENV PORT=3000
 # Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "run", "start"]
+# Start: migrate then serve (Cloud Run listens on 0.0.0.0:PORT)
+CMD ["./scripts/docker-start.sh"]

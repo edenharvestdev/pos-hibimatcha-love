@@ -11,6 +11,20 @@ import mysql from "mysql2/promise";
 
 const MIGRATIONS_DIR = join(process.cwd(), "drizzle");
 
+async function createMigrationConnection(url: string) {
+  const instance = process.env.INSTANCE_CONNECTION_NAME;
+  if (instance) {
+    const u = new URL(url);
+    return mysql.createConnection({
+      user: decodeURIComponent(u.username),
+      password: decodeURIComponent(u.password),
+      database: u.pathname.replace(/^\//, ""),
+      socketPath: `/cloudsql/${instance}`,
+    });
+  }
+  return mysql.createConnection(url);
+}
+
 async function columnExists(conn: mysql.Connection, table: string, column: string): Promise<boolean> {
   const [rows] = await conn.query<mysql.RowDataPacket[]>(
     `SELECT COUNT(*) AS c FROM information_schema.COLUMNS
@@ -48,13 +62,16 @@ async function applyStatement(conn: mysql.Connection, sql: string): Promise<"ok"
 
 async function main() {
   const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is required");
+  if (!url) {
+    console.warn("[migrate] DATABASE_URL not set — skipping migrations");
+    return;
+  }
 
   const files = readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith(".sql"))
     .sort();
 
-  const conn = await mysql.createConnection(url);
+  const conn = await createMigrationConnection(url);
   console.log(`Applying ${files.length} migration file(s)…`);
 
   for (const file of files) {
