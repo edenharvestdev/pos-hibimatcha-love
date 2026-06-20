@@ -55,6 +55,9 @@ jobs:
       - name: Apply migrations
         run: pnpm db:migrate
 
+      - name: Seed test database
+        run: pnpm seed
+
       - name: Type Check (TypeScript)
         run: pnpm check
 
