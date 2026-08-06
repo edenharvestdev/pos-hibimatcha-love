@@ -479,8 +479,20 @@ async function deductBranchStockLevel(orderId: number, branchId: number) {
   }
 }
 
-/** Deduct recipe stock + finished-goods counter — call before marking order completed. */
+/** Deduct recipe stock + finished-goods counter — call before marking order completed.
+ *  Idempotent: skips if the order is already completed, so multiple completion paths
+ *  (addPayment auto-complete, manual complete, payment webhooks, split payment) cannot
+ *  double-deduct the finished-goods stockLevel counter (deductStockForOrder is already
+ *  guarded by its `sold` movements, but deductBranchStockLevel is not). */
 export async function finalizeOrderStockDeduction(orderId: number, branchId: number, staffId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const [existing] = await db
+    .select({ status: posOrders.status })
+    .from(posOrders)
+    .where(eq(posOrders.id, orderId))
+    .limit(1);
+  if (existing?.status === "completed") return; // already finalized — stock already deducted
   await deductStockForOrder(orderId, branchId, staffId);
   await deductBranchStockLevel(orderId, branchId);
 }
