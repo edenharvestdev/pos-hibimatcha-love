@@ -12,6 +12,7 @@ import { Logo } from "@/components/Shell";
 import { trpc } from "@/lib/trpc";
 import { useQueryClient } from "@tanstack/react-query";
 import { setSession, clearSession } from "@/lib/authStore";
+import { BRAND_NAME } from '@/lib/brand';
 
 export const PageLogin = () => {
   const { navigate, setStaff, setBranch } = useApp();
@@ -167,7 +168,7 @@ export const PageLogin = () => {
           </div>
         </div>
         <div style={{ position: "relative", zIndex: 1, fontSize: 12, opacity: 0.5, display: "flex", alignItems: "center", gap: 12 }}>
-          <span>v2026.5 · Hibi House POS</span>
+          <span>v2026.5 · {BRAND_NAME} POS</span>
         </div>
       </div>
 
@@ -260,7 +261,7 @@ export const PageLogin = () => {
             )}
           </div>
           <div style={{ textAlign: "center", marginTop: 18, fontSize: 12, color: "var(--text-tertiary)" }}>
-            Protected by Hibi House security
+            Protected by {BRAND_NAME} security
           </div>
         </div>
       </div>
@@ -361,7 +362,7 @@ npm run db:push`}
         <div style={{ position: "relative", zIndex: 1 }}>
           <div className="t-caption" style={{ color: "var(--matcha-300)", marginBottom: 12 }}>First-time setup</div>
           <div style={{ fontSize: 64, fontWeight: 600, letterSpacing: "-0.04em", lineHeight: 1.05, fontFamily: "var(--font-display)" }}>
-            Welcome to<br/>Hibi Matcha.
+            Welcome to<br/>{BRAND_NAME}.
           </div>
           <div className="jp" style={{ fontSize: 16, marginTop: 16, opacity: 0.7, letterSpacing: "0.06em" }}>はじめまして · Let's begin</div>
           <div style={{ marginTop: 24, maxWidth: 460, fontSize: 15, lineHeight: 1.7, opacity: 0.75 }}>
@@ -379,7 +380,7 @@ npm run db:push`}
             </li>
           </ul>
         </div>
-        <div style={{ position: "relative", zIndex: 1, fontSize: 12, opacity: 0.5 }}>v2026.5 · Hibi House POS · Initial Setup</div>
+        <div style={{ position: "relative", zIndex: 1, fontSize: 12, opacity: 0.5 }}>v2026.5 · {BRAND_NAME} POS · Initial Setup</div>
       </div>
 
       <div style={{ display: "grid", placeItems: "center", padding: "40px 24px", background: "var(--bg-base)", overflowY: "auto" }}>

@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { IconBrand,IconBuilding,IconChevDown,IconChevRight,IconGlobe,IconHelp,IconMoon,IconPOS,IconSun,WhiskLoader } from "@/icons";
 import { useApp,Toggle } from "@/components";
+import { BRAND_NAME } from '@/lib/brand';
 
 
 export const PageLanding = () => {
@@ -38,7 +39,7 @@ export const PageLanding = () => {
           <div style={{ marginBottom: 40, animation: 'slideDown 0.5s ease-out' }}>
             <div style={{ width: 48, height: 48, background: 'var(--matcha-500)', borderRadius: 12, marginBottom: 24, boxShadow: '0 8px 16px rgba(46,139,87,0.2)' }} />
             <h1 className="serif" style={{ fontSize: 32, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-              Welcome to<br/>{import.meta.env.VITE_BRAND_NAME || 'Hibi Matcha'}.
+              Welcome to<br/>{BRAND_NAME}.
             </h1>
             <div className="jp" style={{ fontSize: 16, color: 'var(--text-tertiary)', marginTop: 12, letterSpacing: '0.06em' }}>POS & Backoffice</div>
           </div>

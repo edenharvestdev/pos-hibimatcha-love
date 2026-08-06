@@ -16,6 +16,7 @@ import {
 import { getSession, clearSession } from "@/lib/authStore";
 import { trpc } from "@/lib/trpc";
 import { useQueryClient } from "@tanstack/react-query";
+import { BRAND_NAME } from '@/lib/brand';
 
 // Icon registry — replaces window[iconName] lookup
 const I = Icons;
@@ -118,11 +119,8 @@ const Logo = ({ size = 'md', subtitle = true }) => {
         <IconBrand size={fs + 8}/>
       </div>
       <div style={{ lineHeight: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ fontWeight: 600, fontSize: fs, letterSpacing: '-0.02em' }}>hibi</span>
-          <span style={{ fontWeight: 400, fontSize: fs - 2, letterSpacing: '0.18em', color: 'var(--text-secondary)' }}>MATCHA</span>
-        </div>
-        {subtitle && <div className="jp" style={{ fontSize: 10, color: 'var(--text-quaternary)', marginTop: 4, letterSpacing: '0.04em' }}>ひびマッチャ</div>}
+        <div style={{ fontWeight: 700, fontSize: fs, letterSpacing: '0.14em' }}>{BRAND_NAME}</div>
+        {subtitle && <div style={{ fontSize: 10, color: 'var(--text-quaternary)', marginTop: 4, letterSpacing: '0.08em' }}>Operations System</div>}
       </div>
     </div>
   );

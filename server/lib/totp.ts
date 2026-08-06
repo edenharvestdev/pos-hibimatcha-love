@@ -1,6 +1,6 @@
 import { generateSecret, generateURI, verify } from "otplib";
 
-const ISSUER = process.env.VITE_BRAND_NAME || "Hibi Matcha";
+const ISSUER = process.env.VITE_BRAND_NAME || "HIBIOS";
 
 export function createTotpSecret(): string {
   return generateSecret();

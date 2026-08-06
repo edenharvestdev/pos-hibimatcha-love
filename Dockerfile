@@ -17,7 +17,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # Pass build args for frontend branding
-ARG VITE_BRAND_NAME="Hibi Matcha"
+ARG VITE_BRAND_NAME="HIBIOS"
 ARG VITE_PRIMARY_COLOR="#16a34a"
 
 ENV VITE_BRAND_NAME=$VITE_BRAND_NAME

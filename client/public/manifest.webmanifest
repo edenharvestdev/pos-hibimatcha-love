@@ -1,7 +1,7 @@
 {
-  "name": "Hibi Matcha · Store Operation Automation System",
-  "short_name": "Hibi 日々",
-  "description": "Point of Sale and Store Operation Automation System for Hibi Matcha cafes",
+  "name": "HIBIOS · Store Operation Automation System",
+  "short_name": "HIBIOS",
+  "description": "Point of Sale and Store Operation Automation System",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

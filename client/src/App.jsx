@@ -529,7 +529,7 @@ const App = () => {
     const sess = authStoreRef.getSession();
     if (sess?.currentBranchId) return { id: sess.currentBranchId, name: 'Branch', sub: '', type: 'Branch' };
     
-    const defaultBrand = import.meta.env.VITE_BRAND_NAME || 'Hibi Matcha';
+    const defaultBrand = import.meta.env.VITE_BRAND_NAME || 'HIBIOS';
     return { id: null, name: defaultBrand, sub: 'HQ', type: 'HQ' };
   });
   const [cmdOpen, setCmdOpen] = useState(false);
